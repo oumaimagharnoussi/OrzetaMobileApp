@@ -139,6 +139,10 @@ app.post("/api/visiteurs", async (req, res) => {
   console.log("=================================");
 
   try {
+    // =================================================
+    // BODY REÇU
+    // =================================================
+
     console.log("BODY REÇU :");
 
     console.log(
@@ -162,7 +166,6 @@ app.post("/api/visiteurs", async (req, res) => {
       prenom,
       email,
       age,
-     // sexe,
       origine,
       indicatif,
       telephone,
@@ -217,11 +220,35 @@ app.post("/api/visiteurs", async (req, res) => {
 
       marche_cible,
       quantite_prevue,
+
+      // Nouveaux champs séparés
+      nouvelle_marque_formats,
+      nouvelle_marque_design_conditionnement,
+
+      // -----------------------------------------------
+      // AUTRES CHAMPS
+      // -----------------------------------------------
+
+      nouvelle_marque_nom,
+      nouvelle_marque_description,
+      nouvelle_marque_positionnement,
+      nouvelle_marque_cible,
+      nouvelle_marque_pays_lancement,
+      nouvelle_marque_volume_previsionnel,
+      nouvelle_marque_certifications,
+      nouvelle_marque_design_conditionnement: nouvelleMarqueDesignConditionnementBody,
+
+      profile: profileBody,
+      type_emballage: typeEmballageBody,
+      marche_cible: marcheCibleBody,
+      quantite_prevue: quantitePrevueBody,
       packaging,
+      type_conteneur,
+      nombre_palettes,
     } = req.body;
 
     // =================================================
-    // FONCTION DE NETTOYAGE
+    // FONCTION NETTOYAGE
     // =================================================
 
     const cleanString = (value) => {
@@ -234,18 +261,36 @@ app.post("/api/visiteurs", async (req, res) => {
 
       const result = String(value).trim();
 
-      return result === "" ? null : result;
+      return result === ""
+        ? null
+        : result;
     };
 
     // =================================================
     // INFORMATIONS GÉNÉRALES
     // =================================================
 
-    const cleanNom = cleanString(nom);
+    const cleanNom =
+      cleanString(nom);
 
-    const cleanPrenom = cleanString(prenom);
+    const cleanPrenom =
+      cleanString(prenom);
 
-    const cleanEmail = cleanString(email);
+    const cleanEmail =
+      cleanString(email);
+
+    const cleanAge =
+      age !== undefined &&
+      age !== null &&
+      String(age).trim() !== ""
+        ? Number(age)
+        : null;
+
+    const cleanOrigine =
+      cleanString(origine);
+
+    const cleanIndicatif =
+      cleanString(indicatif);
 
     const cleanTelephone =
       cleanString(telephone);
@@ -259,41 +304,17 @@ app.post("/api/visiteurs", async (req, res) => {
     const cleanFonction =
       cleanString(fonction);
 
-    const cleanOrigine =
-      cleanString(origine);
-
-    const cleanIndicatif =
-      cleanString(indicatif);
-
-    //const cleanSexe =
-      //cleanString(sexe);
-
     const cleanLangue =
-      cleanString(langue_communication);
+      cleanString(
+        langue_communication
+      );
+
+    // =================================================
+    // PROFILE
+    // =================================================
 
     const cleanProfile =
-      cleanString(profile);
-
-    // =================================================
-    // AGE
-    // =================================================
-
-    let cleanAge = null;
-
-    if (
-      age !== undefined &&
-      age !== null &&
-      String(age).trim() !== ""
-    ) {
-      const parsedAge = Number(age);
-
-      if (
-        Number.isInteger(parsedAge) &&
-        parsedAge >= 0
-      ) {
-        cleanAge = parsedAge;
-      }
-    }
+      cleanString(profileBody || profile);
 
     // =================================================
     // TYPE COMMANDE
@@ -319,19 +340,29 @@ app.post("/api/visiteurs", async (req, res) => {
       cleanTypeCommande === "vrac"
     ) {
       cleanQualiteGrade =
-        cleanString(qualite_grade);
+        cleanString(
+          qualite_grade
+        );
 
       cleanDestination =
-        cleanString(destination);
+        cleanString(
+          destination
+        );
 
       cleanIncoterm =
-        cleanString(incoterm);
+        cleanString(
+          incoterm
+        );
 
       cleanFormatLivraison =
-        cleanString(format_livraison);
+        cleanString(
+          format_livraison
+        );
 
       cleanFrequenceCommande =
-        cleanString(frequence_commande);
+        cleanString(
+          frequence_commande
+        );
 
       cleanInformations =
         cleanString(
@@ -350,7 +381,9 @@ app.post("/api/visiteurs", async (req, res) => {
         const parsedVolume =
           Number(volume_estime);
 
-        if (!Number.isNaN(parsedVolume)) {
+        if (
+          !Number.isNaN(parsedVolume)
+        ) {
           cleanVolumeEstime =
             parsedVolume;
         }
@@ -398,11 +431,40 @@ app.post("/api/visiteurs", async (req, res) => {
 
     let cleanMarcheCible = null;
     let cleanQuantitePrevue = null;
-    let cleanPackaging = null;
+
+    let cleanNouvelleMarqueFormats = null;
+    let cleanNouvelleMarqueDesignConditionnement = null;
+
+    // =================================================
+    // AUTRES CHAMPS NOUVELLE MARQUE
+    // =================================================
+
+    let cleanNouvelleMarqueNom = null;
+    let cleanNouvelleMarqueDescription = null;
+    let cleanNouvelleMarquePositionnement = null;
+    let cleanNouvelleMarqueCible = null;
+    let cleanNouvelleMarquePaysLancement = null;
+    let cleanNouvelleMarqueVolumePrevisionnel = null;
+    let cleanNouvelleMarqueCertifications = null;
+
+    // =================================================
+    // TYPE EMBALLAGE / QUANTITÉ
+    // =================================================
+
+    let cleanTypeConteneur = null;
+    let cleanNombrePalettes = null;
+
+    // =================================================
+    // SI CONDITIONNÉ
+    // =================================================
 
     if (
       cleanTypeCommande === "conditionné"
     ) {
+      // ---------------------------------------------
+      // INFORMATIONS CONDITIONNÉ
+      // ---------------------------------------------
+
       cleanPaysConditionne =
         cleanString(
           pays_conditionne
@@ -418,34 +480,32 @@ app.post("/api/visiteurs", async (req, res) => {
           volumes_estimes
         );
 
+      // ---------------------------------------------
+      // TYPE EMBALLAGE NORMAL
+      // ---------------------------------------------
+
       cleanTypeEmballage =
         cleanString(
+          typeEmballageBody ||
           type_emballage
         );
+
+      // ---------------------------------------------
+      // FORMATS NORMAL
+      // ---------------------------------------------
 
       cleanFormatsSouhaites =
         cleanString(
           formats_souhaites
         );
 
+      // ---------------------------------------------
+      // TYPE MARQUE
+      // ---------------------------------------------
+
       cleanTypeMarque =
         cleanString(
           type_marque
-        );
-
-      cleanNomEntreprise =
-        cleanString(
-          nom_entreprise
-        );
-
-      cleanSiteWeb =
-        cleanString(
-          site_web
-        );
-
-      cleanContactProfessionnel =
-        cleanString(
-          contact_professionnel
         );
 
       // ---------------------------------------------
@@ -469,6 +529,25 @@ app.post("/api/visiteurs", async (req, res) => {
       }
 
       // ---------------------------------------------
+      // ENTREPRISE
+      // ---------------------------------------------
+
+      cleanNomEntreprise =
+        cleanString(
+          nom_entreprise
+        );
+
+      cleanSiteWeb =
+        cleanString(
+          site_web
+        );
+
+      cleanContactProfessionnel =
+        cleanString(
+          contact_professionnel
+        );
+
+      // ---------------------------------------------
       // NOUVELLE MARQUE
       // ---------------------------------------------
 
@@ -478,23 +557,152 @@ app.post("/api/visiteurs", async (req, res) => {
       ) {
         cleanMarcheCible =
           cleanString(
-            marche_cible
+            marche_cible ||
+            marcheCibleBody
           );
 
         cleanQuantitePrevue =
           cleanString(
-            quantite_prevue
+            quantite_prevue ||
+            quantitePrevueBody
           );
 
-        cleanPackaging =
+        // -------------------------------------------
+        // FORMATS NOUVELLE MARQUE
+        // -------------------------------------------
+
+        if (
+          nouvelle_marque_formats !==
+            undefined &&
+          nouvelle_marque_formats !==
+            null
+        ) {
+          if (
+            Array.isArray(
+              nouvelle_marque_formats
+            ) ||
+            typeof nouvelle_marque_formats ===
+              "object"
+          ) {
+            cleanNouvelleMarqueFormats =
+              JSON.stringify(
+                nouvelle_marque_formats
+              );
+          } else {
+            cleanNouvelleMarqueFormats =
+              cleanString(
+                nouvelle_marque_formats
+              );
+          }
+        }
+
+        // -------------------------------------------
+        // DESIGN / EMBALLAGE NOUVELLE MARQUE
+        // -------------------------------------------
+
+        const designConditionnement =
+          nouvelle_marque_design_conditionnement ||
+          nouvelleMarqueDesignConditionnement;
+
+        if (
+          designConditionnement !==
+            undefined &&
+          designConditionnement !==
+            null
+        ) {
+          if (
+            Array.isArray(
+              designConditionnement
+            ) ||
+            typeof designConditionnement ===
+              "object"
+          ) {
+            cleanNouvelleMarqueDesignConditionnement =
+              JSON.stringify(
+                designConditionnement
+              );
+          } else {
+            cleanNouvelleMarqueDesignConditionnement =
+              cleanString(
+                designConditionnement
+              );
+          }
+        }
+
+        // -------------------------------------------
+        // INFORMATIONS SUPPLÉMENTAIRES
+        // -------------------------------------------
+
+        cleanNouvelleMarqueNom =
           cleanString(
-            packaging
+            nouvelle_marque_nom
           );
+
+        cleanNouvelleMarqueDescription =
+          cleanString(
+            nouvelle_marque_description
+          );
+
+        cleanNouvelleMarquePositionnement =
+          cleanString(
+            nouvelle_marque_positionnement
+          );
+
+        cleanNouvelleMarqueCible =
+          cleanString(
+            nouvelle_marque_cible
+          );
+
+        cleanNouvelleMarquePaysLancement =
+          cleanString(
+            nouvelle_marque_pays_lancement
+          );
+
+        cleanNouvelleMarqueVolumePrevisionnel =
+          cleanString(
+            nouvelle_marque_volume_previsionnel
+          );
+
+        cleanNouvelleMarqueCertifications =
+          cleanString(
+            nouvelle_marque_certifications
+          );
+      }
+
+      // ---------------------------------------------
+      // TYPE CONTENEUR
+      // ---------------------------------------------
+
+      cleanTypeConteneur =
+        cleanString(
+          type_conteneur
+        );
+
+      // ---------------------------------------------
+      // NOMBRE PALETTES
+      // ---------------------------------------------
+
+      if (
+        nombre_palettes !== undefined &&
+        nombre_palettes !== null &&
+        String(nombre_palettes).trim() !== ""
+      ) {
+        const parsedPalettes =
+          Number(nombre_palettes);
+
+        if (
+          Number.isInteger(
+            parsedPalettes
+          )
+        ) {
+          cleanNombrePalettes =
+            parsedPalettes;
+        }
       }
     }
 
     // =================================================
-    // DEBUG DES DONNÉES NETTOYÉES
+    // DEBUG
     // =================================================
 
     console.log("");
@@ -507,7 +715,6 @@ app.post("/api/visiteurs", async (req, res) => {
       prenom: cleanPrenom,
       email: cleanEmail,
       age: cleanAge,
-     // sexe: cleanSexe,
       origine: cleanOrigine,
       indicatif: cleanIndicatif,
       telephone: cleanTelephone,
@@ -524,6 +731,7 @@ app.post("/api/visiteurs", async (req, res) => {
       type_commande:
         cleanTypeCommande,
 
+      // VRAC
       qualite_grade:
         cleanQualiteGrade,
 
@@ -548,6 +756,7 @@ app.post("/api/visiteurs", async (req, res) => {
       informations_complementaires:
         cleanInformations,
 
+      // CONDITIONNÉ
       pays_conditionne:
         cleanPaysConditionne,
 
@@ -578,14 +787,46 @@ app.post("/api/visiteurs", async (req, res) => {
       contact_professionnel:
         cleanContactProfessionnel,
 
+      // NOUVELLE MARQUE
       marche_cible:
         cleanMarcheCible,
 
       quantite_prevue:
         cleanQuantitePrevue,
 
-      packaging:
-        cleanPackaging,
+      nouvelle_marque_formats:
+        cleanNouvelleMarqueFormats,
+
+      nouvelle_marque_design_conditionnement:
+        cleanNouvelleMarqueDesignConditionnement,
+
+      nouvelle_marque_nom:
+        cleanNouvelleMarqueNom,
+
+      nouvelle_marque_description:
+        cleanNouvelleMarqueDescription,
+
+      nouvelle_marque_positionnement:
+        cleanNouvelleMarquePositionnement,
+
+      nouvelle_marque_cible:
+        cleanNouvelleMarqueCible,
+
+      nouvelle_marque_pays_lancement:
+        cleanNouvelleMarquePaysLancement,
+
+      nouvelle_marque_volume_previsionnel:
+        cleanNouvelleMarqueVolumePrevisionnel,
+
+      nouvelle_marque_certifications:
+        cleanNouvelleMarqueCertifications,
+
+      // QUANTITÉ
+      type_conteneur:
+        cleanTypeConteneur,
+
+      nombre_palettes:
+        cleanNombrePalettes,
     });
 
     // =================================================
@@ -593,97 +834,85 @@ app.post("/api/visiteurs", async (req, res) => {
     // =================================================
 
     const sql = `
-      INSERT INTO visiteurs (
+  INSERT INTO visiteurs (
 
-        nom,
-        prenom,
-        email,
-        age,
-       
-        origine,
-        indicatif,
-        telephone,
-        societe,
-        adresse_societe,
-        fonction,
-        langue_communication,
+    nom,
+    prenom,
+    email,
+    age,
+    origine,
+    indicatif,
+    telephone,
+    societe,
+    adresse_societe,
+    fonction,
+    langue_communication,
 
-        profile,
-        type_commande,
+    profile,
+    type_commande,
 
-        qualite_grade,
-        volume_estime,
-        destination,
-        incoterm,
-        format_livraison,
-        frequence_commande,
-        exigences_specifiques,
-        informations_complementaires,
+    qualite_grade,
+    volume_estime,
+    destination,
+    incoterm,
+    format_livraison,
+    frequence_commande,
+    exigences_specifiques,
+    informations_complementaires,
 
-        pays_conditionne,
-        canal_distribution,
-        volumes_estimes,
-        type_emballage,
-        formats_souhaites,
-        type_marque,
-        certifications_requises,
-        nom_entreprise,
-        site_web,
-        contact_professionnel,
+    pays_conditionne,
+    canal_distribution,
+    volumes_estimes,
+    type_emballage,
+    formats_souhaites,
+    type_marque,
+    certifications_requises,
+    nom_entreprise,
+    site_web,
+    contact_professionnel,
 
-        marche_cible,
-        quantite_prevue,
-        packaging
+    marche_cible,
+    quantite_prevue,
 
-      )
+    nouvelle_marque_formats,
+    nouvelle_marque_design_conditionnement,
 
-      VALUES (
+    nouvelle_marque_nom,
+    nouvelle_marque_description,
+    nouvelle_marque_positionnement,
+    nouvelle_marque_cible,
+    nouvelle_marque_pays_lancement,
+    nouvelle_marque_volume_previsionnel,
+    nouvelle_marque_certifications,
 
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
+    type_conteneur,
+    nombre_palettes
 
-        ?,
-        ?,
+  )
 
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
+  VALUES (
 
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 
-        ?,
-        
-        ?
+    ?, ?,
 
-      )
-    `;
+    ?, ?, ?, ?, ?, ?, ?, ?,
+
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+
+    ?, ?,
+
+    ?, ?,
+
+    ?, ?, ?, ?, ?, ?, ?,
+
+    ?, ?
+
+  )
+`;
 
     // =================================================
-    // VALEURS MYSQL
+    // VALEURS
     // =================================================
 
     const values = [
@@ -691,12 +920,11 @@ app.post("/api/visiteurs", async (req, res) => {
       // -----------------------------------------------
       // INFORMATIONS GÉNÉRALES
       // -----------------------------------------------
-
+    
       cleanNom,
       cleanPrenom,
       cleanEmail,
       cleanAge,
-      //cleanSexe,
       cleanOrigine,
       cleanIndicatif,
       cleanTelephone,
@@ -704,18 +932,23 @@ app.post("/api/visiteurs", async (req, res) => {
       cleanAdresseSociete,
       cleanFonction,
       cleanLangue,
-
+    
       // -----------------------------------------------
       // PROFILE
       // -----------------------------------------------
-
+    
       cleanProfile,
+    
+      // -----------------------------------------------
+      // TYPE COMMANDE
+      // -----------------------------------------------
+    
       cleanTypeCommande,
-
+    
       // -----------------------------------------------
       // VRAC
       // -----------------------------------------------
-
+    
       cleanQualiteGrade,
       cleanVolumeEstime,
       cleanDestination,
@@ -724,11 +957,11 @@ app.post("/api/visiteurs", async (req, res) => {
       cleanFrequenceCommande,
       cleanExigences,
       cleanInformations,
-
+    
       // -----------------------------------------------
       // CONDITIONNÉ
       // -----------------------------------------------
-
+    
       cleanPaysConditionne,
       cleanCanalDistribution,
       cleanVolumesEstimes,
@@ -739,24 +972,51 @@ app.post("/api/visiteurs", async (req, res) => {
       cleanNomEntreprise,
       cleanSiteWeb,
       cleanContactProfessionnel,
-
+    
       // -----------------------------------------------
       // NOUVELLE MARQUE
       // -----------------------------------------------
-
+    
       cleanMarcheCible,
       cleanQuantitePrevue,
-      cleanPackaging,
+    
+      cleanNouvelleMarqueFormats,
+      cleanNouvelleMarqueDesignConditionnement,
+    
+      cleanNouvelleMarqueNom,
+      cleanNouvelleMarqueDescription,
+      cleanNouvelleMarquePositionnement,
+      cleanNouvelleMarqueCible,
+      cleanNouvelleMarquePaysLancement,
+      cleanNouvelleMarqueVolumePrevisionnel,
+      cleanNouvelleMarqueCertifications,
+    
+      // -----------------------------------------------
+      // QUANTITÉ / CONTENEUR
+      // -----------------------------------------------
+    
+      cleanTypeConteneur,
+      cleanNombrePalettes
+    
     ];
+    // =================================================
+    // VÉRIFICATION NOMBRE PARAMÈTRES
+    // =================================================
+
+    console.log("");
+    console.log(
+      "NOMBRE DE VALEURS :",
+      values.length
+    );
+
+    // =================================================
+    // INSERTION
+    // =================================================
 
     console.log("");
     console.log(
       "INSERTION MYSQL..."
     );
-
-    // =================================================
-    // EXECUTION
-    // =================================================
 
     const [result] =
       await db.execute(
@@ -792,7 +1052,8 @@ app.post("/api/visiteurs", async (req, res) => {
       message:
         "Le visiteur a été ajouté avec succès.",
 
-      id: result.insertId,
+      id:
+        result.insertId,
     });
 
   } catch (error) {
@@ -812,6 +1073,16 @@ app.post("/api/visiteurs", async (req, res) => {
 
     console.error(
       error
+    );
+
+    console.error(
+      "MESSAGE :",
+      error.message
+    );
+
+    console.error(
+      "SQL CODE :",
+      error.code
     );
 
     console.error(

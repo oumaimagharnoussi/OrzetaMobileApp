@@ -16,86 +16,31 @@ import { Picker } from "@react-native-picker/picker";
 // URL BACKEND
 // =====================================================
 
-const API_URL =
-  "http://192.168.1.146:5000";
+const API_URL = "http://192.168.1.146:5000";
 
 // =====================================================
 // LISTE DES PAYS
 // =====================================================
 
 const pays = [
-  {
-    name: "Tunisie",
-    dialCode: "+216",
-  },
-  {
-    name: "France",
-    dialCode: "+33",
-  },
-  {
-    name: "Algérie",
-    dialCode: "+213",
-  },
-  {
-    name: "Maroc",
-    dialCode: "+212",
-  },
-  {
-    name: "Italie",
-    dialCode: "+39",
-  },
-  {
-    name: "Allemagne",
-    dialCode: "+49",
-  },
-  {
-    name: "Espagne",
-    dialCode: "+34",
-  },
-  {
-    name: "Belgique",
-    dialCode: "+32",
-  },
-  {
-    name: "Suisse",
-    dialCode: "+41",
-  },
-  {
-    name: "Royaume-Uni",
-    dialCode: "+44",
-  },
-  {
-    name: "États-Unis",
-    dialCode: "+1",
-  },
-  {
-    name: "Canada",
-    dialCode: "+1",
-  },
-  {
-    name: "Arabie Saoudite",
-    dialCode: "+966",
-  },
-  {
-    name: "Émirats Arabes Unis",
-    dialCode: "+971",
-  },
-  {
-    name: "Qatar",
-    dialCode: "+974",
-  },
-  {
-    name: "Koweït",
-    dialCode: "+965",
-  },
-  {
-    name: "Égypte",
-    dialCode: "+20",
-  },
-  {
-    name: "Autre",
-    dialCode: "",
-  },
+  { name: "Tunisie", dialCode: "+216" },
+  { name: "France", dialCode: "+33" },
+  { name: "Algérie", dialCode: "+213" },
+  { name: "Maroc", dialCode: "+212" },
+  { name: "Italie", dialCode: "+39" },
+  { name: "Allemagne", dialCode: "+49" },
+  { name: "Espagne", dialCode: "+34" },
+  { name: "Belgique", dialCode: "+32" },
+  { name: "Suisse", dialCode: "+41" },
+  { name: "Royaume-Uni", dialCode: "+44" },
+  { name: "États-Unis", dialCode: "+1" },
+  { name: "Canada", dialCode: "+1" },
+  { name: "Arabie Saoudite", dialCode: "+966" },
+  { name: "Émirats Arabes Unis", dialCode: "+971" },
+  { name: "Qatar", dialCode: "+974" },
+  { name: "Koweït", dialCode: "+965" },
+  { name: "Égypte", dialCode: "+20" },
+  { name: "Autre", dialCode: "" },
 ];
 
 // =====================================================
@@ -103,86 +48,45 @@ const pays = [
 // =====================================================
 
 export default function HomeScreen() {
-
   // ===================================================
   // INFORMATIONS GÉNÉRALES
   // ===================================================
 
-  const [nom, setNom] =
-    useState("");
-
-  const [prenom, setPrenom] =
-    useState("");
-
-  const [telephone, setTelephone] =
-    useState("");
-
-  const [indicatif, setIndicatif] =
-    useState("+216");
-
-  const [email, setEmail] =
-    useState("");
-
-  const [age, setAge] =
-    useState("");
-
- // const [sexe, setSexe] =
-   // useState("");
-
-  const [origine, setOrigine] =
-    useState("");
-
-  const [societe, setSociete] =
-    useState("");
-
-  const [adresseSociete, setAdresseSociete] =
-    useState("");
-
-  const [fonction, setFonction] =
-    useState("");
-
-  const [langueCommunication, setLangueCommunication] =
-    useState("");
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [telephone, setTelephone] = useState("");
+  const [indicatif, setIndicatif] = useState("+216");
+  const [email, setEmail] = useState("");
+  const [age, setAge] = useState("");
+  const [origine, setOrigine] = useState("");
+  const [societe, setSociete] = useState("");
+  const [adresseSociete, setAdresseSociete] = useState("");
+  const [fonction, setFonction] = useState("");
+  const [langueCommunication, setLangueCommunication] = useState("");
 
   // ===================================================
   // PROFILE
   // ===================================================
 
-  const [profile, setProfile] =
-    useState("");
+  const [profile, setProfile] = useState("");
 
   // ===================================================
   // TYPE COMMANDE
   // ===================================================
 
-  const [typeCommande, setTypeCommande] =
-    useState("");
+  const [typeCommande, setTypeCommande] = useState("");
 
   // ===================================================
   // VRAC
   // ===================================================
 
-  const [qualiteGrade, setQualiteGrade] =
-    useState("");
-
-  const [volumeEstime, setVolumeEstime] =
-    useState("");
-
-  const [destination, setDestination] =
-    useState("");
-
-  const [incoterm, setIncoterm] =
-    useState("");
-
-  const [formatLivraison, setFormatLivraison] =
-    useState("");
-
-  const [frequenceCommande, setFrequenceCommande] =
-    useState("");
-
-  const [exigencesSpecifiques, setExigencesSpecifiques] =
-    useState([]);
-
+  const [qualiteGrade, setQualiteGrade] = useState("");
+  const [volumeEstime, setVolumeEstime] = useState("");
+  const [destination, setDestination] = useState("");
+  const [incoterm, setIncoterm] = useState("");
+  const [formatLivraison, setFormatLivraison] = useState("");
+  const [frequenceCommande, setFrequenceCommande] = useState("");
+  const [exigencesSpecifiques, setExigencesSpecifiques] = useState([]);
   const [informationsComplementaires, setInformationsComplementaires] =
     useState("");
 
@@ -190,47 +94,40 @@ export default function HomeScreen() {
   // CONDITIONNÉ
   // ===================================================
 
-  const [paysConditionne, setPaysConditionne] =
-    useState("");
+  const [paysConditionne, setPaysConditionne] = useState("");
+  const [canalDistribution, setCanalDistribution] = useState("");
+  const [volumesEstimes, setVolumesEstimes] = useState("");
 
-  const [canalDistribution, setCanalDistribution] =
-    useState("");
+  // MULTI-SELECT CONDITIONNÉ
+  const [emballagesSelectionnes, setEmballagesSelectionnes] = useState([]);
+  const [formatsEmballage, setFormatsEmballage] = useState({});
+  const [autreEmballage, setAutreEmballage] = useState("");
 
-  const [volumesEstimes, setVolumesEstimes] =
-    useState("");
-
-  const [typeEmballage, setTypeEmballage] =
-    useState("");
-
-  const [formatsSouhaites, setFormatsSouhaites] =
-    useState("");
-
-  const [typeMarque, setTypeMarque] =
-    useState("");
-
-  const [certificationsRequises, setCertificationsRequises] =
-    useState([]);
-
-  const [nomEntreprise, setNomEntreprise] =
-    useState("");
-
-  const [siteWeb, setSiteWeb] =
-    useState("");
-
-  const [contactProfessionnel, setContactProfessionnel] =
-    useState("");
+  const [typeMarque, setTypeMarque] = useState("");
+  const [certificationsRequises, setCertificationsRequises] = useState([]);
+  const [nomEntreprise, setNomEntreprise] = useState("");
+  const [siteWeb, setSiteWeb] = useState("");
+  const [contactProfessionnel, setContactProfessionnel] = useState("");
 
   // ===================================================
   // NOUVELLE MARQUE
   // ===================================================
 
-  const [marcheCible, setMarcheCible] =
-    useState("");
+  const [marcheCible, setMarcheCible] = useState("");
+  const [quantitePrevue, setQuantitePrevue] = useState("");
 
-  const [quantitePrevue, setQuantitePrevue] =
-    useState("");
+  // ---------------------------------------------------
+  // IMPORTANT :
+  // Ces états sont DIFFÉRENTS de CONDITIONNÉ.
+  // ---------------------------------------------------
 
-  const [packaging, setPackaging] =
+  const [nouvelleMarqueEmballagesSelectionnes, setNouvelleMarqueEmballagesSelectionnes] =
+    useState([]);
+
+  const [nouvelleMarqueFormatsEmballage, setNouvelleMarqueFormatsEmballage] =
+    useState({});
+
+  const [nouvelleMarqueAutreEmballage, setNouvelleMarqueAutreEmballage] =
     useState("");
 
   // ===================================================
@@ -238,35 +135,55 @@ export default function HomeScreen() {
   // ===================================================
 
   const handlePaysChange = (value) => {
-
     setOrigine(value);
 
-    const country =
-      pays.find(
-        (item) =>
-          item.name === value
-      );
+    const country = pays.find((item) => item.name === value);
 
     if (country) {
-
-      setIndicatif(
-        country.dialCode
-      );
-
+      setIndicatif(country.dialCode);
     } else {
-
       setIndicatif("");
     }
   };
 
   // ===================================================
-  // RESET COMMANDE
+  // RESET CONDITIONNÉ
   // ===================================================
 
-  const resetCommande = () => {
+  const resetConditionne = () => {
+    setPaysConditionne("");
+    setCanalDistribution("");
+    setVolumesEstimes("");
 
-    // VRAC
+    setEmballagesSelectionnes([]);
+    setFormatsEmballage({});
+    setAutreEmballage("");
 
+    setTypeMarque("");
+    setCertificationsRequises([]);
+    setNomEntreprise("");
+    setSiteWeb("");
+    setContactProfessionnel("");
+  };
+
+  // ===================================================
+  // RESET NOUVELLE MARQUE
+  // ===================================================
+
+  const resetNouvelleMarque = () => {
+    setMarcheCible("");
+    setQuantitePrevue("");
+
+    setNouvelleMarqueEmballagesSelectionnes([]);
+    setNouvelleMarqueFormatsEmballage({});
+    setNouvelleMarqueAutreEmballage("");
+  };
+
+  // ===================================================
+  // RESET VRAC
+  // ===================================================
+
+  const resetVrac = () => {
     setQualiteGrade("");
     setVolumeEstime("");
     setDestination("");
@@ -275,25 +192,16 @@ export default function HomeScreen() {
     setFrequenceCommande("");
     setExigencesSpecifiques([]);
     setInformationsComplementaires("");
+  };
 
-    // CONDITIONNÉ
+  // ===================================================
+  // RESET COMMANDE
+  // ===================================================
 
-    setPaysConditionne("");
-    setCanalDistribution("");
-    setVolumesEstimes("");
-    setTypeEmballage("");
-    setFormatsSouhaites("");
-    setTypeMarque("");
-    setCertificationsRequises([]);
-    setNomEntreprise("");
-    setSiteWeb("");
-    setContactProfessionnel("");
-
-    // NOUVELLE MARQUE
-
-    setMarcheCible("");
-    setQuantitePrevue("");
-    setPackaging("");
+  const resetCommande = () => {
+    resetVrac();
+    resetConditionne();
+    resetNouvelleMarque();
   };
 
   // ===================================================
@@ -301,16 +209,10 @@ export default function HomeScreen() {
   // ===================================================
 
   const handleProfileChange = (value) => {
-
     setProfile(value);
 
-    if (
-      value !== "intermediaire" &&
-      value !== "acheteur"
-    ) {
-
+    if (value !== "intermediaire" && value !== "acheteur") {
       setTypeCommande("");
-
       resetCommande();
     }
   };
@@ -319,517 +221,509 @@ export default function HomeScreen() {
   // CHANGEMENT TYPE COMMANDE
   // ===================================================
 
-  const handleTypeCommandeChange = (
-    value
-  ) => {
-
+  const handleTypeCommandeChange = (value) => {
     setTypeCommande(value);
 
     if (value === "vrac") {
-
-      setPaysConditionne("");
-      setCanalDistribution("");
-      setVolumesEstimes("");
-      setTypeEmballage("");
-      setFormatsSouhaites("");
-      setTypeMarque("");
-      setCertificationsRequises([]);
-      setNomEntreprise("");
-      setSiteWeb("");
-      setContactProfessionnel("");
-      setMarcheCible("");
-      setQuantitePrevue("");
-      setPackaging("");
+      resetConditionne();
+      resetNouvelleMarque();
     }
+
+    if (value === "conditionné") {
+      resetVrac();
+    }
+
+    if (value === "") {
+      resetCommande();
+    }
+  };
+
+  // ===================================================
+  // TOGGLE EMBALLAGE CONDITIONNÉ
+  // ===================================================
+
+  const toggleEmballage = (type) => {
+    setEmballagesSelectionnes((prev) => {
+      if (prev.includes(type)) {
+        return prev.filter((item) => item !== type);
+      }
+
+      return [...prev, type];
+    });
+
+    // Si Autre est retiré
+    if (
+      type === "Autre" &&
+      emballagesSelectionnes.includes("Autre")
+    ) {
+      setAutreEmballage("");
+    }
+  };
+
+  // ===================================================
+  // TOGGLE FORMAT CONDITIONNÉ
+  // ===================================================
+
+  const toggleFormat = (type, format) => {
+    setFormatsEmballage((prev) => {
+      const current = prev[type] || [];
+
+      if (current.includes(format)) {
+        return {
+          ...prev,
+          [type]: current.filter((item) => item !== format),
+        };
+      }
+
+      return {
+        ...prev,
+        [type]: [...current, format],
+      };
+    });
+  };
+
+  // ===================================================
+  // TOGGLE EMBALLAGE NOUVELLE MARQUE
+  // ===================================================
+
+  const toggleNouvelleMarqueEmballage = (type) => {
+    setNouvelleMarqueEmballagesSelectionnes((prev) => {
+      if (prev.includes(type)) {
+        return prev.filter((item) => item !== type);
+      }
+
+      return [...prev, type];
+    });
 
     if (
-      value === "conditionné"
+      type === "Autre" &&
+      nouvelleMarqueEmballagesSelectionnes.includes("Autre")
     ) {
-
-      setQualiteGrade("");
-      setVolumeEstime("");
-      setDestination("");
-      setIncoterm("");
-      setFormatLivraison("");
-      setFrequenceCommande("");
-      setExigencesSpecifiques([]);
-      setInformationsComplementaires("");
+      setNouvelleMarqueAutreEmballage("");
     }
+  };
+
+  // ===================================================
+  // TOGGLE FORMAT NOUVELLE MARQUE
+  // ===================================================
+
+  const toggleNouvelleMarqueFormat = (type, format) => {
+    setNouvelleMarqueFormatsEmballage((prev) => {
+      const current = prev[type] || [];
+
+      if (current.includes(format)) {
+        return {
+          ...prev,
+          [type]: current.filter((item) => item !== format),
+        };
+      }
+
+      return {
+        ...prev,
+        [type]: [...current, format],
+      };
+    });
   };
 
   // ===================================================
   // TEST BACKEND
   // ===================================================
 
-  const testerConnexion =
-    async () => {
+  const testerConnexion = async () => {
+    try {
+      const response = await fetch(`${API_URL}/`);
 
-      try {
+      const data = await response.json();
 
-        const response =
-          await fetch(
-            `${API_URL}/`
-          );
+      console.log("TEST BACKEND :", data);
 
-        const data =
-          await response.json();
-
-        console.log(
-          "TEST BACKEND :",
-          data
-        );
-
-        if (!response.ok) {
-
-          throw new Error(
-            data.message ||
-            "Erreur serveur."
-          );
-        }
-
-        Alert.alert(
-          "Connexion réussie",
-          "React Native communique correctement avec Node.js."
-        );
-
-      } catch (error) {
-
-        console.error(
-          "ERREUR CONNEXION :",
-          error
-        );
-
-        Alert.alert(
-          "Backend inaccessible",
-          `${API_URL}\n\n${error.message}`
-        );
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur serveur.");
       }
-    };
+
+      Alert.alert(
+        "Connexion réussie",
+        "React Native communique correctement avec Node.js."
+      );
+    } catch (error) {
+      console.error("ERREUR CONNEXION :", error);
+
+      Alert.alert(
+        "Backend inaccessible",
+        `${API_URL}\n\n${error.message}`
+      );
+    }
+  };
 
   // ===================================================
   // AJOUTER VISITEUR
   // ===================================================
 
-  const handleAjouter =
-    async () => {
+  const handleAjouter = async () => {
+    try {
+      console.log("");
+      console.log("=================================");
+      console.log("DÉBUT AJOUT VISITEUR");
+      console.log("=================================");
 
-      try {
+      // =================================================
+      // DONNÉES NOUVELLE MARQUE
+      // =================================================
 
-        console.log("");
-        console.log(
-          "================================="
-        );
+      const nouvelleMarqueDesign =
+        typeCommande === "conditionné" &&
+        typeMarque === "Création de nouvelle marque" &&
+        nouvelleMarqueEmballagesSelectionnes.length > 0
+          ? JSON.stringify({
+              emballages: nouvelleMarqueEmballagesSelectionnes,
+              autre: nouvelleMarqueAutreEmballage || null,
+            })
+          : null;
 
-        console.log(
-          "DÉBUT AJOUT VISITEUR"
-        );
+      const nouvelleMarqueFormats =
+        typeCommande === "conditionné" &&
+        typeMarque === "Création de nouvelle marque" &&
+        Object.keys(nouvelleMarqueFormatsEmballage).length > 0
+          ? JSON.stringify(nouvelleMarqueFormatsEmballage)
+          : null;
 
-        console.log(
-          "================================="
-        );
+      // =================================================
+      // FORMATS CONDITIONNÉ
+      // =================================================
 
-        // =============================================
-        // OBJET VISITEUR
-        // =============================================
+      const formatsConditionne =
+        typeCommande === "conditionné" &&
+        Object.keys(formatsEmballage).length > 0
+          ? JSON.stringify(formatsEmballage)
+          : null;
 
-        const visiteur = {
+      // =================================================
+      // OBJET VISITEUR
+      // =================================================
 
-          // -------------------------------------------
-          // INFORMATIONS GÉNÉRALES
-          // -------------------------------------------
+      const visiteur = {
+        // -----------------------------------------------
+        // INFORMATIONS GÉNÉRALES
+        // -----------------------------------------------
 
-          nom:
-            nom.trim() ||
-            null,
+        nom: nom.trim() || null,
 
-          prenom:
-            prenom.trim() ||
-            null,
+        prenom: prenom.trim() || null,
 
-          email:
-            email.trim() ||
-            null,
+        email: email.trim() || null,
 
-          age:
-            age.trim() !== ""
-              ? Number(age)
-              : null,
+        age:
+          age.trim() !== ""
+            ? Number(age)
+            : null,
 
-         // sexe:
-           // sexe ||
-           // null,
+        origine: origine || null,
 
-          origine:
-            origine ||
-            null,
+        indicatif: indicatif || null,
 
-          indicatif:
-            indicatif ||
-            null,
+        telephone: telephone.trim() || null,
 
-          telephone:
-            telephone.trim() ||
-            null,
+        societe: societe.trim() || null,
 
-          societe:
-            societe.trim() ||
-            null,
+        adresse_societe:
+          adresseSociete.trim() || null,
 
-          adresse_societe:
-            adresseSociete.trim() ||
-            null,
+        fonction:
+          fonction.trim() || null,
 
-          fonction:
-            fonction.trim() ||
-            null,
+        langue_communication:
+          langueCommunication || null,
 
-          langue_communication:
-            langueCommunication ||
-            null,
+        // -----------------------------------------------
+        // PROFILE
+        // -----------------------------------------------
 
-          // -------------------------------------------
-          // PROFILE
-          // -------------------------------------------
+        profile: profile || null,
 
-          profile:
-            profile ||
-            null,
+        // -----------------------------------------------
+        // TYPE COMMANDE
+        // -----------------------------------------------
 
-          // -------------------------------------------
-          // TYPE COMMANDE
-          // -------------------------------------------
+        type_commande:
+          profile === "intermediaire" ||
+          profile === "acheteur"
+            ? typeCommande || null
+            : null,
 
-          type_commande:
-            (
-              profile === "intermediaire" ||
-              profile === "acheteur"
-            )
-              ? typeCommande ||
-                null
-              : null,
+        // -----------------------------------------------
+        // VRAC
+        // -----------------------------------------------
 
-          // -------------------------------------------
-          // VRAC
-          // -------------------------------------------
+        qualite_grade:
+          typeCommande === "vrac"
+            ? qualiteGrade.trim() || null
+            : null,
 
-          qualite_grade:
-            typeCommande === "vrac"
-              ? qualiteGrade.trim() ||
-                null
-              : null,
+        volume_estime:
+          typeCommande === "vrac" &&
+          volumeEstime.trim() !== ""
+            ? Number(volumeEstime)
+            : null,
 
-          volume_estime:
-            typeCommande === "vrac" &&
-            volumeEstime.trim() !== ""
-              ? Number(
-                  volumeEstime
-                )
-              : null,
+        destination:
+          typeCommande === "vrac"
+            ? destination.trim() || null
+            : null,
 
-          destination:
-            typeCommande === "vrac"
-              ? destination.trim() ||
-                null
-              : null,
+        incoterm:
+          typeCommande === "vrac"
+            ? incoterm || null
+            : null,
 
-          incoterm:
-            typeCommande === "vrac"
-              ? incoterm ||
-                null
-              : null,
+        format_livraison:
+          typeCommande === "vrac"
+            ? formatLivraison || null
+            : null,
 
-          format_livraison:
-            typeCommande === "vrac"
-              ? formatLivraison ||
-                null
-              : null,
+        frequence_commande:
+          typeCommande === "vrac"
+            ? frequenceCommande || null
+            : null,
 
-          frequence_commande:
-            typeCommande === "vrac"
-              ? frequenceCommande ||
-                null
-              : null,
+        exigences_specifiques:
+          typeCommande === "vrac" &&
+          exigencesSpecifiques.length > 0
+            ? JSON.stringify(exigencesSpecifiques)
+            : null,
 
-          exigences_specifiques:
-            typeCommande === "vrac" &&
-            exigencesSpecifiques.length > 0
-              ? JSON.stringify(
-                  exigencesSpecifiques
-                )
-              : null,
+        informations_complementaires:
+          typeCommande === "vrac"
+            ? informationsComplementaires.trim() || null
+            : null,
 
-          informations_complementaires:
-            typeCommande === "vrac"
-              ? informationsComplementaires.trim() ||
-                null
-              : null,
+        // -----------------------------------------------
+        // CONDITIONNÉ
+        // -----------------------------------------------
 
-          // -------------------------------------------
-          // CONDITIONNÉ
-          // -------------------------------------------
+        pays_conditionne:
+          typeCommande === "conditionné"
+            ? paysConditionne || null
+            : null,
 
-          pays_conditionne:
-            typeCommande ===
-            "conditionné"
-              ? paysConditionne ||
-                null
-              : null,
+        canal_distribution:
+          typeCommande === "conditionné"
+            ? canalDistribution || null
+            : null,
 
-          canal_distribution:
-            typeCommande ===
-            "conditionné"
-              ? canalDistribution ||
-                null
-              : null,
+        volumes_estimes:
+          typeCommande === "conditionné"
+            ? volumesEstimes.trim() || null
+            : null,
 
-          volumes_estimes:
-            typeCommande ===
-            "conditionné"
-              ? volumesEstimes.trim() ||
-                null
-              : null,
+        // Stockage des emballages CONDITIONNÉ
+        // séparément de la nouvelle marque.
+        type_emballage:
+          typeCommande === "conditionné" &&
+          emballagesSelectionnes.length > 0
+            ? JSON.stringify({
+                emballages: emballagesSelectionnes,
+                autre: autreEmballage || null,
+              })
+            : null,
 
-          type_emballage:
-            typeCommande ===
-            "conditionné"
-              ? typeEmballage ||
-                null
-              : null,
+        // Stockage des formats CONDITIONNÉ
+        formats_souhaites:
+          typeCommande === "conditionné"
+            ? formatsConditionne
+            : null,
 
-          formats_souhaites:
-            typeCommande ===
-            "conditionné"
-              ? formatsSouhaites ||
-                null
-              : null,
+        type_marque:
+          typeCommande === "conditionné"
+            ? typeMarque || null
+            : null,
 
-          type_marque:
-            typeCommande ===
-            "conditionné"
-              ? typeMarque ||
-                null
-              : null,
+        certifications_requises:
+          typeCommande === "conditionné" &&
+          certificationsRequises.length > 0
+            ? JSON.stringify(certificationsRequises)
+            : null,
 
-          certifications_requises:
-            typeCommande ===
-              "conditionné" &&
-            certificationsRequises.length >
-              0
-              ? JSON.stringify(
-                  certificationsRequises
-                )
-              : null,
+        nom_entreprise:
+          typeCommande === "conditionné"
+            ? nomEntreprise.trim() || null
+            : null,
 
-          nom_entreprise:
-            typeCommande ===
-            "conditionné"
-              ? nomEntreprise.trim() ||
-                null
-              : null,
+        site_web:
+          typeCommande === "conditionné"
+            ? siteWeb.trim() || null
+            : null,
 
-          site_web:
-            typeCommande ===
-            "conditionné"
-              ? siteWeb.trim() ||
-                null
-              : null,
+        contact_professionnel:
+          typeCommande === "conditionné"
+            ? contactProfessionnel.trim() || null
+            : null,
 
-          contact_professionnel:
-            typeCommande ===
-            "conditionné"
-              ? contactProfessionnel.trim() ||
-                null
-              : null,
+        // -----------------------------------------------
+        // NOUVELLE MARQUE
+        // -----------------------------------------------
 
-          // -------------------------------------------
-          // NOUVELLE MARQUE
-          // -------------------------------------------
+        marche_cible:
+          typeCommande === "conditionné" &&
+          typeMarque === "Création de nouvelle marque"
+            ? marcheCible.trim() || null
+            : null,
 
-          marche_cible:
-            typeCommande ===
-              "conditionné" &&
-            typeMarque ===
-              "Création de nouvelle marque"
-              ? marcheCible.trim() ||
-                null
-              : null,
+        quantite_prevue:
+          typeCommande === "conditionné" &&
+          typeMarque === "Création de nouvelle marque"
+            ? quantitePrevue.trim() || null
+            : null,
 
-          quantite_prevue:
-            typeCommande ===
-              "conditionné" &&
-            typeMarque ===
-              "Création de nouvelle marque"
-              ? quantitePrevue.trim() ||
-                null
-              : null,
+        // IMPORTANT :
+        // Ces deux champs sont UNIQUEMENT pour
+        // la nouvelle marque.
 
-          packaging:
-            typeCommande ===
-              "conditionné" &&
-            typeMarque ===
-              "Création de nouvelle marque"
-              ? packaging ||
-                null
-              : null,
-        };
+        nouvelle_marque_formats:
+          nouvelleMarqueFormats,
 
-        // =============================================
-        // DEBUG
-        // =============================================
+        nouvelle_marque_design_conditionnement:
+          nouvelleMarqueDesign,
+      };
 
-        console.log(
-          "DONNÉES ENVOYÉES :"
-        );
+      // =================================================
+      // DEBUG
+      // =================================================
 
-        console.log(
-          JSON.stringify(
-            visiteur,
-            null,
-            2
-          )
-        );
+      console.log("DONNÉES ENVOYÉES :");
 
-        // =============================================
-        // ENVOI AU BACKEND
-        // =============================================
+      console.log(
+        JSON.stringify(
+          visiteur,
+          null,
+          2
+        )
+      );
 
-        const response =
-          await fetch(
-            `${API_URL}/api/visiteurs`,
-            {
-              method: "POST",
+      // =================================================
+      // ENVOI AU BACKEND
+      // =================================================
 
-              headers: {
-                "Content-Type":
-                  "application/json",
+      const response = await fetch(
+        `${API_URL}/api/visiteurs`,
+        {
+          method: "POST",
 
-                Accept:
-                  "application/json",
-              },
+          headers: {
+            "Content-Type":
+              "application/json",
 
-              body:
-                JSON.stringify(
-                  visiteur
-                ),
-            }
-          );
+            Accept:
+              "application/json",
+          },
 
-        // =============================================
-        // RÉCUPÉRER LA RÉPONSE
-        // =============================================
-
-        const data =
-          await response.json();
-
-        console.log(
-          "STATUS HTTP :",
-          response.status
-        );
-
-        console.log(
-          "RÉPONSE BACKEND :",
-          data
-        );
-
-        // =============================================
-        // ERREUR
-        // =============================================
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-
-          throw new Error(
-            data.message ||
-            "Impossible d'ajouter le visiteur."
-          );
+          body:
+            JSON.stringify(
+              visiteur
+            ),
         }
+      );
 
-        // =============================================
-        // SUCCÈS
-        // =============================================
+      // =================================================
+      // RÉPONSE
+      // =================================================
 
-        Alert.alert(
-          "Succès",
-          `Le visiteur a été ajouté avec succès.\n\nID : ${data.id}`
-        );
+      const data =
+        await response.json();
 
-        // =============================================
-        // RESET FORMULAIRE
-        // =============================================
+      console.log(
+        "STATUS HTTP :",
+        response.status
+      );
 
-        setNom("");
-        setPrenom("");
-        setTelephone("");
-        setIndicatif("+216");
-        setEmail("");
-        setAge("");
-       // setSexe("");
-        setOrigine("");
-        setSociete("");
-        setAdresseSociete("");
-        setFonction("");
-        setLangueCommunication("");
+      console.log(
+        "RÉPONSE BACKEND :",
+        data
+      );
 
-        setProfile("");
-        setTypeCommande("");
+      // =================================================
+      // ERREUR
+      // =================================================
 
-        resetCommande();
-
-      } catch (error) {
-
-        console.error("");
-        console.error(
-          "================================="
-        );
-
-        console.error(
-          "ERREUR AJOUT VISITEUR"
-        );
-
-        console.error(
-          "================================="
-        );
-
-        console.error(
-          error
-        );
-
-        Alert.alert(
-          "Erreur",
-          `Impossible d'ajouter le visiteur.\n\n${error.message}`
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+          "Impossible d'ajouter le visiteur."
         );
       }
-    };
+
+      // =================================================
+      // SUCCÈS
+      // =================================================
+
+      Alert.alert(
+        "Succès",
+        `Le visiteur a été ajouté avec succès.\n\nID : ${data.id}`
+      );
+
+      // =================================================
+      // RESET FORMULAIRE
+      // =================================================
+
+      setNom("");
+      setPrenom("");
+      setTelephone("");
+      setIndicatif("+216");
+      setEmail("");
+      setAge("");
+      setOrigine("");
+      setSociete("");
+      setAdresseSociete("");
+      setFonction("");
+      setLangueCommunication("");
+
+      setProfile("");
+      setTypeCommande("");
+
+      resetCommande();
+
+    } catch (error) {
+      console.error("");
+      console.error(
+        "================================="
+      );
+      console.error(
+        "ERREUR AJOUT VISITEUR"
+      );
+      console.error(
+        "================================="
+      );
+
+      console.error(error);
+
+      Alert.alert(
+        "Erreur",
+        `Impossible d'ajouter le visiteur.\n\n${error.message}`
+      );
+    }
+  };
 
   // ===================================================
   // INTERFACE
   // ===================================================
 
   return (
-
     <ScrollView
       style={styles.container}
-      contentContainerStyle={
-        styles.content
-      }
+      contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-
       {/* ==============================================
           TITRE
       =============================================== */}
 
-      <Text
-        style={styles.title}
-      >
+      <Text style={styles.title}>
         Formulaire Visiteur
       </Text>
 
-      <Text
-        style={styles.subtitle}
-      >
+      <Text style={styles.subtitle}>
         Enregistrement d'un nouveau visiteur
       </Text>
 
@@ -839,26 +733,18 @@ export default function HomeScreen() {
 
       <TouchableOpacity
         style={styles.testButton}
-        onPress={
-          testerConnexion
-        }
+        onPress={testerConnexion}
       >
-
-        <Text
-          style={styles.buttonText}
-        >
+        <Text style={styles.buttonText}>
           TESTER LA CONNEXION AU SERVEUR
         </Text>
-
       </TouchableOpacity>
 
       {/* ==============================================
           NOM
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Nom
       </Text>
 
@@ -873,9 +759,7 @@ export default function HomeScreen() {
           SOCIÉTÉ
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Société
       </Text>
 
@@ -890,9 +774,7 @@ export default function HomeScreen() {
           ADRESSE
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Adresse société
       </Text>
 
@@ -900,18 +782,14 @@ export default function HomeScreen() {
         style={styles.input}
         placeholder="Adresse de la société"
         value={adresseSociete}
-        onChangeText={
-          setAdresseSociete
-        }
+        onChangeText={setAdresseSociete}
       />
 
       {/* ==============================================
           FONCTION
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Fonction
       </Text>
 
@@ -926,9 +804,7 @@ export default function HomeScreen() {
           PRÉNOM
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Prénom
       </Text>
 
@@ -943,58 +819,39 @@ export default function HomeScreen() {
           ORIGINE
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Origine / Pays
       </Text>
 
-      <View
-        style={styles.pickerContainer}
-      >
-
+      <View style={styles.pickerContainer}>
         <Picker
           selectedValue={origine}
-          onValueChange={
-            handlePaysChange
-          }
+          onValueChange={handlePaysChange}
         >
-
           <Picker.Item
             label="Sélectionner un pays"
             value=""
           />
 
-          {pays.map(
-            (item) => (
-
-              <Picker.Item
-                key={item.name}
-                label={item.name}
-                value={item.name}
-              />
-
-            )
-          )}
-
+          {pays.map((item) => (
+            <Picker.Item
+              key={item.name}
+              label={item.name}
+              value={item.name}
+            />
+          ))}
         </Picker>
-
       </View>
 
       {/* ==============================================
           TÉLÉPHONE
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Téléphone / WhatsApp
       </Text>
 
-      <View
-        style={styles.phoneContainer}
-      >
-
+      <View style={styles.phoneContainer}>
         <TextInput
           style={styles.indicatif}
           value={indicatif}
@@ -1005,21 +862,16 @@ export default function HomeScreen() {
           style={styles.phoneInput}
           placeholder="Téléphone"
           value={telephone}
-          onChangeText={
-            setTelephone
-          }
+          onChangeText={setTelephone}
           keyboardType="phone-pad"
         />
-
       </View>
 
       {/* ==============================================
           EMAIL
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Email
       </Text>
 
@@ -1036,9 +888,7 @@ export default function HomeScreen() {
           AGE
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Âge
       </Text>
 
@@ -1051,66 +901,20 @@ export default function HomeScreen() {
       />
 
       {/* ==============================================
-          SEXE
-      =============================================== 
-
-      <Text
-        style={styles.label}
-      >
-        Sexe
-      </Text>
-
-      <View
-        style={styles.pickerContainer}
-      >
-
-        <Picker
-          selectedValue={sexe}
-          onValueChange={setSexe}
-        >
-
-          <Picker.Item
-            label="Sélectionner"
-            value=""
-          />
-
-          <Picker.Item
-            label="Homme"
-            value="Homme"
-          />
-
-          <Picker.Item
-            label="Femme"
-            value="Femme"
-          />
-
-        </Picker>
-
-      </View>*/}
-
-      {/* ==============================================
           LANGUE
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Langue de communication
       </Text>
 
-      <View
-        style={styles.pickerContainer}
-      >
-
+      <View style={styles.pickerContainer}>
         <Picker
-          selectedValue={
-            langueCommunication
-          }
+          selectedValue={langueCommunication}
           onValueChange={
             setLangueCommunication
           }
         >
-
           <Picker.Item
             label="Sélectionner"
             value=""
@@ -1140,32 +944,24 @@ export default function HomeScreen() {
             label="Espagnol"
             value="Espagnol"
           />
-
         </Picker>
-
       </View>
 
       {/* ==============================================
           PROFILE
       =============================================== */}
 
-      <Text
-        style={styles.label}
-      >
+      <Text style={styles.label}>
         Profile
       </Text>
 
-      <View
-        style={styles.pickerContainer}
-      >
-
+      <View style={styles.pickerContainer}>
         <Picker
           selectedValue={profile}
           onValueChange={
             handleProfileChange
           }
         >
-
           <Picker.Item
             label="Sélectionner un profil"
             value=""
@@ -1195,41 +991,27 @@ export default function HomeScreen() {
             label="Autre"
             value="autre"
           />
-
         </Picker>
-
       </View>
 
       {/* ==============================================
           TYPE COMMANDE
       =============================================== */}
 
-      {(
-        profile === "intermediaire" ||
-        profile === "acheteur"
-      ) && (
-
+      {(profile === "intermediaire" ||
+        profile === "acheteur") && (
         <>
-
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Type de commande
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
-
+          <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={
-                typeCommande
-              }
+              selectedValue={typeCommande}
               onValueChange={
                 handleTypeCommandeChange
               }
             >
-
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1244,35 +1026,22 @@ export default function HomeScreen() {
                 label="Conditionné"
                 value="conditionné"
               />
-
             </Picker>
-
           </View>
-
         </>
-
       )}
 
       {/* ==============================================
           VRAC
       =============================================== */}
 
-      {typeCommande ===
-        "vrac" && (
-
-        <View
-          style={styles.section}
-        >
-
-          <Text
-            style={styles.sectionTitle}
-          >
+      {typeCommande === "vrac" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
             Informations commande en vrac
           </Text>
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Qualité / Grade
           </Text>
 
@@ -1280,14 +1049,10 @@ export default function HomeScreen() {
             style={styles.input}
             placeholder="Qualité / Grade"
             value={qualiteGrade}
-            onChangeText={
-              setQualiteGrade
-            }
+            onChangeText={setQualiteGrade}
           />
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Volume estimé
           </Text>
 
@@ -1295,15 +1060,11 @@ export default function HomeScreen() {
             style={styles.input}
             placeholder="Volume estimé"
             value={volumeEstime}
-            onChangeText={
-              setVolumeEstime
-            }
+            onChangeText={setVolumeEstime}
             keyboardType="numeric"
           />
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Destination pays / port
           </Text>
 
@@ -1311,28 +1072,18 @@ export default function HomeScreen() {
             style={styles.input}
             placeholder="Destination"
             value={destination}
-            onChangeText={
-              setDestination
-            }
+            onChangeText={setDestination}
           />
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Incoterm
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
-
+          <View style={styles.pickerContainer}>
             <Picker
               selectedValue={incoterm}
-              onValueChange={
-                setIncoterm
-              }
+              onValueChange={setIncoterm}
             >
-
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1367,30 +1118,20 @@ export default function HomeScreen() {
                 label="DDP"
                 value="DDP"
               />
-
             </Picker>
-
           </View>
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Format livraison
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
-
+          <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={
-                formatLivraison
-              }
+              selectedValue={formatLivraison}
               onValueChange={
                 setFormatLivraison
               }
             >
-
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1420,30 +1161,20 @@ export default function HomeScreen() {
                 label="Autre"
                 value="Autre"
               />
-
             </Picker>
-
           </View>
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Fréquence
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
-
+          <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={
-                frequenceCommande
-              }
+              selectedValue={frequenceCommande}
               onValueChange={
                 setFrequenceCommande
               }
             >
-
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1458,44 +1189,30 @@ export default function HomeScreen() {
                 label="Commandes régulières"
                 value="régulières"
               />
-
             </Picker>
-
           </View>
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Exigences spécifiques
           </Text>
 
           <TextInput
             style={styles.input}
             placeholder="Bio, certifications, analyses/COA, échantillons..."
-            value={
-              exigencesSpecifiques.join(
-                ", "
+            value={exigencesSpecifiques.join(", ")}
+            onChangeText={(text) =>
+              setExigencesSpecifiques(
+                text
+                  .split(",")
+                  .map((item) =>
+                    item.trim()
+                  )
+                  .filter(Boolean)
               )
-            }
-            onChangeText={
-              (text) =>
-                setExigencesSpecifiques(
-                  text
-                    .split(",")
-                    .map(
-                      (item) =>
-                        item.trim()
-                    )
-                    .filter(
-                      Boolean
-                    )
-                )
             }
           />
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Informations complémentaires
           </Text>
 
@@ -1513,7 +1230,6 @@ export default function HomeScreen() {
             }
             multiline
           />
-
         </View>
       )}
 
@@ -1521,73 +1237,47 @@ export default function HomeScreen() {
           CONDITIONNÉ
       =============================================== */}
 
-      {typeCommande ===
-        "conditionné" && (
-
-        <View
-          style={styles.section}
-        >
-
-          <Text
-            style={styles.sectionTitle}
-          >
+      {typeCommande === "conditionné" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
             Informations commande conditionnée
           </Text>
 
           {/* PAYS */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Pays
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
-
+          <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={
-                paysConditionne
-              }
+              selectedValue={paysConditionne}
               onValueChange={
                 setPaysConditionne
               }
             >
-
               <Picker.Item
                 label="Sélectionner un pays"
                 value=""
               />
 
-              {pays.map(
-                (item) => (
-
-                  <Picker.Item
-                    key={item.name}
-                    label={item.name}
-                    value={item.name}
-                  />
-
-                )
-              )}
-
+              {pays.map((item) => (
+                <Picker.Item
+                  key={item.name}
+                  label={item.name}
+                  value={item.name}
+                />
+              ))}
             </Picker>
-
           </View>
 
           {/* CANAL */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Canal de distribution
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
-
+          <View style={styles.pickerContainer}>
             <Picker
               selectedValue={
                 canalDistribution
@@ -1596,7 +1286,6 @@ export default function HomeScreen() {
                 setCanalDistribution
               }
             >
-
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1621,247 +1310,528 @@ export default function HomeScreen() {
                 label="Grossiste"
                 value="Grossiste"
               />
-
             </Picker>
-
           </View>
 
           {/* VOLUMES */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Volumes estimés
           </Text>
 
           <TextInput
             style={styles.input}
             placeholder="Quantité par mois ou par an"
-            value={
-              volumesEstimes
-            }
+            value={volumesEstimes}
             onChangeText={
               setVolumesEstimes
             }
           />
 
-          {/* TYPE EMBALLAGE */}
+          {/* ==========================================
+              TYPE EMBALLAGE CONDITIONNÉ
+          =========================================== */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Type d'emballage
           </Text>
 
-          <View
-            style={styles.pickerContainer}
-          >
+          <View style={styles.multiSelectContainer}>
+            {/* TIN */}
 
-            <Picker
-              selectedValue={
-                typeEmballage
-              }
-              onValueChange={
-                (value) => {
-
-                  setTypeEmballage(
-                    value
-                  );
-
-                  setFormatsSouhaites(
-                    ""
-                  );
-                }
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() =>
+                toggleEmballage("Tin")
               }
             >
-
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
-
-              <Picker.Item
-                label="Tin"
-                value="Tin"
-              />
-
-              <Picker.Item
-                label="PET"
-                value="PET"
-              />
-
-              <Picker.Item
-                label="Glass"
-                value="Glass"
-              />
-
-            </Picker>
-
-          </View>
-
-          {/* FORMATS */}
-
-          {typeEmballage !==
-            "" && (
-
-            <>
-
-              <Text
-                style={styles.label}
-              >
-                Formats souhaités
-              </Text>
-
               <View
-                style={
-                  styles.pickerContainer
-                }
+                style={[
+                  styles.checkbox,
+                  emballagesSelectionnes.includes(
+                    "Tin"
+                  ) &&
+                    styles.checkboxSelected,
+                ]}
               >
-
-                <Picker
-                  selectedValue={
-                    formatsSouhaites
-                  }
-                  onValueChange={
-                    setFormatsSouhaites
-                  }
-                >
-
-                  <Picker.Item
-                    label="Sélectionner"
-                    value=""
-                  />
-
-                  {typeEmballage ===
-                    "Tin" && (
-
-                    <>
-
-                      <Picker.Item
-                        label="250 ml"
-                        value="250 ml"
-                      />
-
-                      <Picker.Item
-                        label="500 ml"
-                        value="500 ml"
-                      />
-
-                      <Picker.Item
-                        label="1 L"
-                        value="1 L"
-                      />
-
-                      <Picker.Item
-                        label="2 L"
-                        value="2 L"
-                      />
-
-                      <Picker.Item
-                        label="3 L"
-                        value="3 L"
-                      />
-
-                      <Picker.Item
-                        label="4 L"
-                        value="4 L"
-                      />
-
-                      <Picker.Item
-                        label="5 L"
-                        value="5 L"
-                      />
-
-                      <Picker.Item
-                        label="16 L"
-                        value="16 L"
-                      />
-
-                      <Picker.Item
-                        label="20 L"
-                        value="20 L"
-                      />
-
-                    </>
-
-                  )}
-
-                  {typeEmballage ===
-                    "PET" && (
-
-                    <>
-
-                      <Picker.Item
-                        label="250 ml"
-                        value="250 ml"
-                      />
-
-                      <Picker.Item
-                        label="500 ml"
-                        value="500 ml"
-                      />
-
-                      <Picker.Item
-                        label="1 L"
-                        value="1 L"
-                      />
-
-                      <Picker.Item
-                        label="3 L"
-                        value="3 L"
-                      />
-
-                      <Picker.Item
-                        label="5 L"
-                        value="5 L"
-                      />
-
-                    </>
-
-                  )}
-
-                  {typeEmballage ===
-                    "Glass" && (
-
-                    <>
-
-                      <Picker.Item
-                        label="250 ml"
-                        value="250 ml"
-                      />
-
-                      <Picker.Item
-                        label="500 ml"
-                        value="500 ml"
-                      />
-
-                      <Picker.Item
-                        label="750 ml"
-                        value="750 ml"
-                      />
-
-                      <Picker.Item
-                        label="1 L"
-                        value="1 L"
-                      />
-
-                    </>
-
-                  )}
-
-                </Picker>
-
+                {emballagesSelectionnes.includes(
+                  "Tin"
+                ) && (
+                  <Text
+                    style={
+                      styles.checkboxCheck
+                    }
+                  >
+                    ✓
+                  </Text>
+                )}
               </View>
 
-            </>
+              <Text style={styles.checkboxText}>
+                Tin
+              </Text>
+            </TouchableOpacity>
 
+            {/* PET */}
+
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() =>
+                toggleEmballage("PET")
+              }
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  emballagesSelectionnes.includes(
+                    "PET"
+                  ) &&
+                    styles.checkboxSelected,
+                ]}
+              >
+                {emballagesSelectionnes.includes(
+                  "PET"
+                ) && (
+                  <Text
+                    style={
+                      styles.checkboxCheck
+                    }
+                  >
+                    ✓
+                  </Text>
+                )}
+              </View>
+
+              <Text style={styles.checkboxText}>
+                PET
+              </Text>
+            </TouchableOpacity>
+
+            {/* GLASS */}
+
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() =>
+                toggleEmballage("Glass")
+              }
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  emballagesSelectionnes.includes(
+                    "Glass"
+                  ) &&
+                    styles.checkboxSelected,
+                ]}
+              >
+                {emballagesSelectionnes.includes(
+                  "Glass"
+                ) && (
+                  <Text
+                    style={
+                      styles.checkboxCheck
+                    }
+                  >
+                    ✓
+                  </Text>
+                )}
+              </View>
+
+              <Text style={styles.checkboxText}>
+                Glass
+              </Text>
+            </TouchableOpacity>
+
+            {/* AUTRE */}
+
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() =>
+                toggleEmballage("Autre")
+              }
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  emballagesSelectionnes.includes(
+                    "Autre"
+                  ) &&
+                    styles.checkboxSelected,
+                ]}
+              >
+                {emballagesSelectionnes.includes(
+                  "Autre"
+                ) && (
+                  <Text
+                    style={
+                      styles.checkboxCheck
+                    }
+                  >
+                    ✓
+                  </Text>
+                )}
+              </View>
+
+              <Text style={styles.checkboxText}>
+                Autre
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* AUTRE */}
+
+          {emballagesSelectionnes.includes(
+            "Autre"
+          ) && (
+            <TextInput
+              style={styles.input}
+              placeholder="Préciser l'emballage"
+              value={autreEmballage}
+              onChangeText={
+                setAutreEmballage
+              }
+            />
+          )}
+
+          {/* ==========================================
+              FORMATS CONDITIONNÉ
+          =========================================== */}
+
+          {emballagesSelectionnes.map(
+            (type) => (
+              <View
+                key={type}
+                style={
+                  styles.formatBlock
+                }
+              >
+                <Text
+                  style={
+                    styles.label
+                  }
+                >
+                  Formats souhaités -{" "}
+                  {type}
+                </Text>
+
+                {/* TIN */}
+
+                {type === "Tin" &&
+                  [
+                    "250 ml",
+                    "500 ml",
+                    "1 L",
+                    "2 L",
+                    "3 L",
+                    "4 L",
+                    "5 L",
+                    "16 L",
+                    "20 L",
+                  ].map(
+                    (format) => (
+                      <TouchableOpacity
+                        key={format}
+                        style={
+                          styles.checkboxRow
+                        }
+                        onPress={() =>
+                          toggleFormat(
+                            type,
+                            format
+                          )
+                        }
+                      >
+                        <View
+                          style={[
+                            styles.checkbox,
+                            (
+                              formatsEmballage[
+                                type
+                              ] || []
+                            ).includes(
+                              format
+                            ) &&
+                              styles.checkboxSelected,
+                          ]}
+                        >
+                          {(
+                            formatsEmballage[
+                              type
+                            ] || []
+                          ).includes(
+                            format
+                          ) && (
+                            <Text
+                              style={
+                                styles.checkboxCheck
+                              }
+                            >
+                              ✓
+                            </Text>
+                          )}
+                        </View>
+
+                        <Text
+                          style={
+                            styles.checkboxText
+                          }
+                        >
+                          {format}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+
+                {/* PET */}
+
+                {type === "PET" &&
+                  [
+                    "250 ml",
+                    "500 ml",
+                    "1 L",
+                    "3 L",
+                    "5 L",
+                  ].map(
+                    (format) => (
+                      <TouchableOpacity
+                        key={format}
+                        style={
+                          styles.checkboxRow
+                        }
+                        onPress={() =>
+                          toggleFormat(
+                            type,
+                            format
+                          )
+                        }
+                      >
+                        <View
+                          style={[
+                            styles.checkbox,
+                            (
+                              formatsEmballage[
+                                type
+                              ] || []
+                            ).includes(
+                              format
+                            ) &&
+                              styles.checkboxSelected,
+                          ]}
+                        >
+                          {(
+                            formatsEmballage[
+                              type
+                            ] || []
+                          ).includes(
+                            format
+                          ) && (
+                            <Text
+                              style={
+                                styles.checkboxCheck
+                              }
+                            >
+                              ✓
+                            </Text>
+                          )}
+                        </View>
+
+                        <Text
+                          style={
+                            styles.checkboxText
+                          }
+                        >
+                          {format}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+
+                {/* GLASS */}
+
+                {type === "Glass" && (
+                  <>
+                    <Text
+                      style={
+                        styles.subLabel
+                      }
+                    >
+                      MARASCA
+                    </Text>
+
+                    {[
+                      "250 ml",
+                      "500 ml",
+                      "750 ml",
+                      "1 L",
+                    ].map(
+                      (format) => {
+                        const value =
+                          `MARASCA - ${format}`;
+
+                        return (
+                          <TouchableOpacity
+                            key={value}
+                            style={
+                              styles.checkboxRow
+                            }
+                            onPress={() =>
+                              toggleFormat(
+                                type,
+                                value
+                              )
+                            }
+                          >
+                            <View
+                              style={[
+                                styles.checkbox,
+                                (
+                                  formatsEmballage[
+                                    type
+                                  ] || []
+                                ).includes(
+                                  value
+                                ) &&
+                                  styles.checkboxSelected,
+                              ]}
+                            >
+                              {(
+                                formatsEmballage[
+                                  type
+                                ] || []
+                              ).includes(
+                                value
+                              ) && (
+                                <Text
+                                  style={
+                                    styles.checkboxCheck
+                                  }
+                                >
+                                  ✓
+                                </Text>
+                              )}
+                            </View>
+
+                            <Text
+                              style={
+                                styles.checkboxText
+                              }
+                            >
+                              {format}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      }
+                    )}
+
+                    <Text
+                      style={
+                        styles.subLabel
+                      }
+                    >
+                      DORICA
+                    </Text>
+
+                    {[
+                      "250 ml",
+                      "500 ml",
+                      "750 ml",
+                    ].map(
+                      (format) => {
+                        const value =
+                          `DORICA - ${format}`;
+
+                        return (
+                          <TouchableOpacity
+                            key={value}
+                            style={
+                              styles.checkboxRow
+                            }
+                            onPress={() =>
+                              toggleFormat(
+                                type,
+                                value
+                              )
+                            }
+                          >
+                            <View
+                              style={[
+                                styles.checkbox,
+                                (
+                                  formatsEmballage[
+                                    type
+                                  ] || []
+                                ).includes(
+                                  value
+                                ) &&
+                                  styles.checkboxSelected,
+                              ]}
+                            >
+                              {(
+                                formatsEmballage[
+                                  type
+                                ] || []
+                              ).includes(
+                                value
+                              ) && (
+                                <Text
+                                  style={
+                                    styles.checkboxCheck
+                                  }
+                                >
+                                  ✓
+                                </Text>
+                              )}
+                            </View>
+
+                            <Text
+                              style={
+                                styles.checkboxText
+                              }
+                            >
+                              {format}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      }
+                    )}
+                  </>
+                )}
+
+                {/* AUTRE */}
+
+                {type === "Autre" && (
+                  <TextInput
+                    style={
+                      styles.input
+                    }
+                    placeholder="Préciser le format souhaité"
+                    value={
+                      formatsEmballage[
+                        type
+                      ]?.[0] || ""
+                    }
+                    onChangeText={(
+                      value
+                    ) => {
+                      setFormatsEmballage(
+                        (prev) => ({
+                          ...prev,
+                          [type]:
+                            value
+                              ? [value]
+                              : [],
+                        })
+                      );
+                    }}
+                  />
+                )}
+              </View>
+            )
           )}
 
           {/* CERTIFICATIONS */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Certifications requises
           </Text>
 
@@ -1871,42 +1841,32 @@ export default function HomeScreen() {
               styles.textArea,
             ]}
             placeholder="Ex : BIO, ISO, IFS..."
-            value={
-              certificationsRequises.join(
-                ", "
+            value={certificationsRequises.join(
+              ", "
+            )}
+            onChangeText={(text) =>
+              setCertificationsRequises(
+                text
+                  .split(",")
+                  .map((item) =>
+                    item.trim()
+                  )
+                  .filter(Boolean)
               )
-            }
-            onChangeText={
-              (text) =>
-                setCertificationsRequises(
-                  text
-                    .split(",")
-                    .map(
-                      (item) =>
-                        item.trim()
-                    )
-                    .filter(
-                      Boolean
-                    )
-                )
             }
             multiline
           />
 
           {/* NOM ENTREPRISE */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Nom entreprise
           </Text>
 
           <TextInput
             style={styles.input}
             placeholder="Nom de l'entreprise"
-            value={
-              nomEntreprise
-            }
+            value={nomEntreprise}
             onChangeText={
               setNomEntreprise
             }
@@ -1914,30 +1874,22 @@ export default function HomeScreen() {
 
           {/* SITE WEB */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Site web
           </Text>
 
           <TextInput
             style={styles.input}
             placeholder="https://..."
-            value={
-              siteWeb
-            }
-            onChangeText={
-              setSiteWeb
-            }
+            value={siteWeb}
+            onChangeText={setSiteWeb}
             autoCapitalize="none"
             keyboardType="url"
           />
 
           {/* CONTACT */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Contact professionnel
           </Text>
 
@@ -1954,9 +1906,7 @@ export default function HomeScreen() {
 
           {/* TYPE MARQUE */}
 
-          <Text
-            style={styles.label}
-          >
+          <Text style={styles.label}>
             Type de marque
           </Text>
 
@@ -1965,39 +1915,19 @@ export default function HomeScreen() {
               styles.pickerContainer
             }
           >
-
             <Picker
-              selectedValue={
-                typeMarque
-              }
-              onValueChange={
-                (value) => {
+              selectedValue={typeMarque}
+              onValueChange={(value) => {
+                setTypeMarque(value);
 
-                  setTypeMarque(
-                    value
-                  );
-
-                  if (
-                    value !==
-                    "Création de nouvelle marque"
-                  ) {
-
-                    setMarcheCible(
-                      ""
-                    );
-
-                    setQuantitePrevue(
-                      ""
-                    );
-
-                    setPackaging(
-                      ""
-                    );
-                  }
+                if (
+                  value !==
+                  "Création de nouvelle marque"
+                ) {
+                  resetNouvelleMarque();
                 }
-              }
+              }}
             >
-
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -2017,9 +1947,7 @@ export default function HomeScreen() {
                 label="Création de nouvelle marque"
                 value="Création de nouvelle marque"
               />
-
             </Picker>
-
           </View>
 
           {/* ==========================================
@@ -2028,13 +1956,11 @@ export default function HomeScreen() {
 
           {typeMarque ===
             "Création de nouvelle marque" && (
-
             <View
               style={
                 styles.newBrandSection
               }
             >
-
               <Text
                 style={
                   styles.newBrandTitle
@@ -2045,20 +1971,14 @@ export default function HomeScreen() {
 
               {/* MARCHÉ CIBLE */}
 
-              <Text
-                style={styles.label}
-              >
+              <Text style={styles.label}>
                 Marché cible
               </Text>
 
               <TextInput
-                style={
-                  styles.input
-                }
+                style={styles.input}
                 placeholder="Ex : Tunisie, France, Italie..."
-                value={
-                  marcheCible
-                }
+                value={marcheCible}
                 onChangeText={
                   setMarcheCible
                 }
@@ -2066,88 +1986,563 @@ export default function HomeScreen() {
 
               {/* QUANTITÉ */}
 
-              <Text
-                style={styles.label}
-              >
+              <Text style={styles.label}>
                 Quantité prévue
               </Text>
 
               <TextInput
-                style={
-                  styles.input
-                }
+                style={styles.input}
                 placeholder="Ex : 5000 litres / an"
-                value={
-                  quantitePrevue
-                }
+                value={quantitePrevue}
                 onChangeText={
                   setQuantitePrevue
                 }
               />
 
-              {/* PACKAGING */}
+              {/* ======================================
+                  PACKAGING NOUVELLE MARQUE
+                  
+                  Même interface que Type d'emballage
+                  mais états différents.
+              ======================================= */}
 
-              <Text
-                style={styles.label}
-              >
+              <Text style={styles.label}>
                 Packaging
               </Text>
 
               <View
                 style={
-                  styles.pickerContainer
+                  styles.multiSelectContainer
                 }
               >
+                {/* TIN */}
 
-                <Picker
-                  selectedValue={
-                    packaging
+                <TouchableOpacity
+                  style={
+                    styles.checkboxRow
                   }
-                  onValueChange={
-                    setPackaging
+                  onPress={() =>
+                    toggleNouvelleMarqueEmballage(
+                      "Tin"
+                    )
                   }
                 >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      nouvelleMarqueEmballagesSelectionnes.includes(
+                        "Tin"
+                      ) &&
+                        styles.checkboxSelected,
+                    ]}
+                  >
+                    {nouvelleMarqueEmballagesSelectionnes.includes(
+                      "Tin"
+                    ) && (
+                      <Text
+                        style={
+                          styles.checkboxCheck
+                        }
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </View>
 
-                  <Picker.Item
-                    label="Sélectionner"
-                    value=""
-                  />
+                  <Text
+                    style={
+                      styles.checkboxText
+                    }
+                  >
+                    Tin
+                  </Text>
+                </TouchableOpacity>
 
-                  <Picker.Item
-                    label="250 ml"
-                    value="250 ml"
-                  />
+                {/* PET */}
 
-                  <Picker.Item
-                    label="500 ml"
-                    value="500 ml"
-                  />
+                <TouchableOpacity
+                  style={
+                    styles.checkboxRow
+                  }
+                  onPress={() =>
+                    toggleNouvelleMarqueEmballage(
+                      "PET"
+                    )
+                  }
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      nouvelleMarqueEmballagesSelectionnes.includes(
+                        "PET"
+                      ) &&
+                        styles.checkboxSelected,
+                    ]}
+                  >
+                    {nouvelleMarqueEmballagesSelectionnes.includes(
+                      "PET"
+                    ) && (
+                      <Text
+                        style={
+                          styles.checkboxCheck
+                        }
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </View>
 
-                  <Picker.Item
-                    label="750 ml"
-                    value="750 ml"
-                  />
+                  <Text
+                    style={
+                      styles.checkboxText
+                    }
+                  >
+                    PET
+                  </Text>
+                </TouchableOpacity>
 
-                  <Picker.Item
-                    label="1 L"
-                    value="1 L"
-                  />
+                {/* GLASS */}
 
-                  <Picker.Item
-                    label="Autre"
-                    value="Autre"
-                  />
+                <TouchableOpacity
+                  style={
+                    styles.checkboxRow
+                  }
+                  onPress={() =>
+                    toggleNouvelleMarqueEmballage(
+                      "Glass"
+                    )
+                  }
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      nouvelleMarqueEmballagesSelectionnes.includes(
+                        "Glass"
+                      ) &&
+                        styles.checkboxSelected,
+                    ]}
+                  >
+                    {nouvelleMarqueEmballagesSelectionnes.includes(
+                      "Glass"
+                    ) && (
+                      <Text
+                        style={
+                          styles.checkboxCheck
+                        }
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </View>
 
-                </Picker>
+                  <Text
+                    style={
+                      styles.checkboxText
+                    }
+                  >
+                    Glass
+                  </Text>
+                </TouchableOpacity>
 
+                {/* AUTRE */}
+
+                <TouchableOpacity
+                  style={
+                    styles.checkboxRow
+                  }
+                  onPress={() =>
+                    toggleNouvelleMarqueEmballage(
+                      "Autre"
+                    )
+                  }
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      nouvelleMarqueEmballagesSelectionnes.includes(
+                        "Autre"
+                      ) &&
+                        styles.checkboxSelected,
+                    ]}
+                  >
+                    {nouvelleMarqueEmballagesSelectionnes.includes(
+                      "Autre"
+                    ) && (
+                      <Text
+                        style={
+                          styles.checkboxCheck
+                        }
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </View>
+
+                  <Text
+                    style={
+                      styles.checkboxText
+                    }
+                  >
+                    Autre
+                  </Text>
+                </TouchableOpacity>
               </View>
 
+              {/* AUTRE EMBALLAGE */}
+
+              {nouvelleMarqueEmballagesSelectionnes.includes(
+                "Autre"
+              ) && (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Préciser l'emballage"
+                  value={
+                    nouvelleMarqueAutreEmballage
+                  }
+                  onChangeText={
+                    setNouvelleMarqueAutreEmballage
+                  }
+                />
+              )}
+
+              {/* ======================================
+                  FORMATS NOUVELLE MARQUE
+              ======================================= */}
+
+              {nouvelleMarqueEmballagesSelectionnes.map(
+                (type) => (
+                  <View
+                    key={type}
+                    style={
+                      styles.formatBlock
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.label
+                      }
+                    >
+                      Formats souhaités -{" "}
+                      {type}
+                    </Text>
+
+                    {/* TIN */}
+
+                    {type === "Tin" &&
+                      [
+                        "250 ml",
+                        "500 ml",
+                        "1 L",
+                        "2 L",
+                        "3 L",
+                        "4 L",
+                        "5 L",
+                        "16 L",
+                        "20 L",
+                      ].map(
+                        (format) => (
+                          <TouchableOpacity
+                            key={format}
+                            style={
+                              styles.checkboxRow
+                            }
+                            onPress={() =>
+                              toggleNouvelleMarqueFormat(
+                                type,
+                                format
+                              )
+                            }
+                          >
+                            <View
+                              style={[
+                                styles.checkbox,
+                                (
+                                  nouvelleMarqueFormatsEmballage[
+                                    type
+                                  ] || []
+                                ).includes(
+                                  format
+                                ) &&
+                                  styles.checkboxSelected,
+                              ]}
+                            >
+                              {(
+                                nouvelleMarqueFormatsEmballage[
+                                  type
+                                ] || []
+                              ).includes(
+                                format
+                              ) && (
+                                <Text
+                                  style={
+                                    styles.checkboxCheck
+                                  }
+                                >
+                                  ✓
+                                </Text>
+                              )}
+                            </View>
+
+                            <Text
+                              style={
+                                styles.checkboxText
+                              }
+                            >
+                              {format}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      )}
+
+                    {/* PET */}
+
+                    {type === "PET" &&
+                      [
+                        "250 ml",
+                        "500 ml",
+                        "1 L",
+                        "3 L",
+                        "5 L",
+                      ].map(
+                        (format) => (
+                          <TouchableOpacity
+                            key={format}
+                            style={
+                              styles.checkboxRow
+                            }
+                            onPress={() =>
+                              toggleNouvelleMarqueFormat(
+                                type,
+                                format
+                              )
+                            }
+                          >
+                            <View
+                              style={[
+                                styles.checkbox,
+                                (
+                                  nouvelleMarqueFormatsEmballage[
+                                    type
+                                  ] || []
+                                ).includes(
+                                  format
+                                ) &&
+                                  styles.checkboxSelected,
+                              ]}
+                            >
+                              {(
+                                nouvelleMarqueFormatsEmballage[
+                                  type
+                                ] || []
+                              ).includes(
+                                format
+                              ) && (
+                                <Text
+                                  style={
+                                    styles.checkboxCheck
+                                  }
+                                >
+                                  ✓
+                                </Text>
+                              )}
+                            </View>
+
+                            <Text
+                              style={
+                                styles.checkboxText
+                              }
+                            >
+                              {format}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      )}
+
+                    {/* GLASS */}
+
+                    {type === "Glass" && (
+                      <>
+                        <Text
+                          style={
+                            styles.subLabel
+                          }
+                        >
+                          MARASCA
+                        </Text>
+
+                        {[
+                          "250 ml",
+                          "500 ml",
+                          "750 ml",
+                          "1 L",
+                        ].map(
+                          (format) => {
+                            const value =
+                              `MARASCA - ${format}`;
+
+                            return (
+                              <TouchableOpacity
+                                key={value}
+                                style={
+                                  styles.checkboxRow
+                                }
+                                onPress={() =>
+                                  toggleNouvelleMarqueFormat(
+                                    type,
+                                    value
+                                  )
+                                }
+                              >
+                                <View
+                                  style={[
+                                    styles.checkbox,
+                                    (
+                                      nouvelleMarqueFormatsEmballage[
+                                        type
+                                      ] || []
+                                    ).includes(
+                                      value
+                                    ) &&
+                                      styles.checkboxSelected,
+                                  ]}
+                                >
+                                  {(
+                                    nouvelleMarqueFormatsEmballage[
+                                      type
+                                    ] || []
+                                  ).includes(
+                                    value
+                                  ) && (
+                                    <Text
+                                      style={
+                                        styles.checkboxCheck
+                                      }
+                                    >
+                                      ✓
+                                    </Text>
+                                  )}
+                                </View>
+
+                                <Text
+                                  style={
+                                    styles.checkboxText
+                                  }
+                                >
+                                  {format}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          }
+                        )}
+
+                        <Text
+                          style={
+                            styles.subLabel
+                          }
+                        >
+                          DORICA
+                        </Text>
+
+                        {[
+                          "250 ml",
+                          "500 ml",
+                          "750 ml",
+                        ].map(
+                          (format) => {
+                            const value =
+                              `DORICA - ${format}`;
+
+                            return (
+                              <TouchableOpacity
+                                key={value}
+                                style={
+                                  styles.checkboxRow
+                                }
+                                onPress={() =>
+                                  toggleNouvelleMarqueFormat(
+                                    type,
+                                    value
+                                  )
+                                }
+                              >
+                                <View
+                                  style={[
+                                    styles.checkbox,
+                                    (
+                                      nouvelleMarqueFormatsEmballage[
+                                        type
+                                      ] || []
+                                    ).includes(
+                                      value
+                                    ) &&
+                                      styles.checkboxSelected,
+                                  ]}
+                                >
+                                  {(
+                                    nouvelleMarqueFormatsEmballage[
+                                      type
+                                    ] || []
+                                  ).includes(
+                                    value
+                                  ) && (
+                                    <Text
+                                      style={
+                                        styles.checkboxCheck
+                                      }
+                                    >
+                                      ✓
+                                    </Text>
+                                  )}
+                                </View>
+
+                                <Text
+                                  style={
+                                    styles.checkboxText
+                                  }
+                                >
+                                  {format}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          }
+                        )}
+                      </>
+                    )}
+
+                    {/* AUTRE */}
+
+                    {type === "Autre" && (
+                      <TextInput
+                        style={
+                          styles.input
+                        }
+                        placeholder="Préciser le format souhaité"
+                        value={
+                          nouvelleMarqueFormatsEmballage[
+                            type
+                          ]?.[0] || ""
+                        }
+                        onChangeText={(
+                          value
+                        ) => {
+                          setNouvelleMarqueFormatsEmballage(
+                            (prev) => ({
+                              ...prev,
+                              [type]:
+                                value
+                                  ? [value]
+                                  : [],
+                            })
+                          );
+                        }}
+                      />
+                    )}
+                  </View>
+                )
+              )}
             </View>
-
           )}
-
         </View>
-
       )}
 
       {/* ==============================================
@@ -2156,19 +2551,12 @@ export default function HomeScreen() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={
-          handleAjouter
-        }
+        onPress={handleAjouter}
       >
-
-        <Text
-          style={styles.buttonText}
-        >
+        <Text style={styles.buttonText}>
           AJOUTER LE VISITEUR
         </Text>
-
       </TouchableOpacity>
-
     </ScrollView>
   );
 }
@@ -2177,150 +2565,189 @@ export default function HomeScreen() {
 // STYLES
 // =====================================================
 
-const styles =
-  StyleSheet.create({
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
 
-    container: {
-      flex: 1,
-      backgroundColor:
-        "#f5f5f5",
-    },
+  content: {
+    padding: 20,
+    paddingBottom: 60,
+  },
 
-    content: {
-      padding: 20,
-      paddingBottom: 60,
-    },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 20,
+    marginBottom: 5,
+  },
 
-    title: {
-      fontSize: 28,
-      fontWeight: "bold",
-      textAlign: "center",
-      marginTop: 20,
-      marginBottom: 5,
-    },
+  subtitle: {
+    textAlign: "center",
+    color: "#666",
+    marginBottom: 20,
+  },
 
-    subtitle: {
-      textAlign: "center",
-      color: "#666",
-      marginBottom: 20,
-    },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 7,
+  },
 
-    label: {
-      fontSize: 16,
-      fontWeight: "600",
-      marginTop: 12,
-      marginBottom: 7,
-    },
+  input: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
 
-    input: {
-      backgroundColor: "#fff",
-      borderWidth: 1,
-      borderColor: "#ddd",
-      borderRadius: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 16,
-    },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
 
-    textArea: {
-      minHeight: 100,
-      textAlignVertical:
-        "top",
-    },
+  pickerContainer: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
 
-    pickerContainer: {
-      backgroundColor:
-        "#fff",
-      borderWidth: 1,
-      borderColor: "#ddd",
-      borderRadius: 8,
-      overflow: "hidden",
-    },
+  phoneContainer: {
+    flexDirection: "row",
+    gap: 8,
+  },
 
-    phoneContainer: {
-      flexDirection:
-        "row",
-      gap: 8,
-    },
+  indicatif: {
+    width: 80,
+    backgroundColor: "#eee",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    textAlign: "center",
+  },
 
-    indicatif: {
-      width: 80,
-      backgroundColor:
-        "#eee",
-      borderWidth: 1,
-      borderColor: "#ddd",
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      textAlign: "center",
-    },
+  phoneInput: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
 
-    phoneInput: {
-      flex: 1,
-      backgroundColor:
-        "#fff",
-      borderWidth: 1,
-      borderColor: "#ddd",
-      borderRadius: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 16,
-    },
+  section: {
+    marginTop: 25,
+    padding: 15,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
 
-    section: {
-      marginTop: 25,
-      padding: 15,
-      backgroundColor:
-        "#fff",
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: "#ddd",
-    },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
 
-    sectionTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      marginBottom: 10,
-    },
+  newBrandSection: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EE672A",
+  },
 
-    newBrandSection: {
-      marginTop: 20,
-      padding: 15,
-      backgroundColor:
-        "#f9f9f9",
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor:
-        "#EE672A",
-    },
+  newBrandTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
 
-    newBrandTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      marginBottom: 5,
-    },
+  multiSelectContainer: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 10,
+  },
 
-    testButton: {
-      backgroundColor:
-        "#555",
-      paddingVertical: 14,
-      borderRadius: 8,
-      marginBottom: 15,
-      alignItems: "center",
-    },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 9,
+  },
 
-    button: {
-      backgroundColor:
-        "#EE672A",
-      paddingVertical: 16,
-      borderRadius: 8,
-      marginTop: 30,
-      alignItems: "center",
-    },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 1,
+    borderColor: "#aaa",
+    borderRadius: 5,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
 
-    buttonText: {
-      color: "#fff",
-      fontSize: 16,
-      fontWeight: "bold",
-    },
+  checkboxSelected: {
+    backgroundColor: "#EE672A",
+    borderColor: "#EE672A",
+  },
 
-  });
+  checkboxCheck: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+
+  checkboxText: {
+    fontSize: 16,
+  },
+
+  formatBlock: {
+    marginTop: 10,
+    paddingTop: 5,
+  },
+
+  subLabel: {
+    fontSize: 15,
+    fontWeight: "bold",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+
+  testButton: {
+    backgroundColor: "#555",
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginBottom: 15,
+    alignItems: "center",
+  },
+
+  button: {
+    backgroundColor: "#EE672A",
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginTop: 30,
+    alignItems: "center",
+  },
+
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
