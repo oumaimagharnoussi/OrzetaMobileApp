@@ -1,644 +1,1058 @@
+// =====================================================
+// SERVER NODE.JS + EXPRESS + MYSQL
+// =====================================================
+
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
+require("dotenv").config();
 
-console.log("=================================");
-console.log("SERVER.JS DEMARRE");
-console.log("=================================");
+// =====================================================
+// APPLICATION
+// =====================================================
 
 const app = express();
+
 const PORT = 5000;
 
-// ==================================================
-// MIDDLEWARES
-// ==================================================
+// =====================================================
+// MIDDLEWARE
+// =====================================================
 
 app.use(cors());
-app.use(express.json());
 
-// ==================================================
-// MYSQL
-// ==================================================
+app.use(express.json({ limit: "10mb" }));
 
-const dbConfig = {
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "visiteurs_db",
+app.use(express.urlencoded({ extended: true }));
+
+// =====================================================
+// CONFIGURATION MYSQL
+// =====================================================
+
+const DB_CONFIG = {
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "visiteurs_db",
+  port: Number(process.env.DB_PORT || 3306),
 };
+
+// =====================================================
+// CONNEXION MYSQL
+// =====================================================
 
 let db;
 
-// ==================================================
-// CONNEXION MYSQL
-// ==================================================
+// =====================================================
+// CONNEXION À LA BASE
+// =====================================================
 
 async function connectDatabase() {
-
-    console.log("Connexion à MySQL...");
+  try {
+    console.log("=================================");
+    console.log("CONNEXION À MYSQL");
+    console.log("=================================");
 
     db = await mysql.createPool({
-        ...dbConfig,
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
+      ...DB_CONFIG,
+
+      waitForConnections: true,
+
+      connectionLimit: 10,
+
+      queueLimit: 0,
     });
 
-    // Test connexion
-    const connection = await db.getConnection();
-    connection.release();
+    await db.query("SELECT 1");
 
     console.log("MYSQL CONNECTÉ");
-    console.log("Base :", dbConfig.database);
+    console.log("Base :", DB_CONFIG.database);
+
+    console.log("=================================");
+  } catch (error) {
+    console.error("ERREUR MYSQL :");
+    console.error(error);
+
+    process.exit(1);
+  }
 }
 
-// ==================================================
-// VÉRIFIER TABLE
-// ==================================================
-
-async function checkTable() {
-
-    console.log("Vérification de la table visiteurs...");
-
-    const sql = `
-        CREATE TABLE IF NOT EXISTS visiteurs (
-
-            id INT AUTO_INCREMENT PRIMARY KEY,
-
-            nom VARCHAR(100) NOT NULL,
-            email VARCHAR(150),
-            sexe VARCHAR(50),
-            origine VARCHAR(100),
-            indicatif VARCHAR(10),
-            telephone VARCHAR(50),
-            societe VARCHAR(150),
-            adresse_societe VARCHAR(255),
-            type_commande VARCHAR(100),
-            fonction VARCHAR(100),
-            langue_communication VARCHAR(100),
-
-            qualite_grade VARCHAR(150),
-            volume_estime DECIMAL(15,2),
-            destination VARCHAR(255),
-            incoterm VARCHAR(50),
-            format_livraison VARCHAR(100),
-            frequence_commande VARCHAR(100),
-            exigences_specifiques TEXT,
-            informations_complementaires TEXT,
-
-            pays_conditionne VARCHAR(150),
-            canal_distribution VARCHAR(100),
-            volumes_estimes VARCHAR(150),
-            formats_souhaites VARCHAR(150),
-            type_marque VARCHAR(100),
-            certifications_requises TEXT,
-            nom_entreprise VARCHAR(150),
-            site_web VARCHAR(255),
-            contact_professionnel VARCHAR(150),
-
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    `;
-
-    await db.query(sql);
-
-    console.log("TABLE visiteurs OK");
-}
-
-// ==================================================
-// ROUTE TEST
-// ==================================================
+// =====================================================
+// ROUTE PRINCIPALE
+// =====================================================
 
 app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
 
-    console.log("GET /");
+    message: "Backend Node.js fonctionne correctement.",
 
-    res.json({
-        success: true,
-        message: "API My App fonctionne correctement",
-    });
+    database: DB_CONFIG.database,
+
+    server: `http://192.168.1.146:${PORT}`,
+
+    endpoint: "/api/visiteurs",
+  });
 });
 
-// ==================================================
-// GET VISITEURS
-// ==================================================
+// =====================================================
+// TEST MYSQL
+// =====================================================
 
-app.get("/api/visiteurs", async (req, res) => {
-
-    console.log("GET /api/visiteurs");
-
-    try {
-
-        const [rows] = await db.query(`
-            SELECT *
-            FROM visiteurs
-            ORDER BY id DESC
-        `);
-
-        console.log(
-            "Nombre de visiteurs :",
-            rows.length
-        );
-
-        res.json({
-            success: true,
-            visiteurs: rows,
-        });
-
-    } catch (error) {
-
-        console.error(
-            "ERREUR GET :",
-            error.message
-        );
-
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
-    }
-});
-
-// ==================================================
-// POST VISITEUR
-// ==================================================
-
-app.post("/api/visiteurs", async (req, res) => {
-
-    console.log("");
-    console.log("=================================");
-    console.log("POST /api/visiteurs");
-    console.log("=================================");
-
-    console.log(
-        "BODY :",
-        JSON.stringify(req.body, null, 2)
+app.get("/api/test-db", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT 1 AS mysql_ok"
     );
 
+    res.status(200).json({
+      success: true,
+
+      message: "Connexion MySQL OK.",
+
+      result: rows,
+    });
+  } catch (error) {
+    console.error(
+      "ERREUR TEST MYSQL :",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+
+      message: "Erreur de connexion à MySQL.",
+
+      error: error.message,
+    });
+  }
+});
+
+// =====================================================
+// AJOUTER UN VISITEUR
+// =====================================================
+
+app.post("/api/visiteurs", async (req, res) => {
+  console.log("");
+  console.log("=================================");
+  console.log("NOUVELLE REQUÊTE POST VISITEUR");
+  console.log("=================================");
+
+  try {
+    console.log("BODY REÇU :");
+
+    console.log(
+      JSON.stringify(
+        req.body,
+        null,
+        2
+      )
+    );
+
+    // =================================================
+    // RÉCUPÉRATION DES DONNÉES
+    // =================================================
+
+    const {
+      // -----------------------------------------------
+      // INFORMATIONS GÉNÉRALES
+      // -----------------------------------------------
+
+      nom,
+      prenom,
+      email,
+      age,
+     // sexe,
+      origine,
+      indicatif,
+      telephone,
+      societe,
+      adresse_societe,
+      fonction,
+      langue_communication,
+
+      // -----------------------------------------------
+      // PROFILE
+      // -----------------------------------------------
+
+      profile,
+
+      // -----------------------------------------------
+      // TYPE COMMANDE
+      // -----------------------------------------------
+
+      type_commande,
+
+      // -----------------------------------------------
+      // VRAC
+      // -----------------------------------------------
+
+      qualite_grade,
+      volume_estime,
+      destination,
+      incoterm,
+      format_livraison,
+      frequence_commande,
+      exigences_specifiques,
+      informations_complementaires,
+
+      // -----------------------------------------------
+      // CONDITIONNÉ
+      // -----------------------------------------------
+
+      pays_conditionne,
+      canal_distribution,
+      volumes_estimes,
+      type_emballage,
+      formats_souhaites,
+      type_marque,
+      certifications_requises,
+      nom_entreprise,
+      site_web,
+      contact_professionnel,
+
+      // -----------------------------------------------
+      // NOUVELLE MARQUE
+      // -----------------------------------------------
+
+      marche_cible,
+      quantite_prevue,
+      packaging,
+    } = req.body;
+
+    // =================================================
+    // FONCTION DE NETTOYAGE
+    // =================================================
+
+    const cleanString = (value) => {
+      if (
+        value === undefined ||
+        value === null
+      ) {
+        return null;
+      }
+
+      const result = String(value).trim();
+
+      return result === "" ? null : result;
+    };
+
+    // =================================================
+    // INFORMATIONS GÉNÉRALES
+    // =================================================
+
+    const cleanNom = cleanString(nom);
+
+    const cleanPrenom = cleanString(prenom);
+
+    const cleanEmail = cleanString(email);
+
+    const cleanTelephone =
+      cleanString(telephone);
+
+    const cleanSociete =
+      cleanString(societe);
+
+    const cleanAdresseSociete =
+      cleanString(adresse_societe);
+
+    const cleanFonction =
+      cleanString(fonction);
+
+    const cleanOrigine =
+      cleanString(origine);
+
+    const cleanIndicatif =
+      cleanString(indicatif);
+
+    //const cleanSexe =
+      //cleanString(sexe);
+
+    const cleanLangue =
+      cleanString(langue_communication);
+
+    const cleanProfile =
+      cleanString(profile);
+
+    // =================================================
+    // AGE
+    // =================================================
+
+    let cleanAge = null;
+
+    if (
+      age !== undefined &&
+      age !== null &&
+      String(age).trim() !== ""
+    ) {
+      const parsedAge = Number(age);
+
+      if (
+        Number.isInteger(parsedAge) &&
+        parsedAge >= 0
+      ) {
+        cleanAge = parsedAge;
+      }
+    }
+
+    // =================================================
+    // TYPE COMMANDE
+    // =================================================
+
+    const cleanTypeCommande =
+      cleanString(type_commande);
+
+    // =================================================
+    // VRAC
+    // =================================================
+
+    let cleanQualiteGrade = null;
+    let cleanVolumeEstime = null;
+    let cleanDestination = null;
+    let cleanIncoterm = null;
+    let cleanFormatLivraison = null;
+    let cleanFrequenceCommande = null;
+    let cleanExigences = null;
+    let cleanInformations = null;
+
+    if (
+      cleanTypeCommande === "vrac"
+    ) {
+      cleanQualiteGrade =
+        cleanString(qualite_grade);
+
+      cleanDestination =
+        cleanString(destination);
+
+      cleanIncoterm =
+        cleanString(incoterm);
+
+      cleanFormatLivraison =
+        cleanString(format_livraison);
+
+      cleanFrequenceCommande =
+        cleanString(frequence_commande);
+
+      cleanInformations =
+        cleanString(
+          informations_complementaires
+        );
+
+      // ---------------------------------------------
+      // VOLUME
+      // ---------------------------------------------
+
+      if (
+        volume_estime !== undefined &&
+        volume_estime !== null &&
+        String(volume_estime).trim() !== ""
+      ) {
+        const parsedVolume =
+          Number(volume_estime);
+
+        if (!Number.isNaN(parsedVolume)) {
+          cleanVolumeEstime =
+            parsedVolume;
+        }
+      }
+
+      // ---------------------------------------------
+      // EXIGENCES
+      // ---------------------------------------------
+
+      if (
+        Array.isArray(
+          exigences_specifiques
+        )
+      ) {
+        cleanExigences =
+          JSON.stringify(
+            exigences_specifiques
+          );
+      } else {
+        cleanExigences =
+          cleanString(
+            exigences_specifiques
+          );
+      }
+    }
+
+    // =================================================
+    // CONDITIONNÉ
+    // =================================================
+
+    let cleanPaysConditionne = null;
+    let cleanCanalDistribution = null;
+    let cleanVolumesEstimes = null;
+    let cleanTypeEmballage = null;
+    let cleanFormatsSouhaites = null;
+    let cleanTypeMarque = null;
+    let cleanCertifications = null;
+    let cleanNomEntreprise = null;
+    let cleanSiteWeb = null;
+    let cleanContactProfessionnel = null;
+
+    // =================================================
+    // NOUVELLE MARQUE
+    // =================================================
+
+    let cleanMarcheCible = null;
+    let cleanQuantitePrevue = null;
+    let cleanPackaging = null;
+
+    if (
+      cleanTypeCommande === "conditionné"
+    ) {
+      cleanPaysConditionne =
+        cleanString(
+          pays_conditionne
+        );
+
+      cleanCanalDistribution =
+        cleanString(
+          canal_distribution
+        );
+
+      cleanVolumesEstimes =
+        cleanString(
+          volumes_estimes
+        );
+
+      cleanTypeEmballage =
+        cleanString(
+          type_emballage
+        );
+
+      cleanFormatsSouhaites =
+        cleanString(
+          formats_souhaites
+        );
+
+      cleanTypeMarque =
+        cleanString(
+          type_marque
+        );
+
+      cleanNomEntreprise =
+        cleanString(
+          nom_entreprise
+        );
+
+      cleanSiteWeb =
+        cleanString(
+          site_web
+        );
+
+      cleanContactProfessionnel =
+        cleanString(
+          contact_professionnel
+        );
+
+      // ---------------------------------------------
+      // CERTIFICATIONS
+      // ---------------------------------------------
+
+      if (
+        Array.isArray(
+          certifications_requises
+        )
+      ) {
+        cleanCertifications =
+          JSON.stringify(
+            certifications_requises
+          );
+      } else {
+        cleanCertifications =
+          cleanString(
+            certifications_requises
+          );
+      }
+
+      // ---------------------------------------------
+      // NOUVELLE MARQUE
+      // ---------------------------------------------
+
+      if (
+        cleanTypeMarque ===
+        "Création de nouvelle marque"
+      ) {
+        cleanMarcheCible =
+          cleanString(
+            marche_cible
+          );
+
+        cleanQuantitePrevue =
+          cleanString(
+            quantite_prevue
+          );
+
+        cleanPackaging =
+          cleanString(
+            packaging
+          );
+      }
+    }
+
+    // =================================================
+    // DEBUG DES DONNÉES NETTOYÉES
+    // =================================================
+
+    console.log("");
+    console.log(
+      "DONNÉES NETTOYÉES :"
+    );
+
+    console.log({
+      nom: cleanNom,
+      prenom: cleanPrenom,
+      email: cleanEmail,
+      age: cleanAge,
+     // sexe: cleanSexe,
+      origine: cleanOrigine,
+      indicatif: cleanIndicatif,
+      telephone: cleanTelephone,
+      societe: cleanSociete,
+      adresse_societe:
+        cleanAdresseSociete,
+      fonction: cleanFonction,
+      langue_communication:
+        cleanLangue,
+
+      profile:
+        cleanProfile,
+
+      type_commande:
+        cleanTypeCommande,
+
+      qualite_grade:
+        cleanQualiteGrade,
+
+      volume_estime:
+        cleanVolumeEstime,
+
+      destination:
+        cleanDestination,
+
+      incoterm:
+        cleanIncoterm,
+
+      format_livraison:
+        cleanFormatLivraison,
+
+      frequence_commande:
+        cleanFrequenceCommande,
+
+      exigences_specifiques:
+        cleanExigences,
+
+      informations_complementaires:
+        cleanInformations,
+
+      pays_conditionne:
+        cleanPaysConditionne,
+
+      canal_distribution:
+        cleanCanalDistribution,
+
+      volumes_estimes:
+        cleanVolumesEstimes,
+
+      type_emballage:
+        cleanTypeEmballage,
+
+      formats_souhaites:
+        cleanFormatsSouhaites,
+
+      type_marque:
+        cleanTypeMarque,
+
+      certifications_requises:
+        cleanCertifications,
+
+      nom_entreprise:
+        cleanNomEntreprise,
+
+      site_web:
+        cleanSiteWeb,
+
+      contact_professionnel:
+        cleanContactProfessionnel,
+
+      marche_cible:
+        cleanMarcheCible,
+
+      quantite_prevue:
+        cleanQuantitePrevue,
+
+      packaging:
+        cleanPackaging,
+    });
+
+    // =================================================
+    // INSERTION MYSQL
+    // =================================================
+
+    const sql = `
+      INSERT INTO visiteurs (
+
+        nom,
+        prenom,
+        email,
+        age,
+       
+        origine,
+        indicatif,
+        telephone,
+        societe,
+        adresse_societe,
+        fonction,
+        langue_communication,
+
+        profile,
+        type_commande,
+
+        qualite_grade,
+        volume_estime,
+        destination,
+        incoterm,
+        format_livraison,
+        frequence_commande,
+        exigences_specifiques,
+        informations_complementaires,
+
+        pays_conditionne,
+        canal_distribution,
+        volumes_estimes,
+        type_emballage,
+        formats_souhaites,
+        type_marque,
+        certifications_requises,
+        nom_entreprise,
+        site_web,
+        contact_professionnel,
+
+        marche_cible,
+        quantite_prevue,
+        packaging
+
+      )
+
+      VALUES (
+
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+
+        ?,
+        ?,
+
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+
+        ?,
+        
+        ?
+
+      )
+    `;
+
+    // =================================================
+    // VALEURS MYSQL
+    // =================================================
+
+    const values = [
+
+      // -----------------------------------------------
+      // INFORMATIONS GÉNÉRALES
+      // -----------------------------------------------
+
+      cleanNom,
+      cleanPrenom,
+      cleanEmail,
+      cleanAge,
+      //cleanSexe,
+      cleanOrigine,
+      cleanIndicatif,
+      cleanTelephone,
+      cleanSociete,
+      cleanAdresseSociete,
+      cleanFonction,
+      cleanLangue,
+
+      // -----------------------------------------------
+      // PROFILE
+      // -----------------------------------------------
+
+      cleanProfile,
+      cleanTypeCommande,
+
+      // -----------------------------------------------
+      // VRAC
+      // -----------------------------------------------
+
+      cleanQualiteGrade,
+      cleanVolumeEstime,
+      cleanDestination,
+      cleanIncoterm,
+      cleanFormatLivraison,
+      cleanFrequenceCommande,
+      cleanExigences,
+      cleanInformations,
+
+      // -----------------------------------------------
+      // CONDITIONNÉ
+      // -----------------------------------------------
+
+      cleanPaysConditionne,
+      cleanCanalDistribution,
+      cleanVolumesEstimes,
+      cleanTypeEmballage,
+      cleanFormatsSouhaites,
+      cleanTypeMarque,
+      cleanCertifications,
+      cleanNomEntreprise,
+      cleanSiteWeb,
+      cleanContactProfessionnel,
+
+      // -----------------------------------------------
+      // NOUVELLE MARQUE
+      // -----------------------------------------------
+
+      cleanMarcheCible,
+      cleanQuantitePrevue,
+      cleanPackaging,
+    ];
+
+    console.log("");
+    console.log(
+      "INSERTION MYSQL..."
+    );
+
+    // =================================================
+    // EXECUTION
+    // =================================================
+
+    const [result] =
+      await db.execute(
+        sql,
+        values
+      );
+
+    // =================================================
+    // SUCCÈS
+    // =================================================
+
+    console.log("");
+    console.log(
+      "================================="
+    );
+
+    console.log(
+      "VISITEUR AJOUTÉ AVEC SUCCÈS"
+    );
+
+    console.log(
+      "ID :",
+      result.insertId
+    );
+
+    console.log(
+      "================================="
+    );
+
+    return res.status(201).json({
+      success: true,
+
+      message:
+        "Le visiteur a été ajouté avec succès.",
+
+      id: result.insertId,
+    });
+
+  } catch (error) {
+
+    console.error("");
+    console.error(
+      "================================="
+    );
+
+    console.error(
+      "ERREUR INSERTION VISITEUR"
+    );
+
+    console.error(
+      "================================="
+    );
+
+    console.error(
+      error
+    );
+
+    console.error(
+      "================================="
+    );
+
+    return res.status(500).json({
+      success: false,
+
+      message:
+        "Erreur lors de l'ajout du visiteur.",
+
+      error:
+        error.message,
+    });
+  }
+});
+
+// =====================================================
+// RÉCUPÉRER TOUS LES VISITEURS
+// =====================================================
+
+app.get(
+  "/api/visiteurs",
+  async (req, res) => {
+
     try {
 
-        const {
-            nom,
-            email,
-            sexe,
-            origine,
-            indicatif,
-            telephone,
-            societe,
-            adresse_societe,
-            type_commande,
-            fonction,
-            langue_communication,
+      const [rows] =
+        await db.query(`
+          SELECT *
+          FROM visiteurs
+          ORDER BY id DESC
+        `);
 
-            // VRAC
-            qualite_grade,
-            volume_estime,
-            destination,
-            incoterm,
-            format_livraison,
-            frequence_commande,
-            exigences_specifiques,
-            informations_complementaires,
+      res.status(200).json({
 
-            // CONDITIONNÉ
-            pays_conditionne,
-            canal_distribution,
-            volumes_estimes,
-            formats_souhaites,
-            type_marque,
-            certifications_requises,
-            nom_entreprise,
-            site_web,
-            contact_professionnel,
+        success: true,
 
-        } = req.body;
+        count:
+          rows.length,
 
-        // ==================================================
-        // VALIDATION
-        // ==================================================
-
-        if (!nom || !email || !telephone) {
-
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Nom, email et téléphone sont obligatoires.",
-            });
-        }
-
-        if (!type_commande) {
-
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Le type de commande est obligatoire.",
-            });
-        }
-
-        // ==================================================
-        // VRAC
-        // ==================================================
-
-        let qualiteGradeValue = null;
-        let volumeEstimeValue = null;
-        let destinationValue = null;
-        let incotermValue = null;
-        let formatLivraisonValue = null;
-        let frequenceCommandeValue = null;
-        let exigencesSpecifiquesValue = null;
-        let informationsComplementairesValue = null;
-
-        if (type_commande === "vrac") {
-
-            qualiteGradeValue =
-                qualite_grade || null;
-
-            if (
-                volume_estime !== undefined &&
-                volume_estime !== null &&
-                volume_estime !== ""
-            ) {
-
-                volumeEstimeValue =
-                    Number(volume_estime);
-
-                if (
-                    Number.isNaN(volumeEstimeValue)
-                ) {
-
-                    return res.status(400).json({
-                        success: false,
-                        message:
-                            "Le volume estimé doit être un nombre.",
-                    });
-                }
-            }
-
-            destinationValue =
-                destination || null;
-
-            incotermValue =
-                incoterm || null;
-
-            formatLivraisonValue =
-                format_livraison || null;
-
-            frequenceCommandeValue =
-                frequence_commande || null;
-
-            if (
-                Array.isArray(
-                    exigences_specifiques
-                )
-            ) {
-
-                exigencesSpecifiquesValue =
-                    JSON.stringify(
-                        exigences_specifiques
-                    );
-
-            } else {
-
-                exigencesSpecifiquesValue =
-                    exigences_specifiques || null;
-            }
-
-            informationsComplementairesValue =
-                informations_complementaires || null;
-        }
-
-        // ==================================================
-        // CONDITIONNÉ
-        // ==================================================
-
-        let paysConditionneValue = null;
-        let canalDistributionValue = null;
-        let volumesEstimesValue = null;
-        let formatsSouhaitesValue = null;
-        let typeMarqueValue = null;
-        let certificationsRequisesValue = null;
-        let nomEntrepriseValue = null;
-        let siteWebValue = null;
-        let contactProfessionnelValue = null;
-
-        if (
-            type_commande === "conditionne"
-        ) {
-
-            paysConditionneValue =
-                pays_conditionne || null;
-
-            canalDistributionValue =
-                canal_distribution || null;
-
-            volumesEstimesValue =
-                volumes_estimes || null;
-
-            formatsSouhaitesValue =
-                formats_souhaites || null;
-
-            typeMarqueValue =
-                type_marque || null;
-
-            if (
-                Array.isArray(
-                    certifications_requises
-                )
-            ) {
-
-                certificationsRequisesValue =
-                    JSON.stringify(
-                        certifications_requises
-                    );
-
-            } else {
-
-                certificationsRequisesValue =
-                    certifications_requises || null;
-            }
-
-            nomEntrepriseValue =
-                nom_entreprise || null;
-
-            siteWebValue =
-                site_web || null;
-
-            contactProfessionnelValue =
-                contact_professionnel || null;
-        }
-
-        // ==================================================
-        // VALEURS MYSQL
-        // ==================================================
-
-        const values = [
-
-            nom || null,
-            email || null,
-            sexe || null,
-            origine || null,
-            indicatif || null,
-            telephone || null,
-            societe || null,
-            adresse_societe || null,
-            type_commande || null,
-            fonction || null,
-            langue_communication || null,
-
-            qualiteGradeValue,
-            volumeEstimeValue,
-            destinationValue,
-            incotermValue,
-            formatLivraisonValue,
-            frequenceCommandeValue,
-            exigencesSpecifiquesValue,
-            informationsComplementairesValue,
-
-            paysConditionneValue,
-            canalDistributionValue,
-            volumesEstimesValue,
-            formatsSouhaitesValue,
-            typeMarqueValue,
-            certificationsRequisesValue,
-            nomEntrepriseValue,
-            siteWebValue,
-            contactProfessionnelValue,
-        ];
-
-        console.log(
-            "Nombre de valeurs :",
-            values.length
-        );
-
-        // ==================================================
-        // INSERT
-        // ==================================================
-
-        const sql = `
-            INSERT INTO visiteurs (
-
-                nom,
-                email,
-                sexe,
-                origine,
-                indicatif,
-                telephone,
-                societe,
-                adresse_societe,
-                type_commande,
-                fonction,
-                langue_communication,
-
-                qualite_grade,
-                volume_estime,
-                destination,
-                incoterm,
-                format_livraison,
-                frequence_commande,
-                exigences_specifiques,
-                informations_complementaires,
-
-                pays_conditionne,
-                canal_distribution,
-                volumes_estimes,
-                formats_souhaites,
-                type_marque,
-                certifications_requises,
-                nom_entreprise,
-                site_web,
-                contact_professionnel
-
-            )
-            VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )
-        `;
-
-        console.log("Insertion MySQL...");
-
-        const [result] =
-            await db.query(sql, values);
-
-        console.log(
-            "VISITEUR ENREGISTRÉ ! ID =",
-            result.insertId
-        );
-
-        res.status(201).json({
-
-            success: true,
-
-            message:
-                "Visiteur ajouté avec succès",
-
-            id:
-                result.insertId,
-        });
+        visiteurs:
+          rows,
+      });
 
     } catch (error) {
 
-        console.error("");
-        console.error(
-            "================================="
-        );
-        console.error(
-            "ERREUR MYSQL / POST"
-        );
-        console.error(
-            "================================="
-        );
+      console.error(
+        "ERREUR GET VISITEURS :",
+        error
+      );
 
-        console.error(error);
+      res.status(500).json({
 
-        res.status(500).json({
+        success: false,
 
-            success: false,
+        message:
+          "Impossible de récupérer les visiteurs.",
 
-            message:
-                "Erreur lors de l'enregistrement",
-
-            error:
-                error.message,
-        });
+        error:
+          error.message,
+      });
     }
-});
-
-// ==================================================
-// DELETE
-// ==================================================
-
-app.delete(
-    "/api/visiteurs/:id",
-    async (req, res) => {
-
-        try {
-
-            const { id } = req.params;
-
-            const [result] =
-                await db.query(
-                    `
-                    DELETE FROM visiteurs
-                    WHERE id = ?
-                    `,
-                    [id]
-                );
-
-            if (
-                result.affectedRows === 0
-            ) {
-
-                return res.status(404).json({
-                    success: false,
-                    message:
-                        "Visiteur introuvable",
-                });
-            }
-
-            res.json({
-                success: true,
-                message:
-                    "Visiteur supprimé",
-            });
-
-        } catch (error) {
-
-            console.error(
-                "ERREUR DELETE :",
-                error
-            );
-
-            res.status(500).json({
-                success: false,
-                message:
-                    error.message,
-            });
-        }
-    }
+  }
 );
 
-// ==================================================
-// DÉMARRAGE
-// ==================================================
+// =====================================================
+// RÉCUPÉRER UN VISITEUR PAR ID
+// =====================================================
+
+app.get(
+  "/api/visiteurs/:id",
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(id)
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "ID invalide.",
+        });
+      }
+
+      const [rows] =
+        await db.execute(
+          `
+            SELECT *
+            FROM visiteurs
+            WHERE id = ?
+          `,
+          [id]
+        );
+
+      if (
+        rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Visiteur introuvable.",
+        });
+      }
+
+      return res.status(200).json({
+
+        success: true,
+
+        visiteur:
+          rows[0],
+      });
+
+    } catch (error) {
+
+      console.error(
+        "ERREUR GET VISITEUR :",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Erreur lors de la récupération du visiteur.",
+
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+// =====================================================
+// DÉMARRAGE SERVEUR
+// =====================================================
 
 async function startServer() {
 
-    try {
+  try {
 
-        await connectDatabase();
+    await connectDatabase();
 
-        await checkTable();
+    // =================================================
+    // VÉRIFICATION TABLE
+    // =================================================
 
-        const server =
-            app.listen(
-                PORT,
-                "0.0.0.0",
-                () => {
+    const [tables] =
+      await db.query(`
+        SHOW TABLES LIKE 'visiteurs'
+      `);
 
-                    console.log("");
-                    console.log(
-                        "================================="
-                    );
-                    console.log(
-                        "SERVEUR NODE.JS DÉMARRÉ"
-                    );
-                    console.log(
-                        "================================="
-                    );
+    if (
+      tables.length === 0
+    ) {
 
-                    console.log(
-                        "Local : http://localhost:5000"
-                    );
+      console.error(
+        "ERREUR : la table visiteurs n'existe pas."
+      );
 
-                    console.log(
-                        "Réseau : http://192.168.1.146:5000"
-                    );
-
-                    console.log("");
-                    console.log(
-                        "API : http://localhost:5000/api/visiteurs"
-                    );
-
-                    console.log("");
-                    console.log(
-                        "SERVEUR EN ÉCOUTE..."
-                    );
-
-                    console.log(
-                        "================================="
-                    );
-                }
-            );
-
-        // Garder une référence au serveur
-        server.on("error", (error) => {
-
-            console.error(
-                "ERREUR SERVEUR :",
-                error
-            );
-
-        });
-
-    } catch (error) {
-
-        console.error("");
-        console.error(
-            "================================="
-        );
-        console.error(
-            "ERREUR DÉMARRAGE"
-        );
-        console.error(
-            "================================="
-        );
-
-        console.error(error);
-
-        process.exit(1);
+      process.exit(1);
     }
+
+    console.log(
+      "TABLE visiteurs OK"
+    );
+
+    // =================================================
+    // DÉMARRER EXPRESS
+    // =================================================
+
+    app.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+
+        console.log("");
+
+        console.log(
+          "================================="
+        );
+
+        console.log(
+          "SERVEUR NODE.JS DÉMARRÉ"
+        );
+
+        console.log(
+          "================================="
+        );
+
+        console.log(
+          `Local : http://localhost:${PORT}`
+        );
+
+        console.log(
+          `Réseau : http://192.168.1.146:${PORT}`
+        );
+
+        console.log(
+          `POST : http://192.168.1.146:${PORT}/api/visiteurs`
+        );
+
+        console.log(
+          `GET : http://192.168.1.146:${PORT}/api/visiteurs`
+        );
+
+        console.log(
+          `TEST DB : http://192.168.1.146:${PORT}/api/test-db`
+        );
+
+        console.log(
+          "================================="
+        );
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "ERREUR DÉMARRAGE SERVEUR :",
+      error
+    );
+
+    process.exit(1);
+  }
 }
+
+// =====================================================
+// START
+// =====================================================
 
 startServer();

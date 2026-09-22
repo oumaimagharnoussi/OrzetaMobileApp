@@ -17,7 +17,7 @@ const API_URL = "http://192.168.1.146:5000";
 
 export default function HomeScreen() {
   // =====================================================
-  // ÉTATS - INFORMATIONS GÉNÉRALES
+  // INFORMATIONS GÉNÉRALES
   // =====================================================
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
@@ -25,15 +25,28 @@ export default function HomeScreen() {
   const [indicatif, setIndicatif] = useState("+216");
   const [email, setEmail] = useState("");
   const [age, setAge] = useState("");
-  const [sexe, setSexe] = useState("");
+  //const [sexe, setSexe] = useState("");
   const [origine, setOrigine] = useState("");
   const [societe, setSociete] = useState("");
   const [adresseSociete, setAdresseSociete] = useState("");
   const [fonction, setFonction] = useState("");
   const [langueCommunication, setLangueCommunication] = useState("");
 
+  const [typeEmballage, setTypeEmballage] = useState("");
+const [formatsSouhaites, setFormatsSouhaites] = useState("");
+
+const [typeQuantite, setTypeQuantite] = useState("");
+const [quantiteCommande, setQuantiteCommande] = useState("");
+const [nombrePalettes, setNombrePalettes] = useState("");
+  // =====================================================
+  // PROFILE
+  // Fournisseur / Intermédiaire / Acheteur / Institut / Autre
+  // =====================================================
+  const [profile, setProfile] = useState("");
+
   // =====================================================
   // TYPE COMMANDE
+  // Visible seulement pour Intermédiaire ou Acheteur
   // =====================================================
   const [typeCommande, setTypeCommande] = useState("");
 
@@ -56,13 +69,24 @@ export default function HomeScreen() {
   const [paysConditionne, setPaysConditionne] = useState("");
   const [canalDistribution, setCanalDistribution] = useState("");
   const [volumesEstimes, setVolumesEstimes] = useState("");
-  const [formatsSouhaites, setFormatsSouhaites] = useState("");
+  
   const [typeMarque, setTypeMarque] = useState("");
   const [certificationsRequises, setCertificationsRequises] = useState([]);
   const [nomEntreprise, setNomEntreprise] = useState("");
   const [siteWeb, setSiteWeb] = useState("");
   const [contactProfessionnel, setContactProfessionnel] = useState("");
 
+  // =====================================================
+  // NOUVELLE MARQUE
+  // =====================================================
+  const [marcheCible, setMarcheCible] = useState("");
+  const [quantitePrevue, setQuantitePrevue] = useState("");
+  const [packaging, setPackaging] = useState("");
+
+
+  const [emballagesSelectionnes, setEmballagesSelectionnes] = useState([]);
+  const [formatsEmballage, setFormatsEmballage] = useState({});
+  const [autreEmballage, setAutreEmballage] = useState("");
   // =====================================================
   // PAYS
   // =====================================================
@@ -127,6 +151,45 @@ export default function HomeScreen() {
   };
 
   // =====================================================
+  // CHANGEMENT PROFILE
+  // =====================================================
+  const handleProfileChange = (value) => {
+    setProfile(value);
+
+    // Si le profile n'est pas Intermédiaire ou Acheteur,
+    // on cache Type de commande et on réinitialise les données
+    if (value !== "intermediaire" && value !== "acheteur") {
+      setTypeCommande("");
+
+      // Réinitialisation VRAC
+      setQualiteGrade("");
+      setVolumeEstime("");
+      setDestination("");
+      setIncoterm("");
+      setFormatLivraison("");
+      setFrequenceCommande("");
+      setExigencesSpecifiques([]);
+      setInformationsComplementaires("");
+
+      // Réinitialisation CONDITIONNÉ
+      setPaysConditionne("");
+      setCanalDistribution("");
+      setVolumesEstimes("");
+      setFormatsSouhaites("");
+      setTypeMarque("");
+      setCertificationsRequises([]);
+      setNomEntreprise("");
+      setSiteWeb("");
+      setContactProfessionnel("");
+
+      // Réinitialisation NOUVELLE MARQUE
+      setMarcheCible("");
+      setQuantitePrevue("");
+      setPackaging("");
+    }
+  };
+
+  // =====================================================
   // TEST CONNEXION BACKEND
   // =====================================================
   const testerConnexion = async () => {
@@ -134,7 +197,6 @@ export default function HomeScreen() {
       console.log("Test connexion vers :", `${API_URL}/`);
 
       const response = await fetch(`${API_URL}/`);
-
       const data = await response.json();
 
       console.log("Réponse backend :", data);
@@ -161,51 +223,46 @@ export default function HomeScreen() {
   // AJOUTER VISITEUR
   // =====================================================
   const handleAjouter = async () => {
-    // -----------------------------------------------------
-    // VALIDATION
-    // -----------------------------------------------------
-    if (
-      !nom.trim() ||
-      !telephone.trim() ||
-      !email.trim() ||
-      !sexe ||
-      !origine ||
-      !societe.trim() ||
-      !typeCommande
-    ) {
-      Alert.alert(
-        "Champs obligatoires",
-        "Veuillez remplir tous les champs obligatoires (*)."
-      );
-      return;
-    }
-
-    // -----------------------------------------------------
-    // OBJET À ENVOYER AU BACKEND
-    // -----------------------------------------------------
     const visitorData = {
-      nom: nom.trim(),
+      // =================================================
+      // INFORMATIONS GÉNÉRALES
+      // =================================================
+      nom: nom.trim() || null,
       prenom: prenom.trim() || null,
-      email: email.trim(),
-      age: age ? Number(age) : null,
+      email: email.trim() || null,
+      age: age.trim() ? Number(age) : null,
 
-      sexe: sexe || null,
+     // sexe: sexe || null,
       origine: origine || null,
       indicatif: indicatif || null,
-      telephone: telephone.trim(),
+      telephone: telephone.trim() || null,
 
-      societe: societe.trim(),
+      societe: societe.trim() || null,
       adresse_societe: adresseSociete.trim() || null,
       fonction: fonction.trim() || null,
       langue_communication: langueCommunication || null,
 
-      type_commande: typeCommande,
+      // =================================================
+      // PROFILE
+      // =================================================
+      profile: profile || null,
 
-      // =========================
+      // =================================================
+      // TYPE COMMANDE
+      // Seulement si Intermédiaire ou Acheteur
+      // =================================================
+      type_commande:
+        profile === "intermediaire" || profile === "acheteur"
+          ? typeCommande || null
+          : null,
+
+      // =================================================
       // VRAC
-      // =========================
+      // =================================================
       qualite_grade:
-        typeCommande === "vrac" ? qualiteGrade.trim() || null : null,
+        typeCommande === "vrac"
+          ? qualiteGrade.trim() || null
+          : null,
 
       volume_estime:
         typeCommande === "vrac" && volumeEstime
@@ -213,19 +270,28 @@ export default function HomeScreen() {
           : null,
 
       destination:
-        typeCommande === "vrac" ? destination.trim() || null : null,
+        typeCommande === "vrac"
+          ? destination.trim() || null
+          : null,
 
       incoterm:
-        typeCommande === "vrac" ? incoterm || null : null,
+        typeCommande === "vrac"
+          ? incoterm || null
+          : null,
 
       format_livraison:
-        typeCommande === "vrac" ? formatLivraison || null : null,
+        typeCommande === "vrac"
+          ? formatLivraison || null
+          : null,
 
       frequence_commande:
-        typeCommande === "vrac" ? frequenceCommande || null : null,
+        typeCommande === "vrac"
+          ? frequenceCommande || null
+          : null,
 
       exigences_specifiques:
-        typeCommande === "vrac" && exigencesSpecifiques.length > 0
+        typeCommande === "vrac" &&
+        exigencesSpecifiques.length > 0
           ? exigencesSpecifiques
           : null,
 
@@ -234,9 +300,9 @@ export default function HomeScreen() {
           ? informationsComplementaires.trim() || null
           : null,
 
-      // =========================
+      // =================================================
       // CONDITIONNÉ
-      // =========================
+      // =================================================
       pays_conditionne:
         typeCommande === "conditionné"
           ? paysConditionne || null
@@ -282,20 +348,53 @@ export default function HomeScreen() {
         typeCommande === "conditionné"
           ? contactProfessionnel.trim() || null
           : null,
+
+
+
+
+          type_emballage:
+  typeCommande === "conditionné"
+    ? typeEmballage || null
+    : null,
+
+formats_souhaites:
+  typeCommande === "conditionné"
+    ? formatsSouhaites || null
+    : null,
+
+      // =================================================
+      // NOUVELLE MARQUE
+      // =================================================
+      marche_cible:
+        typeCommande === "conditionné" &&
+        typeMarque === "Création de nouvelle marque"
+          ? marcheCible.trim() || null
+          : null,
+
+      quantite_prevue:
+        typeCommande === "conditionné" &&
+        typeMarque === "Création de nouvelle marque"
+          ? quantitePrevue.trim() || null
+          : null,
+
+      packaging:
+        typeCommande === "conditionné" &&
+        typeMarque === "Création de nouvelle marque"
+          ? packaging || null
+          : null,
     };
 
-    console.log(
-      "======================================="
-    );
+    // ===================================================
+    // LOG
+    // ===================================================
+    console.log("=======================================");
     console.log("DONNÉES ENVOYÉES AU BACKEND");
     console.log(visitorData);
-    console.log(
-      "======================================="
-    );
+    console.log("=======================================");
 
-    // -----------------------------------------------------
-    // ENVOI AU BACKEND
-    // -----------------------------------------------------
+    // ===================================================
+    // ENVOI BACKEND
+    // ===================================================
     try {
       const response = await fetch(`${API_URL}/api/visiteurs`, {
         method: "POST",
@@ -318,23 +417,26 @@ export default function HomeScreen() {
         "Le visiteur a été ajouté avec succès."
       );
 
-      // ---------------------------------------------------
+      // =================================================
       // RESET FORMULAIRE
-      // ---------------------------------------------------
+      // =================================================
+
       setNom("");
       setPrenom("");
       setTelephone("");
       setEmail("");
       setAge("");
-      setSexe("");
+      //setSexe("");
       setOrigine("");
       setIndicatif("+216");
       setSociete("");
       setAdresseSociete("");
       setFonction("");
       setLangueCommunication("");
+      setProfile("");
       setTypeCommande("");
 
+      // VRAC
       setQualiteGrade("");
       setVolumeEstime("");
       setDestination("");
@@ -344,6 +446,7 @@ export default function HomeScreen() {
       setExigencesSpecifiques([]);
       setInformationsComplementaires("");
 
+      // CONDITIONNÉ
       setPaysConditionne("");
       setCanalDistribution("");
       setVolumesEstimes("");
@@ -353,6 +456,11 @@ export default function HomeScreen() {
       setNomEntreprise("");
       setSiteWeb("");
       setContactProfessionnel("");
+
+      // NOUVELLE MARQUE
+      setMarcheCible("");
+      setQuantitePrevue("");
+      setPackaging("");
     } catch (error) {
       console.error("ERREUR POST :", error);
 
@@ -372,7 +480,12 @@ export default function HomeScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Formulaire Visiteur</Text>
+      {/* =================================================
+          TITRE
+      ================================================= */}
+      <Text style={styles.title}>
+        Formulaire Visiteur
+      </Text>
 
       <Text style={styles.subtitle}>
         Enregistrement d'un nouveau visiteur
@@ -382,7 +495,7 @@ export default function HomeScreen() {
           NOM
       ================================================= */}
       <Text style={styles.label}>
-        Nom et Prénom <Text style={styles.required}>*</Text>
+        Nom et Prénom
       </Text>
 
       <TextInput
@@ -392,14 +505,60 @@ export default function HomeScreen() {
         onChangeText={setNom}
       />
 
-      {/* =================================================
-          PRENOM
+       {/* =================================================
+          FONCTION
       ================================================= */}
-      <Text style={styles.label}>Adresse Site Email</Text>
+      <Text style={styles.label}>
+        Fonction
+      </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Entrez le prénom"
+        placeholder="Fonction"
+        value={fonction}
+        onChangeText={setFonction}
+      />
+
+      {/* =================================================
+          SOCIETE
+      ================================================= */}
+      <Text style={styles.label}>
+        Société
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Nom de la société"
+        value={societe}
+        onChangeText={setSociete}
+      />
+
+      {/* =================================================
+          ADRESSE SOCIETE
+      ================================================= */}
+      <Text style={styles.label}>
+        Adresse société
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Adresse de la société"
+        value={adresseSociete}
+        onChangeText={setAdresseSociete}
+      />
+
+     
+
+      {/* =================================================
+          PRENOM
+      ================================================= */}
+      <Text style={styles.label}>
+        Adresse Site Email
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Adresse Site Email"
         value={prenom}
         onChangeText={setPrenom}
       />
@@ -408,7 +567,7 @@ export default function HomeScreen() {
           ORIGINE / PAYS
       ================================================= */}
       <Text style={styles.label}>
-        Origine / Pays <Text style={styles.required}>*</Text>
+        Origine / Pays
       </Text>
 
       <View style={styles.pickerContainer}>
@@ -416,7 +575,10 @@ export default function HomeScreen() {
           selectedValue={origine}
           onValueChange={handlePaysChange}
         >
-          <Picker.Item label="Sélectionner un pays" value="" />
+          <Picker.Item
+            label="Sélectionner un pays"
+            value=""
+          />
 
           {pays.map((item) => (
             <Picker.Item
@@ -432,7 +594,7 @@ export default function HomeScreen() {
           TELEPHONE
       ================================================= */}
       <Text style={styles.label}>
-        Téléphone / WhatsApp <Text style={styles.required}>*</Text>
+        Téléphone / WhatsApp
       </Text>
 
       <View style={styles.phoneContainer}>
@@ -455,7 +617,7 @@ export default function HomeScreen() {
           EMAIL
       ================================================= */}
       <Text style={styles.label}>
-        Email <Text style={styles.required}>*</Text>
+        Email
       </Text>
 
       <TextInput
@@ -468,106 +630,33 @@ export default function HomeScreen() {
       />
 
       {/* =================================================
-          AGE
+          SITE WEB
       ================================================= */}
-      <Text style={styles.label}>Âge</Text>
+      <Text style={styles.label}>
+        Site Web
+      </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Entrez l'âge"
+        placeholder="http://..."
         value={age}
         onChangeText={setAge}
-        keyboardType="numeric"
+        autoCapitalize="none"
       />
-
-      {/* =================================================
-          SEXE
-      ================================================= */}
-      <Text style={styles.label}>
-        Sexe <Text style={styles.required}>*</Text>
-      </Text>
-
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={sexe}
-          onValueChange={setSexe}
-        >
-          <Picker.Item label="Sélectionner" value="" />
-          <Picker.Item label="Homme" value="Homme" />
-          <Picker.Item label="Femme" value="Femme" />
-        </Picker>
-      </View>
 
       
 
       {/* =================================================
-          SOCIETE
-      ================================================= */}
-      <Text style={styles.label}>
-        Société <Text style={styles.required}>*</Text>
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Nom de la société"
-        value={societe}
-        onChangeText={setSociete}
-      />
-
-      {/* =================================================
-          ADRESSE SOCIETE
-      ================================================= */}
-      <Text style={styles.label}>Adresse société</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Adresse de la société"
-        value={adresseSociete}
-        onChangeText={setAdresseSociete}
-      />
-
-      {/* =================================================
-          FONCTION
-      ================================================= */}
-      <Text style={styles.label}>Fonction</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Fonction"
-        value={fonction}
-        onChangeText={setFonction}
-      />
-
-      {/* =================================================
           LANGUE
       ================================================= */}
-      <Text style={styles.label}>Langue de communication</Text>
+      <Text style={styles.label}>
+        Langue de communication
+      </Text>
 
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={langueCommunication}
           onValueChange={setLangueCommunication}
-        >
-          <Picker.Item label="Sélectionner" value="" />
-          <Picker.Item label="Français" value="Français" />
-          <Picker.Item label="Anglais" value="Anglais" />
-          <Picker.Item label="Arabe" value="Arabe" />
-          <Picker.Item label="Italien" value="Italien" />
-          <Picker.Item label="Espagnol" value="Espagnol" />
-        </Picker>
-      </View>
-
-      {/* =================================================
-          TYPE COMMANDE
-      ================================================= */}
-      <Text style={styles.label}>
-        Type de commande <Text style={styles.required}>*</Text>
-      </Text>
-
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={typeCommande}
-          onValueChange={setTypeCommande}
         >
           <Picker.Item
             label="Sélectionner"
@@ -575,340 +664,1039 @@ export default function HomeScreen() {
           />
 
           <Picker.Item
-            label="Vrac"
-            value="vrac"
+            label="Français"
+            value="Français"
           />
 
           <Picker.Item
-            label="Conditionné"
-            value="conditionné"
+            label="Anglais"
+            value="Anglais"
+          />
+
+          <Picker.Item
+            label="Arabe"
+            value="Arabe"
+          />
+
+          <Picker.Item
+            label="Italien"
+            value="Italien"
+          />
+
+          <Picker.Item
+            label="Espagnol"
+            value="Espagnol"
           />
         </Picker>
       </View>
 
       {/* =================================================
-          SECTION VRAC
+          PROFILE
       ================================================= */}
-      {typeCommande === "vrac" && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Informations commande en vrac
-          </Text>
+      <Text style={styles.label}>
+        Profile
+      </Text>
 
-          <Text style={styles.label}>Qualité / Grade</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Qualité / Grade"
-            value={qualiteGrade}
-            onChangeText={setQualiteGrade}
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={profile}
+          onValueChange={handleProfileChange}
+        >
+          <Picker.Item
+            label="Sélectionner un profil"
+            value=""
           />
 
-          <Text style={styles.label}>
-            Volume estimé
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Volume estimé"
-            value={volumeEstime}
-            onChangeText={setVolumeEstime}
-            keyboardType="numeric"
+          <Picker.Item
+            label="Fournisseur"
+            value="fournisseur"
           />
 
-          <Text style={styles.label}>
-            Destination pays / port
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Destination"
-            value={destination}
-            onChangeText={setDestination}
+          <Picker.Item
+            label="Intermédiaire"
+            value="intermediaire"
           />
 
-          <Text style={styles.label}>Incoterm</Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={incoterm}
-              onValueChange={setIncoterm}
-            >
-              <Picker.Item label="Sélectionner" value="" />
-              <Picker.Item label="EXW" value="EXW" />
-              <Picker.Item label="FOB" value="FOB" />
-              <Picker.Item label="CFR" value="CFR" />
-              <Picker.Item label="CIF" value="CIF" />
-              <Picker.Item label="DAP" value="DAP" />
-              <Picker.Item label="DDP" value="DDP" />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Format livraison
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formatLivraison}
-              onValueChange={setFormatLivraison}
-            >
-              <Picker.Item label="Sélectionner" value="" />
-              <Picker.Item
-                label="Flexitank"
-                value="Flexitank"
-              />
-              <Picker.Item
-                label="IBC"
-                value="IBC"
-              />
-              <Picker.Item
-                label="Fûts"
-                value="Fûts"
-              />
-              <Picker.Item
-                label="Autre"
-                value="Autre"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Fréquence
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={frequenceCommande}
-              onValueChange={setFrequenceCommande}
-            >
-              <Picker.Item label="Sélectionner" value="" />
-              <Picker.Item
-                label="Commande unique"
-                value="unique"
-              />
-              <Picker.Item
-                label="Commandes régulières"
-                value="régulières"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Exigences spécifiques
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Bio, certifications, analyses/COA, échantillons..."
-            value={exigencesSpecifiques.join(", ")}
-            onChangeText={(text) =>
-              setExigencesSpecifiques(
-                text
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean)
-              )
-            }
+          <Picker.Item
+            label="Acheteur"
+            value="acheteur"
           />
 
-          <Text style={styles.label}>
-            Informations complémentaires
-          </Text>
-
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Informations complémentaires"
-            value={informationsComplementaires}
-            onChangeText={setInformationsComplementaires}
-            multiline
-            numberOfLines={4}
+          <Picker.Item
+            label="Institution"
+            value="institution"
           />
-        </View>
-      )}
+
+          <Picker.Item
+            label="Autre"
+            value="autre"
+          />
+        </Picker>
+      </View>
 
       {/* =================================================
-          SECTION CONDITIONNÉ
+          TYPE COMMANDE
+          VISIBLE SEULEMENT POUR :
+          - INTERMÉDIAIRE
+          - ACHETEUR
       ================================================= */}
-      {typeCommande === "conditionné" && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Informations commande conditionnée
-          </Text>
-
+      {(profile === "intermediaire" ||
+        profile === "acheteur") && (
+        <>
           <Text style={styles.label}>
-            Pays
+            Type de commande
           </Text>
 
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={paysConditionne}
-              onValueChange={setPaysConditionne}
+              selectedValue={typeCommande}
+              onValueChange={setTypeCommande}
             >
               <Picker.Item
-                label="Sélectionner un pays"
+                label="Sélectionner"
                 value=""
               />
 
-              {pays.map((item) => (
-                <Picker.Item
-                  key={item}
-                  label={item}
-                  value={item}
-                />
-              ))}
-            </Picker>
-          </View>
+              <Picker.Item
+                label="Vrac"
+                value="vrac"
+              />
 
-          <Text style={styles.label}>
-            Canal de distribution
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={canalDistribution}
-              onValueChange={setCanalDistribution}
-            >
-              <Picker.Item label="Sélectionner" value="" />
               <Picker.Item
-                label="Retail"
-                value="Retail"
-              />
-              <Picker.Item
-                label="HoReCa"
-                value="HoReCa"
-              />
-              <Picker.Item
-                label="E-commerce"
-                value="E-commerce"
-              />
-              <Picker.Item
-                label="Grossiste"
-                value="Grossiste"
+                label="Conditionné"
+                value="conditionné"
               />
             </Picker>
           </View>
-
-          <Text style={styles.label}>
-            Volumes estimés
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Quantité par mois ou par an"
-            value={volumesEstimes}
-            onChangeText={setVolumesEstimes}
-          />
-
-          <Text style={styles.label}>
-            Formats souhaités
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formatsSouhaites}
-              onValueChange={setFormatsSouhaites}
-            >
-              <Picker.Item label="Sélectionner" value="" />
-              <Picker.Item
-                label="250 ml"
-                value="250 ml"
-              />
-              <Picker.Item
-                label="500 ml"
-                value="500 ml"
-              />
-              <Picker.Item
-                label="750 ml"
-                value="750 ml"
-              />
-              <Picker.Item
-                label="1 L"
-                value="1 L"
-              />
-              <Picker.Item
-                label="Autre"
-                value="Autre"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Type de marque
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={typeMarque}
-              onValueChange={setTypeMarque}
-            >
-              <Picker.Item label="Sélectionner" value="" />
-              <Picker.Item
-                label="Marque OLIVED"
-                value="Marque OLIVED"
-              />
-              <Picker.Item
-                label="Private Label"
-                value="Private Label"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Certifications requises
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Ex : BIO, ISO, IFS..."
-            value={certificationsRequises.join(", ")}
-            onChangeText={(text) =>
-              setCertificationsRequises(
-                text
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean)
-              )
-            }
-          />
-
-          <Text style={styles.label}>
-            Nom entreprise
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Nom de l'entreprise"
-            value={nomEntreprise}
-            onChangeText={setNomEntreprise}
-          />
-
-          <Text style={styles.label}>
-            Site web
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="https://..."
-            value={siteWeb}
-            onChangeText={setSiteWeb}
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.label}>
-            Contact professionnel
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email / téléphone"
-            value={contactProfessionnel}
-            onChangeText={setContactProfessionnel}
-          />
-        </View>
+        </>
       )}
 
-      
+      {/* =================================================
+          SECTION VRAC
+          VISIBLE SI TYPE = VRAC
+      ================================================= */}
+      {typeCommande === "vrac" &&
+        (profile === "intermediaire" ||
+          profile === "acheteur") && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              Informations commande en vrac
+            </Text>
+
+            {/* QUALITE */}
+            <Text style={styles.label}>
+              Qualité / Grade
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Qualité / Grade"
+              value={qualiteGrade}
+              onChangeText={setQualiteGrade}
+            />
+
+            {/* VOLUME */}
+            <Text style={styles.label}>
+              Volume estimé
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Volume estimé"
+              value={volumeEstime}
+              onChangeText={setVolumeEstime}
+              keyboardType="numeric"
+            />
+
+            {/* DESTINATION */}
+            <Text style={styles.label}>
+              Destination pays / port
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Destination"
+              value={destination}
+              onChangeText={setDestination}
+            />
+
+            {/* INCOTERM */}
+            <Text style={styles.label}>
+              Incoterm
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={incoterm}
+                onValueChange={setIncoterm}
+              >
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="EXW"
+                  value="EXW"
+                />
+
+                <Picker.Item
+                  label="FOB"
+                  value="FOB"
+                />
+
+                <Picker.Item
+                  label="CFR"
+                  value="CFR"
+                />
+
+                <Picker.Item
+                  label="CIF"
+                  value="CIF"
+                />
+
+                <Picker.Item
+                  label="DAP"
+                  value="DAP"
+                />
+
+                <Picker.Item
+                  label="DDP"
+                  value="DDP"
+                />
+              </Picker>
+            </View>
+
+            {/* FORMAT LIVRAISON */}
+            <Text style={styles.label}>
+              Format livraison
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formatLivraison}
+                onValueChange={setFormatLivraison}
+              >
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="Flexitank"
+                  value="Flexitank"
+                />
+
+                <Picker.Item
+                  label="IBC"
+                  value="IBC"
+                />
+
+                <Picker.Item
+                  label="Camion-citerne"
+                  value="Camion-citerne"
+                />
+
+                <Picker.Item
+                  label="Fûts"
+                  value="Fûts"
+                />
+
+                <Picker.Item
+                  label="Autre"
+                  value="Autre"
+                />
+              </Picker>
+            </View>
+
+            {/* FREQUENCE */}
+            <Text style={styles.label}>
+              Fréquence
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={frequenceCommande}
+                onValueChange={setFrequenceCommande}
+              >
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="Commande unique"
+                  value="unique"
+                />
+
+                <Picker.Item
+                  label="Commandes régulières"
+                  value="régulières"
+                />
+              </Picker>
+            </View>
+
+            {/* EXIGENCES */}
+            <Text style={styles.label}>
+              Exigences spécifiques
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Bio, certifications, analyses/COA, échantillons..."
+              value={exigencesSpecifiques.join(", ")}
+              onChangeText={(text) =>
+                setExigencesSpecifiques(
+                  text
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                )
+              }
+            />
+
+            {/* INFORMATIONS */}
+            <Text style={styles.label}>
+              Informations complémentaires
+            </Text>
+
+            <TextInput
+              style={[
+                styles.input,
+                styles.textArea,
+              ]}
+              placeholder="Informations complémentaires"
+              value={informationsComplementaires}
+              onChangeText={
+                setInformationsComplementaires
+              }
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        )}
+
+      {/* =================================================
+          SECTION CONDITIONNÉ
+          VISIBLE SI TYPE = CONDITIONNÉ
+      ================================================= */}
+      {typeCommande === "conditionné" &&
+        (profile === "intermediaire" ||
+          profile === "acheteur") && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              Informations commande conditionnée
+            </Text>
+
+            {/* PAYS */}
+            <Text style={styles.label}>
+              Pays
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={paysConditionne}
+                onValueChange={setPaysConditionne}
+              >
+                <Picker.Item
+                  label="Sélectionner un pays"
+                  value=""
+                />
+
+                {pays.map((item) => (
+                  <Picker.Item
+                    key={item}
+                    label={item}
+                    value={item}
+                  />
+                ))}
+              </Picker>
+            </View>
+
+            {/* CANAL */}
+            <Text style={styles.label}>
+              Canal de distribution
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={canalDistribution}
+                onValueChange={setCanalDistribution}
+              >
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="Retail"
+                  value="Retail"
+                />
+
+                <Picker.Item
+                  label="HoReCa"
+                  value="HoReCa"
+                />
+
+                <Picker.Item
+                  label="E-commerce"
+                  value="E-commerce"
+                />
+
+                <Picker.Item
+                  label="Grossiste"
+                  value="Grossiste"
+                />
+              </Picker>
+            </View>
+
+            {/* VOLUMES */}
+            <Text style={styles.label}>
+              Volumes estimés
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Quantité par mois ou par an"
+              value={volumesEstimes}
+              onChangeText={setVolumesEstimes}
+            />
+
+ {/* =====================================================
+    TYPE D'EMBALLAGE - CHOIX MULTIPLE
+===================================================== */}
+
+<Text style={styles.label}>
+  Type d'emballage
+</Text>
+
+{/* =========================
+    TIN
+========================= */}
+
+<TouchableOpacity
+  style={styles.checkboxContainer}
+  onPress={() => {
+    const type = "Tin";
+
+    if (emballagesSelectionnes.includes(type)) {
+      setEmballagesSelectionnes(
+        emballagesSelectionnes.filter((item) => item !== type)
+      );
+
+      setFormatsEmballage((prev) => {
+        const updated = { ...prev };
+        delete updated[type];
+        return updated;
+      });
+    } else {
+      setEmballagesSelectionnes([
+        ...emballagesSelectionnes,
+        type,
+      ]);
+    }
+  }}
+>
+  <Text style={styles.checkbox}>
+    {emballagesSelectionnes.includes("Tin") ? "☑" : "☐"}
+  </Text>
+
+  <Text style={styles.checkboxLabel}>Tin</Text>
+</TouchableOpacity>
+
+{/* =========================
+    PET
+========================= */}
+
+<TouchableOpacity
+  style={styles.checkboxContainer}
+  onPress={() => {
+    const type = "PET";
+
+    if (emballagesSelectionnes.includes(type)) {
+      setEmballagesSelectionnes(
+        emballagesSelectionnes.filter((item) => item !== type)
+      );
+
+      setFormatsEmballage((prev) => {
+        const updated = { ...prev };
+        delete updated[type];
+        return updated;
+      });
+    } else {
+      setEmballagesSelectionnes([
+        ...emballagesSelectionnes,
+        type,
+      ]);
+    }
+  }}
+>
+  <Text style={styles.checkbox}>
+    {emballagesSelectionnes.includes("PET") ? "☑" : "☐"}
+  </Text>
+
+  <Text style={styles.checkboxLabel}>PET</Text>
+</TouchableOpacity>
+
+
+
+{/* =========================
+    GLASS
+========================= */}
+
+<TouchableOpacity
+  style={styles.checkboxContainer}
+  onPress={() => {
+    const type = "Glass";
+
+    if (emballagesSelectionnes.includes(type)) {
+      setEmballagesSelectionnes(
+        emballagesSelectionnes.filter((item) => item !== type)
+      );
+
+      setFormatsEmballage((prev) => {
+        const updated = { ...prev };
+        delete updated[type];
+        return updated;
+      });
+    } else {
+      setEmballagesSelectionnes([
+        ...emballagesSelectionnes,
+        type,
+      ]);
+    }
+  }}
+>
+  <Text style={styles.checkbox}>
+    {emballagesSelectionnes.includes("Glass") ? "☑" : "☐"}
+  </Text>
+
+  <Text style={styles.checkboxLabel}>Glass</Text>
+</TouchableOpacity>
+
+{/* =========================
+    AUTRE
+========================= */}
+
+<TouchableOpacity
+  style={styles.checkboxContainer}
+  onPress={() => {
+    const type = "Autre";
+
+    if (emballagesSelectionnes.includes(type)) {
+      setEmballagesSelectionnes(
+        emballagesSelectionnes.filter((item) => item !== type)
+      );
+
+      setAutreEmballage("");
+    } else {
+      setEmballagesSelectionnes([
+        ...emballagesSelectionnes,
+        type,
+      ]);
+    }
+  }}
+>
+  <Text style={styles.checkbox}>
+    {emballagesSelectionnes.includes("Autre") ? "☑" : "☐"}
+  </Text>
+
+  <Text style={styles.checkboxLabel}>Autre</Text>
+</TouchableOpacity>
+
+{/* =========================
+    CHAMP AUTRE EMBALLAGE
+========================= */}
+
+{emballagesSelectionnes.includes("Autre") && (
+  <>
+    <Text style={styles.label}>
+      Préciser l'emballage
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le type d'emballage"
+      value={autreEmballage}
+      onChangeText={setAutreEmballage}
+    />
+  </>
+)}
+
+{/* =====================================================
+    FORMATS SELON TYPE D'EMBALLAGE
+===================================================== */}
+
+{emballagesSelectionnes.map((type) => {
+
+  if (type === "Autre") {
+    return null;
+  }
+
+  return (
+    <View key={type} style={{ marginTop: 15 }}>
+
+      {/* TITRE */}
+
+      <Text style={styles.label}>
+        Formats souhaités - {type}
+      </Text>
+
+      {/* =================================================
+          CLASS : MARASCA ET DORICA
+      ================================================= */}
+
+      {type === "Glass" ? (
+
+        <>
+
+          {/* =========================
+              MARASCA
+          ========================= */}
+
+          <Text style={styles.label}>
+            MARASCA
+          </Text>
+
+          {["250 ml", "500 ml", "750 ml" , "1 L"].map((format) => {
+
+            const selected =
+              formatsEmballage[type]?.MARASCA?.includes(format) || false;
+
+            return (
+              <TouchableOpacity
+                key={`MARASCA-${format}`}
+                style={styles.checkboxContainer}
+                onPress={() => {
+
+                  setFormatsEmballage((prev) => {
+
+                    const currentFormats =
+                      prev.Glass?.MARASCA || [];
+
+                    const updatedFormats = currentFormats.includes(format)
+                      ? currentFormats.filter((item) => item !== format)
+                      : [...currentFormats, format];
+
+                    return {
+                      ...prev,
+
+                      Glass: {
+                        ...(prev.Glass || {}),
+
+                        MARASCA: updatedFormats,
+                      },
+                    };
+                  });
+
+                }}
+              >
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
+                </Text>
+
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+
+              </TouchableOpacity>
+            );
+
+          })}
+
+          {/* =========================
+              DORICA
+          ========================= */}
+
+          <Text style={[styles.label, { marginTop: 15 }]}>
+            DORICA
+          </Text>
+
+          {["250 ml", "500 ml", "750 ml" , "1 L"].map((format) => {
+
+            const selected =
+              formatsEmballage[type]?.DORICA?.includes(format) || false;
+
+            return (
+              <TouchableOpacity
+                key={`DORICA-${format}`}
+                style={styles.checkboxContainer}
+                onPress={() => {
+
+                  setFormatsEmballage((prev) => {
+
+                    const currentFormats =
+                      prev.Glass?.DORICA || [];
+
+                    const updatedFormats = currentFormats.includes(format)
+                      ? currentFormats.filter((item) => item !== format)
+                      : [...currentFormats, format];
+
+                    return {
+                      ...prev,
+
+                      Glass: {
+                        ...(prev.Glass || {}),
+
+                        DORICA: updatedFormats,
+                      },
+                    };
+                  });
+
+                }}
+              >
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
+                </Text>
+
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+
+              </TouchableOpacity>
+            );
+
+          })}
+
+        </>
+
+      ) : (
+
+        /* =================================================
+            TIN, PET ET GLASS
+        ================================================= */
+
+        <>
+
+          {(type === "Tin"
+            ? ["250 ml", "500 ml", "1 L", "2 L", "3 L", "4 L", "5 L", "16 L", "20 L"]
+            : type === "PET"
+            ? ["250 ml", "500 ml", "1 L", "3 L", "5 L"]
+            : ["250 ml", "500 ml", "750 ml", "1 L"]
+          ).map((format) => {
+
+            const selected =
+              formatsEmballage[type]?.includes(format) || false;
+
+            return (
+
+              <TouchableOpacity
+                key={`${type}-${format}`}
+                style={styles.checkboxContainer}
+                onPress={() => {
+
+                  setFormatsEmballage((prev) => {
+
+                    const currentFormats = prev[type] || [];
+
+                    const updatedFormats = currentFormats.includes(format)
+                      ? currentFormats.filter((item) => item !== format)
+                      : [...currentFormats, format];
+
+                    return {
+                      ...prev,
+                      [type]: updatedFormats,
+                    };
+
+                  });
+
+                }}
+              >
+
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
+                </Text>
+
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+
+              </TouchableOpacity>
+
+            );
+
+          })}
+
+        </>
+
+      )}
+
+    </View>
+  );
+
+})}
+
+
+{/* QUANTITÉ DE LA COMMANDE */}
+<Text style={styles.label}>
+  Quantité de la commande
+</Text>
+
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={quantiteCommande}
+    onValueChange={(value) => {
+      setQuantiteCommande(value);
+    }}
+  >
+    <Picker.Item label="Sélectionner" value="" />
+    <Picker.Item
+      label="Nombre de palettes"
+      value="palettes"
+    />
+    <Picker.Item
+      label="Conteneur 20 pieds"
+      value="conteneur_20"
+    />
+    <Picker.Item
+      label="Conteneur 40 pieds"
+      value="conteneur_40"
+    />
+  </Picker>
+</View>
+
+{/* NOMBRE DE PALETTES */}
+{quantiteCommande === "palettes" && (
+  <TextInput
+    style={styles.input}
+    placeholder="Nombre de palettes"
+    value={nombrePalettes}
+    onChangeText={setNombrePalettes}
+    keyboardType="numeric"
+  />
+)}
+
+            {/* CERTIFICATIONS */}
+            <Text style={styles.label}>
+              Certifications requises
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Ex : BIO, ISO, IFS..."
+              value={certificationsRequises.join(", ")}
+              onChangeText={(text) =>
+                setCertificationsRequises(
+                  text
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                )
+              }
+            />
+
+            {/* NOM ENTREPRISE */}
+            <Text style={styles.label}>
+              Nom entreprise
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nom de l'entreprise"
+              value={nomEntreprise}
+              onChangeText={setNomEntreprise}
+            />
+
+            {/* SITE WEB */}
+            <Text style={styles.label}>
+              Site web
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="https://..."
+              value={siteWeb}
+              onChangeText={setSiteWeb}
+              autoCapitalize="none"
+            />
+
+            {/* CONTACT */}
+            <Text style={styles.label}>
+              Contact professionnel
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email / téléphone"
+              value={contactProfessionnel}
+              onChangeText={setContactProfessionnel}
+            />
+
+            {/* =================================================
+                TYPE DE MARQUE
+            ================================================= */}
+            <Text style={styles.label}>
+              Type de marque
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={typeMarque}
+                onValueChange={setTypeMarque}
+              >
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="Marque ORZETA"
+                  value="Marque ORZETA"
+                />
+
+                <Picker.Item
+                  label="Private Label"
+                  value="Private Label"
+                />
+
+                <Picker.Item
+                  label="Création de nouvelle marque"
+                  value="Création de nouvelle marque"
+                />
+              </Picker>
+            </View>
+
+            {/* =================================================
+                NOUVELLE MARQUE
+            ================================================= */}
+            {typeMarque ===
+              "Création de nouvelle marque" && (
+              <View style={styles.newBrandSection}>
+                <Text style={styles.newBrandTitle}>
+                  Informations nouvelle marque
+                </Text>
+
+                {/* MARCHÉ CIBLE */}
+                <Text style={styles.label}>
+                  Marché cible
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex : Tunisie, France, Italie..."
+                  value={marcheCible}
+                  onChangeText={setMarcheCible}
+                />
+
+                {/* QUANTITÉ PRÉVUE */}
+                <Text style={styles.label}>
+                  Quantité prévue
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex : 5000 litres / an"
+                  value={quantitePrevue}
+                  onChangeText={setQuantitePrevue}
+                  keyboardType="numeric"
+                />
+
+                {/* PACKAGING */}
+                <Text style={styles.label}>
+                  Packaging
+                </Text>
+
+
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={typeEmballage}
+    onValueChange={(value) => {
+      setTypeEmballage(value);
+      setFormatsSouhaites("");
+    }}
+  >
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="Tin"
+      value="Tin"
+    />
+
+    <Picker.Item
+      label="PET"
+      value="PET"
+    />
+
+    <Picker.Item
+      label="Glass"
+      value="Glass"
+    />
+  </Picker>
+</View>
+
+{/* =========================
+    FORMAT SELON EMBALLAGE
+========================= */}
+
+{typeEmballage !== "" && (
+  <>
+    <Text style={styles.label}>
+      Formats souhaités
+    </Text>
+
+    <View style={styles.pickerContainer}>
+      <Picker
+        selectedValue={formatsSouhaites}
+        onValueChange={setFormatsSouhaites}
+      >
+        <Picker.Item
+          label="Sélectionner"
+          value=""
+        />
+
+        {/* =====================
+            TIN
+        ===================== */}
+        {typeEmballage === "Tin" && (
+          <>
+            <Picker.Item label="250 ml" value="250 ml" />
+            <Picker.Item label="500 ml" value="500 ml" />
+            <Picker.Item label="1 L" value="1 L" />
+            <Picker.Item label="2 L" value="2 L" />
+            <Picker.Item label="3 L" value="3 L" />
+            <Picker.Item label="4 L" value="4 L" />
+            <Picker.Item label="5 L" value="5 L" />
+            <Picker.Item label="16 L" value="16 L" />
+            <Picker.Item label="20 L" value="20 L" />
+          </>
+        )}
+
+        {/* =====================
+            PET
+        ===================== */}
+        {typeEmballage === "PET" && (
+          <>
+            <Picker.Item label="250 ml" value="250 ml" />
+            <Picker.Item label="500 ml" value="500 ml" />
+            <Picker.Item label="1 L" value="1 L" />
+            <Picker.Item label="3 L" value="3 L" />
+            <Picker.Item label="5 L" value="5 L" />
+          </>
+        )}
+
+        {/* =====================
+            GLASS
+        ===================== */}
+        {typeEmballage === "Glass" && (
+          <>
+            <Picker.Item label="250 ml" value="250 ml" />
+            <Picker.Item label="500 ml" value="500 ml" />
+            <Picker.Item label="750 ml" value="750 ml" />
+            <Picker.Item label="1 L" value="1 L" />
+          </>
+        )}
+      </Picker>
+    </View>
+  </>
+)}
+              </View>
+            )}
+          </View>
+        )}
+
       {/* =================================================
           BOUTON AJOUTER
       ================================================= */}
@@ -921,11 +1709,7 @@ export default function HomeScreen() {
         </Text>
       </TouchableOpacity>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Backend : {API_URL}
-        </Text>
-      </View>
+      
     </ScrollView>
   );
 }
@@ -1033,6 +1817,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  newBrandSection: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EE672A",
+  },
+
+  newBrandTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+
   button: {
     backgroundColor: "#EE672A",
     paddingVertical: 15,
@@ -1045,7 +1844,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#555",
     paddingVertical: 15,
     borderRadius: 8,
-    marginTop: 25,
+    marginTop: 15,
     alignItems: "center",
   },
 
@@ -1063,5 +1862,21 @@ const styles = StyleSheet.create({
   footerText: {
     color: "#777",
     fontSize: 12,
+  },
+
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  
+  checkbox: {
+    fontSize: 22,
+    marginRight: 10,
+  },
+  
+  checkboxLabel: {
+    fontSize: 16,
+    color: "#333",
   },
 });

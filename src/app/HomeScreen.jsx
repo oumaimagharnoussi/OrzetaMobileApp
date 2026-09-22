@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -8,441 +9,342 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
+
 import { Picker } from "@react-native-picker/picker";
 
-// ==================================================
-// URL BACKEND NODE.JS
-// TEST SUR LE PC
-// ==================================================
-const API_URL = "http://192.168.1.146:5000";
-const testerConnexion = async () => {
-  console.log("=================================");
-  console.log("TEST CONNEXION BACKEND");
-  console.log("=================================");
-  console.log("URL :", `${API_URL}/`);
+// =====================================================
+// URL BACKEND
+// =====================================================
 
-  try {
-    const response = await fetch(`${API_URL}/`);
+const API_URL =
+  "http://192.168.1.146:5000";
 
-    console.log("STATUS HTTP :", response.status);
-
-    const data = await response.json();
-
-    console.log("RÉPONSE NODE.JS :", data);
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Le serveur a retourné une erreur."
-      );
-    }
-
-    Alert.alert(
-      "Connexion OK",
-      "React Native communique correctement avec Node.js."
-    );
-
-  } catch (error) {
-    console.error("ERREUR TEST BACKEND :", error);
-
-    Alert.alert(
-      "Connexion impossible",
-      `Impossible de contacter Node.js.\n\n${error.message}\n\nURL : ${API_URL}`
-    );
-  }
-};
-// ==================================================
+// =====================================================
 // LISTE DES PAYS
-// ==================================================
+// =====================================================
 
 const pays = [
-  { name: "Tunisie", dialCode: "+216" },
-  { name: "France", dialCode: "+33" },
-  { name: "Algérie", dialCode: "+213" },
-  { name: "Maroc", dialCode: "+212" },
-  { name: "Italie", dialCode: "+39" },
-  { name: "Allemagne", dialCode: "+49" },
-  { name: "Espagne", dialCode: "+34" },
-  { name: "Belgique", dialCode: "+32" },
-  { name: "Suisse", dialCode: "+41" },
-  { name: "Royaume-Uni", dialCode: "+44" },
-  { name: "États-Unis", dialCode: "+1" },
-  { name: "Canada", dialCode: "+1" },
-  { name: "Arabie Saoudite", dialCode: "+966" },
-  { name: "Émirats Arabes Unis", dialCode: "+971" },
-  { name: "Égypte", dialCode: "+20" },
+  {
+    name: "Tunisie",
+    dialCode: "+216",
+  },
+  {
+    name: "France",
+    dialCode: "+33",
+  },
+  {
+    name: "Algérie",
+    dialCode: "+213",
+  },
+  {
+    name: "Maroc",
+    dialCode: "+212",
+  },
+  {
+    name: "Italie",
+    dialCode: "+39",
+  },
+  {
+    name: "Allemagne",
+    dialCode: "+49",
+  },
+  {
+    name: "Espagne",
+    dialCode: "+34",
+  },
+  {
+    name: "Belgique",
+    dialCode: "+32",
+  },
+  {
+    name: "Suisse",
+    dialCode: "+41",
+  },
+  {
+    name: "Royaume-Uni",
+    dialCode: "+44",
+  },
+  {
+    name: "États-Unis",
+    dialCode: "+1",
+  },
+  {
+    name: "Canada",
+    dialCode: "+1",
+  },
+  {
+    name: "Arabie Saoudite",
+    dialCode: "+966",
+  },
+  {
+    name: "Émirats Arabes Unis",
+    dialCode: "+971",
+  },
+  {
+    name: "Qatar",
+    dialCode: "+974",
+  },
+  {
+    name: "Koweït",
+    dialCode: "+965",
+  },
+  {
+    name: "Égypte",
+    dialCode: "+20",
+  },
+  {
+    name: "Autre",
+    dialCode: "",
+  },
 ];
 
+// =====================================================
+// COMPOSANT
+// =====================================================
+
 export default function HomeScreen() {
-  // ==================================================
-  // INFORMATIONS PRINCIPALES
-  // ==================================================
 
-  const [nom, setNom] = useState("");
-  const [prenom, setPrenom] = useState("");
-  const [telephone, setTelephone] = useState("");
-  const [indicatif, setIndicatif] = useState("");
-  const [email, setEmail] = useState("");
-  const [age, setAge] = useState("");
-  const [sexe, setSexe] = useState("");
-  const [origine, setOrigine] = useState("");
-  const [societe, setSociete] = useState("");
-  const [adresseSociete, setAdresseSociete] = useState("");
-  const [fonction, setFonction] = useState("");
-  const [langueCommunication, setLangueCommunication] = useState("");
-  const [typeCommande, setTypeCommande] = useState("");
+  // ===================================================
+  // INFORMATIONS GÉNÉRALES
+  // ===================================================
 
-  // ==================================================
+  const [nom, setNom] =
+    useState("");
+
+  const [prenom, setPrenom] =
+    useState("");
+
+  const [telephone, setTelephone] =
+    useState("");
+
+  const [indicatif, setIndicatif] =
+    useState("+216");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [age, setAge] =
+    useState("");
+
+ // const [sexe, setSexe] =
+   // useState("");
+
+  const [origine, setOrigine] =
+    useState("");
+
+  const [societe, setSociete] =
+    useState("");
+
+  const [adresseSociete, setAdresseSociete] =
+    useState("");
+
+  const [fonction, setFonction] =
+    useState("");
+
+  const [langueCommunication, setLangueCommunication] =
+    useState("");
+
+  // ===================================================
+  // PROFILE
+  // ===================================================
+
+  const [profile, setProfile] =
+    useState("");
+
+  // ===================================================
+  // TYPE COMMANDE
+  // ===================================================
+
+  const [typeCommande, setTypeCommande] =
+    useState("");
+
+  // ===================================================
   // VRAC
-  // ==================================================
+  // ===================================================
 
-  const [qualiteGrade, setQualiteGrade] = useState("");
-  const [volumeEstime, setVolumeEstime] = useState("");
-  const [destination, setDestination] = useState("");
-  const [incoterm, setIncoterm] = useState("");
-  const [formatLivraison, setFormatLivraison] = useState("");
-  const [frequenceCommande, setFrequenceCommande] = useState("");
-  const [exigencesSpecifiques, setExigencesSpecifiques] = useState([]);
+  const [qualiteGrade, setQualiteGrade] =
+    useState("");
+
+  const [volumeEstime, setVolumeEstime] =
+    useState("");
+
+  const [destination, setDestination] =
+    useState("");
+
+  const [incoterm, setIncoterm] =
+    useState("");
+
+  const [formatLivraison, setFormatLivraison] =
+    useState("");
+
+  const [frequenceCommande, setFrequenceCommande] =
+    useState("");
+
+  const [exigencesSpecifiques, setExigencesSpecifiques] =
+    useState([]);
+
   const [informationsComplementaires, setInformationsComplementaires] =
     useState("");
 
-  // ==================================================
+  // ===================================================
   // CONDITIONNÉ
-  // ==================================================
+  // ===================================================
 
-  const [paysConditionne, setPaysConditionne] = useState("");
-  const [canalDistribution, setCanalDistribution] = useState("");
-  const [volumesEstimes, setVolumesEstimes] = useState("");
-  const [formatsSouhaites, setFormatsSouhaites] = useState("");
-  const [typeMarque, setTypeMarque] = useState("");
-  const [certificationsRequises, setCertificationsRequises] = useState([]);
-  const [nomEntreprise, setNomEntreprise] = useState("");
-  const [siteWeb, setSiteWeb] = useState("");
-  const [contactProfessionnel, setContactProfessionnel] = useState("");
+  const [paysConditionne, setPaysConditionne] =
+    useState("");
 
-  // ==================================================
-  // TEST CONNEXION BACKEND
-  // ==================================================
+  const [canalDistribution, setCanalDistribution] =
+    useState("");
 
-  const testerConnexion = async () => {
-    console.log("=================================");
-    console.log("TEST CONNEXION BACKEND");
-    console.log("=================================");
-    console.log("URL :", `${API_URL}/`);
-  
-    
+  const [volumesEstimes, setVolumesEstimes] =
+    useState("");
+
+  const [typeEmballage, setTypeEmballage] =
+    useState("");
+
+  const [formatsSouhaites, setFormatsSouhaites] =
+    useState("");
+
+  const [typeMarque, setTypeMarque] =
+    useState("");
+
+  const [certificationsRequises, setCertificationsRequises] =
+    useState([]);
+
+  const [nomEntreprise, setNomEntreprise] =
+    useState("");
+
+  const [siteWeb, setSiteWeb] =
+    useState("");
+
+  const [contactProfessionnel, setContactProfessionnel] =
+    useState("");
+
+  // ===================================================
+  // NOUVELLE MARQUE
+  // ===================================================
+
+  const [marcheCible, setMarcheCible] =
+    useState("");
+
+  const [quantitePrevue, setQuantitePrevue] =
+    useState("");
+
+  const [packaging, setPackaging] =
+    useState("");
+
+  // ===================================================
+  // CHANGEMENT PAYS
+  // ===================================================
+
+  const handlePaysChange = (value) => {
+
+    setOrigine(value);
+
+    const country =
+      pays.find(
+        (item) =>
+          item.name === value
+      );
+
+    if (country) {
+
+      setIndicatif(
+        country.dialCode
+      );
+
+    } else {
+
+      setIndicatif("");
+    }
   };
 
-  // ==================================================
-  // AJOUTER VISITEUR
-  // ==================================================
+  // ===================================================
+  // RESET COMMANDE
+  // ===================================================
 
-  const handleAjouter = async () => {
-    console.log("");
-    console.log("=================================");
-    console.log("DÉBUT AJOUT VISITEUR");
-    console.log("=================================");
+  const resetCommande = () => {
 
-    // ==================================================
-    // VALIDATION CHAMPS OBLIGATOIRES
-    // ==================================================
+    // VRAC
 
-    if (
-      !nom.trim() ||
-      !telephone.trim() ||
-      !email.trim() ||
-      !sexe ||
-      !origine ||
-      !societe.trim() ||
-      !typeCommande
-    ) {
-      Alert.alert(
-        "Champs obligatoires",
-        "Veuillez remplir tous les champs obligatoires (*)."
-      );
-      return;
-    }
+    setQualiteGrade("");
+    setVolumeEstime("");
+    setDestination("");
+    setIncoterm("");
+    setFormatLivraison("");
+    setFrequenceCommande("");
+    setExigencesSpecifiques([]);
+    setInformationsComplementaires("");
 
-    // ==================================================
-    // VALIDATION EMAIL
-    // ==================================================
+    // CONDITIONNÉ
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setPaysConditionne("");
+    setCanalDistribution("");
+    setVolumesEstimes("");
+    setTypeEmballage("");
+    setFormatsSouhaites("");
+    setTypeMarque("");
+    setCertificationsRequises([]);
+    setNomEntreprise("");
+    setSiteWeb("");
+    setContactProfessionnel("");
 
-    if (!emailRegex.test(email.trim())) {
-      Alert.alert(
-        "Email invalide",
-        "Veuillez saisir une adresse email valide."
-      );
-      return;
-    }
+    // NOUVELLE MARQUE
 
-    // ==================================================
-    // RÉCUPÉRATION PAYS
-    // ==================================================
+    setMarcheCible("");
+    setQuantitePrevue("");
+    setPackaging("");
+  };
 
-    const country = pays.find(
-      (item) => item.name === origine
-    );
+  // ===================================================
+  // CHANGEMENT PROFILE
+  // ===================================================
 
-    if (!country) {
-      Alert.alert(
-        "Pays",
-        "Veuillez sélectionner un pays."
-      );
-      return;
-    }
+  const handleProfileChange = (value) => {
 
-    // ==================================================
-    // VALIDATION TÉLÉPHONE
-    // ==================================================
-
-    const telephoneDigits = telephone.replace(/\D/g, "");
-
-    if (telephoneDigits.length < 6) {
-      Alert.alert(
-        "Téléphone invalide",
-        "Veuillez saisir un numéro de téléphone valide."
-      );
-      return;
-    }
-
-    // ==================================================
-    // VALIDATION VOLUME VRAC
-    // ==================================================
+    setProfile(value);
 
     if (
-      typeCommande === "vrac" &&
-      volumeEstime !== "" &&
-      isNaN(Number(volumeEstime))
+      value !== "intermediaire" &&
+      value !== "acheteur"
     ) {
-      Alert.alert(
-        "Volume invalide",
-        "Veuillez saisir un volume numérique."
-      );
-      return;
-    }
 
-    // ==================================================
-    // OBJET À ENVOYER AU BACKEND
-    // ==================================================
-
-    const visiteur = {
-      // -----------------------------
-      // INFORMATIONS PRINCIPALES
-      // -----------------------------
-
-      nom: nom.trim(),
-
-      // prenom et age ne sont pas envoyés
-      // car ils ne sont pas encore dans la table MySQL actuelle.
-
-      email: email.trim(),
-
-      sexe: sexe,
-
-      origine: origine,
-
-      indicatif: country.dialCode,
-
-      telephone: telephone.trim(),
-
-      societe: societe.trim(),
-
-      adresse_societe:
-        adresseSociete.trim() || null,
-
-      type_commande: typeCommande,
-
-      fonction:
-        fonction.trim() || null,
-
-      langue_communication:
-        langueCommunication || null,
-
-      // -----------------------------
-      // VRAC
-      // -----------------------------
-
-      qualite_grade:
-        typeCommande === "vrac"
-          ? qualiteGrade.trim() || null
-          : null,
-
-      volume_estime:
-        typeCommande === "vrac" &&
-        volumeEstime !== ""
-          ? Number(volumeEstime)
-          : null,
-
-      destination:
-        typeCommande === "vrac"
-          ? destination.trim() || null
-          : null,
-
-      incoterm:
-        typeCommande === "vrac"
-          ? incoterm || null
-          : null,
-
-      format_livraison:
-        typeCommande === "vrac"
-          ? formatLivraison || null
-          : null,
-
-      frequence_commande:
-        typeCommande === "vrac"
-          ? frequenceCommande || null
-          : null,
-
-      exigences_specifiques:
-        typeCommande === "vrac" &&
-        exigencesSpecifiques.length > 0
-          ? exigencesSpecifiques
-          : null,
-
-      informations_complementaires:
-        typeCommande === "vrac"
-          ? informationsComplementaires.trim() || null
-          : null,
-
-      // -----------------------------
-      // CONDITIONNÉ
-      // -----------------------------
-
-      pays_conditionne:
-        typeCommande === "conditionne"
-          ? paysConditionne.trim() || null
-          : null,
-
-      canal_distribution:
-        typeCommande === "conditionne"
-          ? canalDistribution || null
-          : null,
-
-      volumes_estimes:
-        typeCommande === "conditionne"
-          ? volumesEstimes.trim() || null
-          : null,
-
-      formats_souhaites:
-        typeCommande === "conditionne"
-          ? formatsSouhaites || null
-          : null,
-
-      type_marque:
-        typeCommande === "conditionne"
-          ? typeMarque || null
-          : null,
-
-      certifications_requises:
-        typeCommande === "conditionne" &&
-        certificationsRequises.length > 0
-          ? certificationsRequises
-          : null,
-
-      nom_entreprise:
-        typeCommande === "conditionne"
-          ? nomEntreprise.trim() || null
-          : null,
-
-      site_web:
-        typeCommande === "conditionne"
-          ? siteWeb.trim() || null
-          : null,
-
-      contact_professionnel:
-        typeCommande === "conditionne"
-          ? contactProfessionnel.trim() || null
-          : null,
-    };
-
-    // ==================================================
-    // AFFICHAGE DEBUG
-    // ==================================================
-
-    console.log("URL API :", `${API_URL}/api/visiteurs`);
-
-    console.log(
-      "DONNÉES ENVOYÉES :",
-      JSON.stringify(visiteur, null, 2)
-    );
-
-    console.log("=================================");
-
-    // ==================================================
-    // ENVOI AU BACKEND
-    // ==================================================
-
-    try {
-      console.log("ENVOI VERS NODE.JS...");
-
-      const response = await fetch(
-        `${API_URL}/api/visiteurs`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-
-          body: JSON.stringify(visiteur),
-        }
-      );
-
-      console.log(
-        "STATUS HTTP :",
-        response.status
-      );
-
-      const data = await response.json();
-
-      console.log(
-        "RÉPONSE NODE.JS :",
-        data
-      );
-
-      // ==================================================
-      // ERREUR SERVEUR
-      // ==================================================
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Erreur lors de l'ajout du visiteur."
-        );
-      }
-
-      // ==================================================
-      // SUCCÈS
-      // ==================================================
-
-      Alert.alert(
-        "Succès",
-        `Le visiteur ${nom} a été ajouté avec succès dans la base de données.`
-      );
-
-      // ==================================================
-      // RESET INFORMATIONS PRINCIPALES
-      // ==================================================
-
-      setNom("");
-      setPrenom("");
-      setTelephone("");
-      setIndicatif("");
-      setEmail("");
-      setAge("");
-      setSexe("");
-      setOrigine("");
-      setSociete("");
-      setAdresseSociete("");
-      setFonction("");
-      setLangueCommunication("");
       setTypeCommande("");
 
-      // ==================================================
-      // RESET VRAC
-      // ==================================================
+      resetCommande();
+    }
+  };
+
+  // ===================================================
+  // CHANGEMENT TYPE COMMANDE
+  // ===================================================
+
+  const handleTypeCommandeChange = (
+    value
+  ) => {
+
+    setTypeCommande(value);
+
+    if (value === "vrac") {
+
+      setPaysConditionne("");
+      setCanalDistribution("");
+      setVolumesEstimes("");
+      setTypeEmballage("");
+      setFormatsSouhaites("");
+      setTypeMarque("");
+      setCertificationsRequises([]);
+      setNomEntreprise("");
+      setSiteWeb("");
+      setContactProfessionnel("");
+      setMarcheCible("");
+      setQuantitePrevue("");
+      setPackaging("");
+    }
+
+    if (
+      value === "conditionné"
+    ) {
 
       setQualiteGrade("");
       setVolumeEstime("");
@@ -452,67 +354,512 @@ export default function HomeScreen() {
       setFrequenceCommande("");
       setExigencesSpecifiques([]);
       setInformationsComplementaires("");
-
-      // ==================================================
-      // RESET CONDITIONNÉ
-      // ==================================================
-
-      setPaysConditionne("");
-      setCanalDistribution("");
-      setVolumesEstimes("");
-      setFormatsSouhaites("");
-      setTypeMarque("");
-      setCertificationsRequises([]);
-      setNomEntreprise("");
-      setSiteWeb("");
-      setContactProfessionnel("");
-    } catch (error) {
-      console.error("");
-      console.error("=================================");
-      console.error("ERREUR CONNEXION API");
-      console.error("=================================");
-      console.error(error);
-      console.error("=================================");
-
-      Alert.alert(
-        "Erreur",
-        `Impossible de contacter le serveur Node.js.\n\n${error.message}\n\nAPI : ${API_URL}`
-      );
     }
   };
 
-  // ==================================================
+  // ===================================================
+  // TEST BACKEND
+  // ===================================================
+
+  const testerConnexion =
+    async () => {
+
+      try {
+
+        const response =
+          await fetch(
+            `${API_URL}/`
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          "TEST BACKEND :",
+          data
+        );
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.message ||
+            "Erreur serveur."
+          );
+        }
+
+        Alert.alert(
+          "Connexion réussie",
+          "React Native communique correctement avec Node.js."
+        );
+
+      } catch (error) {
+
+        console.error(
+          "ERREUR CONNEXION :",
+          error
+        );
+
+        Alert.alert(
+          "Backend inaccessible",
+          `${API_URL}\n\n${error.message}`
+        );
+      }
+    };
+
+  // ===================================================
+  // AJOUTER VISITEUR
+  // ===================================================
+
+  const handleAjouter =
+    async () => {
+
+      try {
+
+        console.log("");
+        console.log(
+          "================================="
+        );
+
+        console.log(
+          "DÉBUT AJOUT VISITEUR"
+        );
+
+        console.log(
+          "================================="
+        );
+
+        // =============================================
+        // OBJET VISITEUR
+        // =============================================
+
+        const visiteur = {
+
+          // -------------------------------------------
+          // INFORMATIONS GÉNÉRALES
+          // -------------------------------------------
+
+          nom:
+            nom.trim() ||
+            null,
+
+          prenom:
+            prenom.trim() ||
+            null,
+
+          email:
+            email.trim() ||
+            null,
+
+          age:
+            age.trim() !== ""
+              ? Number(age)
+              : null,
+
+         // sexe:
+           // sexe ||
+           // null,
+
+          origine:
+            origine ||
+            null,
+
+          indicatif:
+            indicatif ||
+            null,
+
+          telephone:
+            telephone.trim() ||
+            null,
+
+          societe:
+            societe.trim() ||
+            null,
+
+          adresse_societe:
+            adresseSociete.trim() ||
+            null,
+
+          fonction:
+            fonction.trim() ||
+            null,
+
+          langue_communication:
+            langueCommunication ||
+            null,
+
+          // -------------------------------------------
+          // PROFILE
+          // -------------------------------------------
+
+          profile:
+            profile ||
+            null,
+
+          // -------------------------------------------
+          // TYPE COMMANDE
+          // -------------------------------------------
+
+          type_commande:
+            (
+              profile === "intermediaire" ||
+              profile === "acheteur"
+            )
+              ? typeCommande ||
+                null
+              : null,
+
+          // -------------------------------------------
+          // VRAC
+          // -------------------------------------------
+
+          qualite_grade:
+            typeCommande === "vrac"
+              ? qualiteGrade.trim() ||
+                null
+              : null,
+
+          volume_estime:
+            typeCommande === "vrac" &&
+            volumeEstime.trim() !== ""
+              ? Number(
+                  volumeEstime
+                )
+              : null,
+
+          destination:
+            typeCommande === "vrac"
+              ? destination.trim() ||
+                null
+              : null,
+
+          incoterm:
+            typeCommande === "vrac"
+              ? incoterm ||
+                null
+              : null,
+
+          format_livraison:
+            typeCommande === "vrac"
+              ? formatLivraison ||
+                null
+              : null,
+
+          frequence_commande:
+            typeCommande === "vrac"
+              ? frequenceCommande ||
+                null
+              : null,
+
+          exigences_specifiques:
+            typeCommande === "vrac" &&
+            exigencesSpecifiques.length > 0
+              ? JSON.stringify(
+                  exigencesSpecifiques
+                )
+              : null,
+
+          informations_complementaires:
+            typeCommande === "vrac"
+              ? informationsComplementaires.trim() ||
+                null
+              : null,
+
+          // -------------------------------------------
+          // CONDITIONNÉ
+          // -------------------------------------------
+
+          pays_conditionne:
+            typeCommande ===
+            "conditionné"
+              ? paysConditionne ||
+                null
+              : null,
+
+          canal_distribution:
+            typeCommande ===
+            "conditionné"
+              ? canalDistribution ||
+                null
+              : null,
+
+          volumes_estimes:
+            typeCommande ===
+            "conditionné"
+              ? volumesEstimes.trim() ||
+                null
+              : null,
+
+          type_emballage:
+            typeCommande ===
+            "conditionné"
+              ? typeEmballage ||
+                null
+              : null,
+
+          formats_souhaites:
+            typeCommande ===
+            "conditionné"
+              ? formatsSouhaites ||
+                null
+              : null,
+
+          type_marque:
+            typeCommande ===
+            "conditionné"
+              ? typeMarque ||
+                null
+              : null,
+
+          certifications_requises:
+            typeCommande ===
+              "conditionné" &&
+            certificationsRequises.length >
+              0
+              ? JSON.stringify(
+                  certificationsRequises
+                )
+              : null,
+
+          nom_entreprise:
+            typeCommande ===
+            "conditionné"
+              ? nomEntreprise.trim() ||
+                null
+              : null,
+
+          site_web:
+            typeCommande ===
+            "conditionné"
+              ? siteWeb.trim() ||
+                null
+              : null,
+
+          contact_professionnel:
+            typeCommande ===
+            "conditionné"
+              ? contactProfessionnel.trim() ||
+                null
+              : null,
+
+          // -------------------------------------------
+          // NOUVELLE MARQUE
+          // -------------------------------------------
+
+          marche_cible:
+            typeCommande ===
+              "conditionné" &&
+            typeMarque ===
+              "Création de nouvelle marque"
+              ? marcheCible.trim() ||
+                null
+              : null,
+
+          quantite_prevue:
+            typeCommande ===
+              "conditionné" &&
+            typeMarque ===
+              "Création de nouvelle marque"
+              ? quantitePrevue.trim() ||
+                null
+              : null,
+
+          packaging:
+            typeCommande ===
+              "conditionné" &&
+            typeMarque ===
+              "Création de nouvelle marque"
+              ? packaging ||
+                null
+              : null,
+        };
+
+        // =============================================
+        // DEBUG
+        // =============================================
+
+        console.log(
+          "DONNÉES ENVOYÉES :"
+        );
+
+        console.log(
+          JSON.stringify(
+            visiteur,
+            null,
+            2
+          )
+        );
+
+        // =============================================
+        // ENVOI AU BACKEND
+        // =============================================
+
+        const response =
+          await fetch(
+            `${API_URL}/api/visiteurs`,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+
+                Accept:
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  visiteur
+                ),
+            }
+          );
+
+        // =============================================
+        // RÉCUPÉRER LA RÉPONSE
+        // =============================================
+
+        const data =
+          await response.json();
+
+        console.log(
+          "STATUS HTTP :",
+          response.status
+        );
+
+        console.log(
+          "RÉPONSE BACKEND :",
+          data
+        );
+
+        // =============================================
+        // ERREUR
+        // =============================================
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+
+          throw new Error(
+            data.message ||
+            "Impossible d'ajouter le visiteur."
+          );
+        }
+
+        // =============================================
+        // SUCCÈS
+        // =============================================
+
+        Alert.alert(
+          "Succès",
+          `Le visiteur a été ajouté avec succès.\n\nID : ${data.id}`
+        );
+
+        // =============================================
+        // RESET FORMULAIRE
+        // =============================================
+
+        setNom("");
+        setPrenom("");
+        setTelephone("");
+        setIndicatif("+216");
+        setEmail("");
+        setAge("");
+       // setSexe("");
+        setOrigine("");
+        setSociete("");
+        setAdresseSociete("");
+        setFonction("");
+        setLangueCommunication("");
+
+        setProfile("");
+        setTypeCommande("");
+
+        resetCommande();
+
+      } catch (error) {
+
+        console.error("");
+        console.error(
+          "================================="
+        );
+
+        console.error(
+          "ERREUR AJOUT VISITEUR"
+        );
+
+        console.error(
+          "================================="
+        );
+
+        console.error(
+          error
+        );
+
+        Alert.alert(
+          "Erreur",
+          `Impossible d'ajouter le visiteur.\n\n${error.message}`
+        );
+      }
+    };
+
+  // ===================================================
   // INTERFACE
-  // ==================================================
+  // ===================================================
 
   return (
+
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={
+        styles.content
+      }
+      keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>
-        Ajouter un visiteur
+
+      {/* ==============================================
+          TITRE
+      =============================================== */}
+
+      <Text
+        style={styles.title}
+      >
+        Formulaire Visiteur
       </Text>
 
-      {/* ==================================================
-          TEST BACKEND
-      ================================================== */}
+      <Text
+        style={styles.subtitle}
+      >
+        Enregistrement d'un nouveau visiteur
+      </Text>
+
+      {/* ==============================================
+          TEST SERVEUR
+      =============================================== */}
 
       <TouchableOpacity
         style={styles.testButton}
-        onPress={testerConnexion}
+        onPress={
+          testerConnexion
+        }
       >
-        <Text style={styles.buttonText}>
+
+        <Text
+          style={styles.buttonText}
+        >
           TESTER LA CONNEXION AU SERVEUR
         </Text>
+
       </TouchableOpacity>
 
-      {/* ==================================================
+      {/* ==============================================
           NOM
-      ================================================== */}
+      =============================================== */}
 
-      <Text style={styles.label}>
-        Nom *
+      <Text
+        style={styles.label}
+      >
+        Nom
       </Text>
 
       <TextInput
@@ -520,14 +867,68 @@ export default function HomeScreen() {
         placeholder="Entrez le nom"
         value={nom}
         onChangeText={setNom}
-        autoCapitalize="words"
       />
 
-      {/* ==================================================
-          PRÉNOM
-      ================================================== */}
+      {/* ==============================================
+          SOCIÉTÉ
+      =============================================== */}
 
-      <Text style={styles.label}>
+      <Text
+        style={styles.label}
+      >
+        Société
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Nom de la société"
+        value={societe}
+        onChangeText={setSociete}
+      />
+
+      {/* ==============================================
+          ADRESSE
+      =============================================== */}
+
+      <Text
+        style={styles.label}
+      >
+        Adresse société
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Adresse de la société"
+        value={adresseSociete}
+        onChangeText={
+          setAdresseSociete
+        }
+      />
+
+      {/* ==============================================
+          FONCTION
+      =============================================== */}
+
+      <Text
+        style={styles.label}
+      >
+        Fonction
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Fonction"
+        value={fonction}
+        onChangeText={setFonction}
+      />
+
+      {/* ==============================================
+          PRÉNOM
+      =============================================== */}
+
+      <Text
+        style={styles.label}
+      >
         Prénom
       </Text>
 
@@ -536,71 +937,138 @@ export default function HomeScreen() {
         placeholder="Entrez le prénom"
         value={prenom}
         onChangeText={setPrenom}
-        autoCapitalize="words"
       />
 
-      {/* ==================================================
-          EMAIL
-      ================================================== */}
+      {/* ==============================================
+          ORIGINE
+      =============================================== */}
 
-      <Text style={styles.label}>
-        Email *
+      <Text
+        style={styles.label}
+      >
+        Origine / Pays
+      </Text>
+
+      <View
+        style={styles.pickerContainer}
+      >
+
+        <Picker
+          selectedValue={origine}
+          onValueChange={
+            handlePaysChange
+          }
+        >
+
+          <Picker.Item
+            label="Sélectionner un pays"
+            value=""
+          />
+
+          {pays.map(
+            (item) => (
+
+              <Picker.Item
+                key={item.name}
+                label={item.name}
+                value={item.name}
+              />
+
+            )
+          )}
+
+        </Picker>
+
+      </View>
+
+      {/* ==============================================
+          TÉLÉPHONE
+      =============================================== */}
+
+      <Text
+        style={styles.label}
+      >
+        Téléphone / WhatsApp
+      </Text>
+
+      <View
+        style={styles.phoneContainer}
+      >
+
+        <TextInput
+          style={styles.indicatif}
+          value={indicatif}
+          editable={false}
+        />
+
+        <TextInput
+          style={styles.phoneInput}
+          placeholder="Téléphone"
+          value={telephone}
+          onChangeText={
+            setTelephone
+          }
+          keyboardType="phone-pad"
+        />
+
+      </View>
+
+      {/* ==============================================
+          EMAIL
+      =============================================== */}
+
+      <Text
+        style={styles.label}
+      >
+        Email
       </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Entrez l'email"
+        placeholder="exemple@email.com"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
 
-      {/* ==================================================
-          ÂGE
-      ================================================== */}
+      {/* ==============================================
+          AGE
+      =============================================== */}
 
-      <Text style={styles.label}>
+      <Text
+        style={styles.label}
+      >
         Âge
       </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Entrez l'âge"
+        placeholder="Âge"
         value={age}
         onChangeText={setAge}
         keyboardType="numeric"
       />
 
-      {/* ==================================================
-          TÉLÉPHONE
-      ================================================== */}
-
-      <Text style={styles.label}>
-        Téléphone *
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Entrez le téléphone"
-        value={telephone}
-        onChangeText={setTelephone}
-        keyboardType="phone-pad"
-      />
-
-      {/* ==================================================
+      {/* ==============================================
           SEXE
-      ================================================== */}
+      =============================================== 
 
-      <Text style={styles.label}>
-        Sexe *
+      <Text
+        style={styles.label}
+      >
+        Sexe
       </Text>
 
-      <View style={styles.pickerContainer}>
+      <View
+        style={styles.pickerContainer}
+      >
+
         <Picker
           selectedValue={sexe}
           onValueChange={setSexe}
         >
+
           <Picker.Item
             label="Sélectionner"
             value=""
@@ -615,127 +1083,34 @@ export default function HomeScreen() {
             label="Femme"
             value="Femme"
           />
+
         </Picker>
-      </View>
 
-      {/* ==================================================
-          ORIGINE
-      ================================================== */}
+      </View>*/}
 
-      <Text style={styles.label}>
-        Origine / Pays *
-      </Text>
-
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={origine}
-          onValueChange={(value) => {
-            setOrigine(value);
-
-            const selectedCountry = pays.find(
-              (item) => item.name === value
-            );
-
-            if (selectedCountry) {
-              setIndicatif(
-                selectedCountry.dialCode
-              );
-            } else {
-              setIndicatif("");
-            }
-          }}
-        >
-          <Picker.Item
-            label="Sélectionner un pays"
-            value=""
-          />
-
-          {pays.map((item) => (
-            <Picker.Item
-              key={item.name}
-              label={item.name}
-              value={item.name}
-            />
-          ))}
-        </Picker>
-      </View>
-
-      {/* ==================================================
-          INDICATIF
-      ================================================== */}
-
-      <Text style={styles.label}>
-        Indicatif
-      </Text>
-
-      <TextInput
-        style={[
-          styles.input,
-          styles.disabledInput,
-        ]}
-        value={indicatif}
-        editable={false}
-        placeholder="+216"
-      />
-
-      {/* ==================================================
-          SOCIÉTÉ
-      ================================================== */}
-
-      <Text style={styles.label}>
-        Société *
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Nom de la société"
-        value={societe}
-        onChangeText={setSociete}
-      />
-
-      {/* ==================================================
-          ADRESSE SOCIÉTÉ
-      ================================================== */}
-
-      <Text style={styles.label}>
-        Adresse société
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Adresse de la société"
-        value={adresseSociete}
-        onChangeText={setAdresseSociete}
-      />
-
-      {/* ==================================================
-          FONCTION
-      ================================================== */}
-
-      <Text style={styles.label}>
-        Fonction
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Fonction"
-        value={fonction}
-        onChangeText={setFonction}
-      />
-
-      {/* ==================================================
+      {/* ==============================================
           LANGUE
-      ================================================== */}
+      =============================================== */}
 
-      <Text style={styles.label}>
+      <Text
+        style={styles.label}
+      >
         Langue de communication
       </Text>
 
-      <View style={styles.pickerContainer}>
+      <View
+        style={styles.pickerContainer}
+      >
+
         <Picker
-          selectedValue={langueCommunication}
-          onValueChange={setLangueCommunication}
+          selectedValue={
+            langueCommunication
+          }
+          onValueChange={
+            setLangueCommunication
+          }
         >
+
           <Picker.Item
             label="Sélectionner"
             value=""
@@ -755,52 +1130,149 @@ export default function HomeScreen() {
             label="Arabe"
             value="Arabe"
           />
+
+          <Picker.Item
+            label="Italien"
+            value="Italien"
+          />
+
+          <Picker.Item
+            label="Espagnol"
+            value="Espagnol"
+          />
+
         </Picker>
+
       </View>
 
-      {/* ==================================================
-          TYPE COMMANDE
-      ================================================== */}
+      {/* ==============================================
+          PROFILE
+      =============================================== */}
 
-      <Text style={styles.label}>
-        Type de commande *
+      <Text
+        style={styles.label}
+      >
+        Profile
       </Text>
 
-      <View style={styles.pickerContainer}>
+      <View
+        style={styles.pickerContainer}
+      >
+
         <Picker
-          selectedValue={typeCommande}
-          onValueChange={setTypeCommande}
+          selectedValue={profile}
+          onValueChange={
+            handleProfileChange
+          }
         >
+
           <Picker.Item
-            label="Sélectionner"
+            label="Sélectionner un profil"
             value=""
           />
 
           <Picker.Item
-            label="Vrac"
-            value="vrac"
+            label="Fournisseur"
+            value="fournisseur"
           />
 
           <Picker.Item
-            label="Conditionné"
-            value="conditionne"
+            label="Intermédiaire"
+            value="intermediaire"
           />
+
+          <Picker.Item
+            label="Acheteur"
+            value="acheteur"
+          />
+
+          <Picker.Item
+            label="Institut"
+            value="institut"
+          />
+
+          <Picker.Item
+            label="Autre"
+            value="autre"
+          />
+
         </Picker>
+
       </View>
 
-      {/* ==================================================
-          VRAC
-      ================================================== */}
+      {/* ==============================================
+          TYPE COMMANDE
+      =============================================== */}
 
-      {typeCommande === "vrac" && (
-        <View>
-          <Text style={styles.sectionTitle}>
-            Informations Vrac
+      {(
+        profile === "intermediaire" ||
+        profile === "acheteur"
+      ) && (
+
+        <>
+
+          <Text
+            style={styles.label}
+          >
+            Type de commande
           </Text>
 
-          {/* QUALITÉ */}
+          <View
+            style={styles.pickerContainer}
+          >
 
-          <Text style={styles.label}>
+            <Picker
+              selectedValue={
+                typeCommande
+              }
+              onValueChange={
+                handleTypeCommandeChange
+              }
+            >
+
+              <Picker.Item
+                label="Sélectionner"
+                value=""
+              />
+
+              <Picker.Item
+                label="Vrac"
+                value="vrac"
+              />
+
+              <Picker.Item
+                label="Conditionné"
+                value="conditionné"
+              />
+
+            </Picker>
+
+          </View>
+
+        </>
+
+      )}
+
+      {/* ==============================================
+          VRAC
+      =============================================== */}
+
+      {typeCommande ===
+        "vrac" && (
+
+        <View
+          style={styles.section}
+        >
+
+          <Text
+            style={styles.sectionTitle}
+          >
+            Informations commande en vrac
+          </Text>
+
+          <Text
+            style={styles.label}
+          >
             Qualité / Grade
           </Text>
 
@@ -808,12 +1280,14 @@ export default function HomeScreen() {
             style={styles.input}
             placeholder="Qualité / Grade"
             value={qualiteGrade}
-            onChangeText={setQualiteGrade}
+            onChangeText={
+              setQualiteGrade
+            }
           />
 
-          {/* VOLUME */}
-
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Volume estimé
           </Text>
 
@@ -821,13 +1295,15 @@ export default function HomeScreen() {
             style={styles.input}
             placeholder="Volume estimé"
             value={volumeEstime}
-            onChangeText={setVolumeEstime}
+            onChangeText={
+              setVolumeEstime
+            }
             keyboardType="numeric"
           />
 
-          {/* DESTINATION */}
-
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Destination pays / port
           </Text>
 
@@ -835,34 +1311,86 @@ export default function HomeScreen() {
             style={styles.input}
             placeholder="Destination"
             value={destination}
-            onChangeText={setDestination}
+            onChangeText={
+              setDestination
+            }
           />
 
-          {/* INCOTERM */}
-
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Incoterm
           </Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="FOB / CIF / EXW..."
-            value={incoterm}
-            onChangeText={setIncoterm}
-            autoCapitalize="characters"
-          />
+          <View
+            style={styles.pickerContainer}
+          >
 
-          {/* FORMAT LIVRAISON */}
+            <Picker
+              selectedValue={incoterm}
+              onValueChange={
+                setIncoterm
+              }
+            >
 
-          <Text style={styles.label}>
+              <Picker.Item
+                label="Sélectionner"
+                value=""
+              />
+
+              <Picker.Item
+                label="EXW"
+                value="EXW"
+              />
+
+              <Picker.Item
+                label="FOB"
+                value="FOB"
+              />
+
+              <Picker.Item
+                label="CFR"
+                value="CFR"
+              />
+
+              <Picker.Item
+                label="CIF"
+                value="CIF"
+              />
+
+              <Picker.Item
+                label="DAP"
+                value="DAP"
+              />
+
+              <Picker.Item
+                label="DDP"
+                value="DDP"
+              />
+
+            </Picker>
+
+          </View>
+
+          <Text
+            style={styles.label}
+          >
             Format livraison
           </Text>
 
-          <View style={styles.pickerContainer}>
+          <View
+            style={styles.pickerContainer}
+          >
+
             <Picker
-              selectedValue={formatLivraison}
-              onValueChange={setFormatLivraison}
+              selectedValue={
+                formatLivraison
+              }
+              onValueChange={
+                setFormatLivraison
+              }
             >
+
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -879,6 +1407,11 @@ export default function HomeScreen() {
               />
 
               <Picker.Item
+                label="Camion-citerne"
+                value="Camion-citerne"
+              />
+
+              <Picker.Item
                 label="Fûts"
                 value="Fûts"
               />
@@ -887,40 +1420,82 @@ export default function HomeScreen() {
                 label="Autre"
                 value="Autre"
               />
+
             </Picker>
+
           </View>
 
-          {/* FRÉQUENCE */}
-
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Fréquence
           </Text>
 
-          <View style={styles.pickerContainer}>
+          <View
+            style={styles.pickerContainer}
+          >
+
             <Picker
-              selectedValue={frequenceCommande}
-              onValueChange={setFrequenceCommande}
+              selectedValue={
+                frequenceCommande
+              }
+              onValueChange={
+                setFrequenceCommande
+              }
             >
+
               <Picker.Item
                 label="Sélectionner"
                 value=""
               />
 
               <Picker.Item
-                label="Unique"
+                label="Commande unique"
                 value="unique"
               />
 
               <Picker.Item
-                label="Régulières"
-                value="regulieres"
+                label="Commandes régulières"
+                value="régulières"
               />
+
             </Picker>
+
           </View>
 
-          {/* INFORMATIONS */}
+          <Text
+            style={styles.label}
+          >
+            Exigences spécifiques
+          </Text>
 
-          <Text style={styles.label}>
+          <TextInput
+            style={styles.input}
+            placeholder="Bio, certifications, analyses/COA, échantillons..."
+            value={
+              exigencesSpecifiques.join(
+                ", "
+              )
+            }
+            onChangeText={
+              (text) =>
+                setExigencesSpecifiques(
+                  text
+                    .split(",")
+                    .map(
+                      (item) =>
+                        item.trim()
+                    )
+                    .filter(
+                      Boolean
+                    )
+                )
+            }
+          />
+
+          <Text
+            style={styles.label}
+          >
             Informations complémentaires
           </Text>
 
@@ -930,49 +1505,98 @@ export default function HomeScreen() {
               styles.textArea,
             ]}
             placeholder="Informations complémentaires"
-            value={informationsComplementaires}
+            value={
+              informationsComplementaires
+            }
             onChangeText={
               setInformationsComplementaires
             }
             multiline
           />
+
         </View>
       )}
 
-      {/* ==================================================
+      {/* ==============================================
           CONDITIONNÉ
-      ================================================== */}
+      =============================================== */}
 
-      {typeCommande === "conditionne" && (
-        <View>
-          <Text style={styles.sectionTitle}>
-            Informations Conditionné
+      {typeCommande ===
+        "conditionné" && (
+
+        <View
+          style={styles.section}
+        >
+
+          <Text
+            style={styles.sectionTitle}
+          >
+            Informations commande conditionnée
           </Text>
 
           {/* PAYS */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Pays
           </Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Pays"
-            value={paysConditionne}
-            onChangeText={setPaysConditionne}
-          />
+          <View
+            style={styles.pickerContainer}
+          >
+
+            <Picker
+              selectedValue={
+                paysConditionne
+              }
+              onValueChange={
+                setPaysConditionne
+              }
+            >
+
+              <Picker.Item
+                label="Sélectionner un pays"
+                value=""
+              />
+
+              {pays.map(
+                (item) => (
+
+                  <Picker.Item
+                    key={item.name}
+                    label={item.name}
+                    value={item.name}
+                  />
+
+                )
+              )}
+
+            </Picker>
+
+          </View>
 
           {/* CANAL */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Canal de distribution
           </Text>
 
-          <View style={styles.pickerContainer}>
+          <View
+            style={styles.pickerContainer}
+          >
+
             <Picker
-              selectedValue={canalDistribution}
-              onValueChange={setCanalDistribution}
+              selectedValue={
+                canalDistribution
+              }
+              onValueChange={
+                setCanalDistribution
+              }
             >
+
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -997,96 +1621,247 @@ export default function HomeScreen() {
                 label="Grossiste"
                 value="Grossiste"
               />
+
             </Picker>
+
           </View>
 
           {/* VOLUMES */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Volumes estimés
           </Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Par mois / par an"
-            value={volumesEstimes}
-            onChangeText={setVolumesEstimes}
+            placeholder="Quantité par mois ou par an"
+            value={
+              volumesEstimes
+            }
+            onChangeText={
+              setVolumesEstimes
+            }
           />
+
+          {/* TYPE EMBALLAGE */}
+
+          <Text
+            style={styles.label}
+          >
+            Type d'emballage
+          </Text>
+
+          <View
+            style={styles.pickerContainer}
+          >
+
+            <Picker
+              selectedValue={
+                typeEmballage
+              }
+              onValueChange={
+                (value) => {
+
+                  setTypeEmballage(
+                    value
+                  );
+
+                  setFormatsSouhaites(
+                    ""
+                  );
+                }
+              }
+            >
+
+              <Picker.Item
+                label="Sélectionner"
+                value=""
+              />
+
+              <Picker.Item
+                label="Tin"
+                value="Tin"
+              />
+
+              <Picker.Item
+                label="PET"
+                value="PET"
+              />
+
+              <Picker.Item
+                label="Glass"
+                value="Glass"
+              />
+
+            </Picker>
+
+          </View>
 
           {/* FORMATS */}
 
-          <Text style={styles.label}>
-            Formats souhaités
-          </Text>
+          {typeEmballage !==
+            "" && (
 
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formatsSouhaites}
-              onValueChange={setFormatsSouhaites}
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
+            <>
 
-              <Picker.Item
-                label="250 ml"
-                value="250 ml"
-              />
+              <Text
+                style={styles.label}
+              >
+                Formats souhaités
+              </Text>
 
-              <Picker.Item
-                label="500 ml"
-                value="500 ml"
-              />
+              <View
+                style={
+                  styles.pickerContainer
+                }
+              >
 
-              <Picker.Item
-                label="750 ml"
-                value="750 ml"
-              />
+                <Picker
+                  selectedValue={
+                    formatsSouhaites
+                  }
+                  onValueChange={
+                    setFormatsSouhaites
+                  }
+                >
 
-              <Picker.Item
-                label="1 L"
-                value="1 L"
-              />
+                  <Picker.Item
+                    label="Sélectionner"
+                    value=""
+                  />
 
-              <Picker.Item
-                label="Autre"
-                value="Autre"
-              />
-            </Picker>
-          </View>
+                  {typeEmballage ===
+                    "Tin" && (
 
-          {/* TYPE MARQUE */}
+                    <>
 
-          <Text style={styles.label}>
-            Type de marque
-          </Text>
+                      <Picker.Item
+                        label="250 ml"
+                        value="250 ml"
+                      />
 
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={typeMarque}
-              onValueChange={setTypeMarque}
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
+                      <Picker.Item
+                        label="500 ml"
+                        value="500 ml"
+                      />
 
-              <Picker.Item
-                label="Marque OLIVED"
-                value="Marque OLIVED"
-              />
+                      <Picker.Item
+                        label="1 L"
+                        value="1 L"
+                      />
 
-              <Picker.Item
-                label="Private Label"
-                value="Private Label"
-              />
-            </Picker>
-          </View>
+                      <Picker.Item
+                        label="2 L"
+                        value="2 L"
+                      />
+
+                      <Picker.Item
+                        label="3 L"
+                        value="3 L"
+                      />
+
+                      <Picker.Item
+                        label="4 L"
+                        value="4 L"
+                      />
+
+                      <Picker.Item
+                        label="5 L"
+                        value="5 L"
+                      />
+
+                      <Picker.Item
+                        label="16 L"
+                        value="16 L"
+                      />
+
+                      <Picker.Item
+                        label="20 L"
+                        value="20 L"
+                      />
+
+                    </>
+
+                  )}
+
+                  {typeEmballage ===
+                    "PET" && (
+
+                    <>
+
+                      <Picker.Item
+                        label="250 ml"
+                        value="250 ml"
+                      />
+
+                      <Picker.Item
+                        label="500 ml"
+                        value="500 ml"
+                      />
+
+                      <Picker.Item
+                        label="1 L"
+                        value="1 L"
+                      />
+
+                      <Picker.Item
+                        label="3 L"
+                        value="3 L"
+                      />
+
+                      <Picker.Item
+                        label="5 L"
+                        value="5 L"
+                      />
+
+                    </>
+
+                  )}
+
+                  {typeEmballage ===
+                    "Glass" && (
+
+                    <>
+
+                      <Picker.Item
+                        label="250 ml"
+                        value="250 ml"
+                      />
+
+                      <Picker.Item
+                        label="500 ml"
+                        value="500 ml"
+                      />
+
+                      <Picker.Item
+                        label="750 ml"
+                        value="750 ml"
+                      />
+
+                      <Picker.Item
+                        label="1 L"
+                        value="1 L"
+                      />
+
+                    </>
+
+                  )}
+
+                </Picker>
+
+              </View>
+
+            </>
+
+          )}
 
           {/* CERTIFICATIONS */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Certifications requises
           </Text>
 
@@ -1095,160 +1870,457 @@ export default function HomeScreen() {
               styles.input,
               styles.textArea,
             ]}
-            placeholder="Certifications requises"
-            value={certificationsRequises.join(", ")}
-            onChangeText={(value) =>
-              setCertificationsRequises(
-                value
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean)
+            placeholder="Ex : BIO, ISO, IFS..."
+            value={
+              certificationsRequises.join(
+                ", "
               )
+            }
+            onChangeText={
+              (text) =>
+                setCertificationsRequises(
+                  text
+                    .split(",")
+                    .map(
+                      (item) =>
+                        item.trim()
+                    )
+                    .filter(
+                      Boolean
+                    )
+                )
             }
             multiline
           />
 
           {/* NOM ENTREPRISE */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Nom entreprise
           </Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Nom entreprise"
-            value={nomEntreprise}
-            onChangeText={setNomEntreprise}
+            placeholder="Nom de l'entreprise"
+            value={
+              nomEntreprise
+            }
+            onChangeText={
+              setNomEntreprise
+            }
           />
 
           {/* SITE WEB */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Site web
           </Text>
 
           <TextInput
             style={styles.input}
             placeholder="https://..."
-            value={siteWeb}
-            onChangeText={setSiteWeb}
+            value={
+              siteWeb
+            }
+            onChangeText={
+              setSiteWeb
+            }
             autoCapitalize="none"
             keyboardType="url"
           />
 
           {/* CONTACT */}
 
-          <Text style={styles.label}>
+          <Text
+            style={styles.label}
+          >
             Contact professionnel
           </Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Contact professionnel"
-            value={contactProfessionnel}
-            onChangeText={setContactProfessionnel}
+            placeholder="Email / téléphone"
+            value={
+              contactProfessionnel
+            }
+            onChangeText={
+              setContactProfessionnel
+            }
           />
+
+          {/* TYPE MARQUE */}
+
+          <Text
+            style={styles.label}
+          >
+            Type de marque
+          </Text>
+
+          <View
+            style={
+              styles.pickerContainer
+            }
+          >
+
+            <Picker
+              selectedValue={
+                typeMarque
+              }
+              onValueChange={
+                (value) => {
+
+                  setTypeMarque(
+                    value
+                  );
+
+                  if (
+                    value !==
+                    "Création de nouvelle marque"
+                  ) {
+
+                    setMarcheCible(
+                      ""
+                    );
+
+                    setQuantitePrevue(
+                      ""
+                    );
+
+                    setPackaging(
+                      ""
+                    );
+                  }
+                }
+              }
+            >
+
+              <Picker.Item
+                label="Sélectionner"
+                value=""
+              />
+
+              <Picker.Item
+                label="Marque ORZETA"
+                value="Marque ORZETA"
+              />
+
+              <Picker.Item
+                label="Private Label"
+                value="Private Label"
+              />
+
+              <Picker.Item
+                label="Création de nouvelle marque"
+                value="Création de nouvelle marque"
+              />
+
+            </Picker>
+
+          </View>
+
+          {/* ==========================================
+              NOUVELLE MARQUE
+          =========================================== */}
+
+          {typeMarque ===
+            "Création de nouvelle marque" && (
+
+            <View
+              style={
+                styles.newBrandSection
+              }
+            >
+
+              <Text
+                style={
+                  styles.newBrandTitle
+                }
+              >
+                Informations nouvelle marque
+              </Text>
+
+              {/* MARCHÉ CIBLE */}
+
+              <Text
+                style={styles.label}
+              >
+                Marché cible
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                placeholder="Ex : Tunisie, France, Italie..."
+                value={
+                  marcheCible
+                }
+                onChangeText={
+                  setMarcheCible
+                }
+              />
+
+              {/* QUANTITÉ */}
+
+              <Text
+                style={styles.label}
+              >
+                Quantité prévue
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                placeholder="Ex : 5000 litres / an"
+                value={
+                  quantitePrevue
+                }
+                onChangeText={
+                  setQuantitePrevue
+                }
+              />
+
+              {/* PACKAGING */}
+
+              <Text
+                style={styles.label}
+              >
+                Packaging
+              </Text>
+
+              <View
+                style={
+                  styles.pickerContainer
+                }
+              >
+
+                <Picker
+                  selectedValue={
+                    packaging
+                  }
+                  onValueChange={
+                    setPackaging
+                  }
+                >
+
+                  <Picker.Item
+                    label="Sélectionner"
+                    value=""
+                  />
+
+                  <Picker.Item
+                    label="250 ml"
+                    value="250 ml"
+                  />
+
+                  <Picker.Item
+                    label="500 ml"
+                    value="500 ml"
+                  />
+
+                  <Picker.Item
+                    label="750 ml"
+                    value="750 ml"
+                  />
+
+                  <Picker.Item
+                    label="1 L"
+                    value="1 L"
+                  />
+
+                  <Picker.Item
+                    label="Autre"
+                    value="Autre"
+                  />
+
+                </Picker>
+
+              </View>
+
+            </View>
+
+          )}
+
         </View>
+
       )}
 
-      {/* ==================================================
+      {/* ==============================================
           BOUTON AJOUTER
-      ================================================== */}
+      =============================================== */}
 
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={handleAjouter}
+        style={styles.button}
+        onPress={
+          handleAjouter
+        }
       >
-        <Text style={styles.buttonText}>
+
+        <Text
+          style={styles.buttonText}
+        >
           AJOUTER LE VISITEUR
         </Text>
+
       </TouchableOpacity>
+
     </ScrollView>
   );
 }
 
-// ==================================================
+// =====================================================
 // STYLES
-// ==================================================
+// =====================================================
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
+const styles =
+  StyleSheet.create({
 
-  content: {
-    padding: 20,
-    paddingBottom: 50,
-  },
+    container: {
+      flex: 1,
+      backgroundColor:
+        "#f5f5f5",
+    },
 
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
+    content: {
+      padding: 20,
+      paddingBottom: 60,
+    },
 
-  sectionTitle: {
-    fontSize: 21,
-    fontWeight: "bold",
-    marginTop: 25,
-    marginBottom: 15,
-  },
+    title: {
+      fontSize: 28,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginTop: 20,
+      marginBottom: 5,
+    },
 
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 12,
-    marginBottom: 6,
-  },
+    subtitle: {
+      textAlign: "center",
+      color: "#666",
+      marginBottom: 20,
+    },
 
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
+    label: {
+      fontSize: 16,
+      fontWeight: "600",
+      marginTop: 12,
+      marginBottom: 7,
+    },
 
-  disabledInput: {
-    backgroundColor: "#e9e9e9",
-    color: "#555",
-  },
+    input: {
+      backgroundColor: "#fff",
+      borderWidth: 1,
+      borderColor: "#ddd",
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+    },
 
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
+    textArea: {
+      minHeight: 100,
+      textAlignVertical:
+        "top",
+    },
 
-  pickerContainer: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
+    pickerContainer: {
+      backgroundColor:
+        "#fff",
+      borderWidth: 1,
+      borderColor: "#ddd",
+      borderRadius: 8,
+      overflow: "hidden",
+    },
 
-  testButton: {
-    backgroundColor: "#555",
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
+    phoneContainer: {
+      flexDirection:
+        "row",
+      gap: 8,
+    },
 
-  addButton: {
-    backgroundColor: "#EE672A",
-    paddingVertical: 16,
-    borderRadius: 8,
-    marginTop: 30,
-  },
+    indicatif: {
+      width: 80,
+      backgroundColor:
+        "#eee",
+      borderWidth: 1,
+      borderColor: "#ddd",
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      textAlign: "center",
+    },
 
-  buttonText: {
-    color: "#fff",
-    textAlign: "center",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});
+    phoneInput: {
+      flex: 1,
+      backgroundColor:
+        "#fff",
+      borderWidth: 1,
+      borderColor: "#ddd",
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+    },
+
+    section: {
+      marginTop: 25,
+      padding: 15,
+      backgroundColor:
+        "#fff",
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: "#ddd",
+    },
+
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 10,
+    },
+
+    newBrandSection: {
+      marginTop: 20,
+      padding: 15,
+      backgroundColor:
+        "#f9f9f9",
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor:
+        "#EE672A",
+    },
+
+    newBrandTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginBottom: 5,
+    },
+
+    testButton: {
+      backgroundColor:
+        "#555",
+      paddingVertical: 14,
+      borderRadius: 8,
+      marginBottom: 15,
+      alignItems: "center",
+    },
+
+    button: {
+      backgroundColor:
+        "#EE672A",
+      paddingVertical: 16,
+      borderRadius: 8,
+      marginTop: 30,
+      alignItems: "center",
+    },
+
+    buttonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+
+  });
