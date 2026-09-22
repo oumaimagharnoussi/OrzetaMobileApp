@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-
+import { useRouter } from "expo-router";
 import {
   View,
   Text,
@@ -48,10 +48,11 @@ const pays = [
 // =====================================================
 
 export default function HomeScreen() {
+  
   // ===================================================
   // INFORMATIONS GÉNÉRALES
   // ===================================================
-
+  const router = useRouter();
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [telephone, setTelephone] = useState("");
@@ -603,66 +604,64 @@ export default function HomeScreen() {
       // ENVOI AU BACKEND
       // =================================================
 
-      const response = await fetch(
-        `${API_URL}/api/visiteurs`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            Accept:
-              "application/json",
-          },
-
-          body:
-            JSON.stringify(
-              visiteur
-            ),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/visiteurs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(visitorData),
+      });
+      
+      const data = await response.json();
+      
+      console.log("STATUS HTTP :", response.status);
+      console.log("RÉPONSE BACKEND :", data);
+      
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message ||
+            data.error ||
+            "Erreur serveur"
+        );
+      }
+      
+      console.log("=======================================");
+      console.log("VISITEUR AJOUTÉ AVEC SUCCÈS");
+      console.log("ID :", data.id);
+      console.log("NAVIGATION VERS /traitement");
+      console.log("=======================================");
+      
+      // Navigation après insertion réussie
+      router.replace("/traitement");
 
       // =================================================
       // RÉPONSE
       // =================================================
 
-      const data =
-        await response.json();
+      
 
-      console.log(
-        "STATUS HTTP :",
-        response.status
-      );
+console.log("STATUS HTTP :", response.status);
+console.log("RÉPONSE BACKEND :", data);
 
-      console.log(
-        "RÉPONSE BACKEND :",
-        data
-      );
+if (!response.ok || !data.success) {
+  throw new Error(
+    data.message || "Impossible d'ajouter le visiteur."
+  );
+}
 
-      // =================================================
-      // ERREUR
-      // =================================================
+console.log("ÉTAPE 1 : VISITEUR AJOUTÉ");
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-          "Impossible d'ajouter le visiteur."
-        );
-      }
+Alert.alert(
+  "TEST",
+  "Le visiteur est ajouté. Navigation vers traitement..."
+);
 
-      // =================================================
-      // SUCCÈS
-      // =================================================
+setTimeout(() => {
+  console.log("ÉTAPE 2 : NAVIGATION");
+  console.log("NAVIGATION VERS /traitement");
 
-      Alert.alert(
-        "Succès",
-        `Le visiteur a été ajouté avec succès.\n\nID : ${data.id}`
-      );
-
+router.push("/traitement");
+}, 1000);
       // =================================================
       // RESET FORMULAIRE
       // =================================================

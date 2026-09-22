@@ -8,14 +8,22 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
+
 import { Picker } from "@react-native-picker/picker";
+import { useRouter } from "expo-router";
 
 // =====================================================
 // URL BACKEND
 // =====================================================
+
 const API_URL = "http://192.168.1.146:5000";
 
+// =====================================================
+// COMPOSANT
+// =====================================================
+
 export default function HomeScreen() {
+  const router = useRouter();
   // =====================================================
   // INFORMATIONS GÉNÉRALES
   // =====================================================
@@ -649,42 +657,33 @@ export default function HomeScreen() {
     // ENVOI BACKEND
     // ===================================================
     try {
-      const response = await fetch(
-        `${API_URL}/api/visiteurs`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(
-            visitorData
-          ),
-        }
-      );
-
-      const data =
-        await response.json();
-
-      console.log(
-        "Réponse backend :",
-        data
-      );
-
-      if (!response.ok) {
+      const response = await fetch(`${API_URL}/api/visiteurs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(visitorData),
+      });
+      
+      const data = await response.json();
+      
+      console.log("STATUS HTTP :", response.status);
+      console.log("RÉPONSE BACKEND :", data);
+      
+      if (!response.ok || !data.success) {
         throw new Error(
           data.message ||
             data.error ||
             "Erreur serveur"
         );
       }
-
-      Alert.alert(
-        "Succès",
-        "Le visiteur a été ajouté avec succès."
-      );
+      
+      console.log("VISITEUR AJOUTÉ AVEC SUCCÈS");
+      console.log("ID :", data.id);
+      console.log("NAVIGATION VERS /traitement");
+      
+      // FORCER LE CHANGEMENT DE PAGE
+      window.location.href = `/traitement?id=${data.id}`;
 
       // =================================================
       // RESET INFORMATIONS GÉNÉRALES
