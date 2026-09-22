@@ -1102,6 +1102,63 @@ app.post("/api/visiteurs", async (req, res) => {
 });
 
 // =====================================================
+// ENREGISTRER LA QUALIFICATION DU VISITEUR
+// =====================================================
+app.put("/api/visiteurs/:id/qualification", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const qualification = Number(req.body.qualification);
+
+    // Vérifier l'identifiant
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifiant du visiteur invalide.",
+      });
+    }
+
+    // Vérifier la qualification : uniquement de 1 à 5
+    if (
+      !Number.isInteger(qualification) ||
+      qualification < 1 ||
+      qualification > 5
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "La qualification doit être comprise entre 1 et 5.",
+      });
+    }
+
+    // Enregistrer la qualification dans MySQL
+    const [result] = await db.execute(
+      "UPDATE visiteurs SET qualification = ? WHERE id = ?",
+      [qualification, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Visiteur introuvable.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Qualification enregistrée avec succès.",
+      id,
+      qualification,
+    });
+  } catch (error) {
+    console.error("ERREUR ENREGISTREMENT QUALIFICATION :", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Erreur serveur lors de l'enregistrement de la qualification.",
+    });
+  }
+});
+
+// =====================================================
 // RÉCUPÉRER TOUS LES VISITEURS
 // =====================================================
 
