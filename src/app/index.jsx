@@ -683,7 +683,12 @@ export default function HomeScreen() {
       console.log("NAVIGATION VERS /traitement");
       
       // FORCER LE CHANGEMENT DE PAGE
-      window.location.href = `/traitement?id=${data.id}`;
+      router.push({
+        pathname: "/traitement",
+        params: {
+          id: String(data.id),
+        },
+      });
 
       // =================================================
       // RESET INFORMATIONS GÉNÉRALES
@@ -793,9 +798,6 @@ export default function HomeScreen() {
         Formulaire Visiteur
       </Text>
 
-      <Text style={styles.subtitle}>
-        Enregistrement d'un nouveau visiteur
-      </Text>
 
       {/* =================================================
           NOM
@@ -1403,529 +1405,363 @@ export default function HomeScreen() {
               }
             />
 
-            {/* =================================================
-                TYPE D'EMBALLAGE CONDITIONNÉ
-            ================================================= */}
-            <Text style={styles.label}>
-              Type d'emballage
+           {/* =================================================
+    TYPE D'EMBALLAGE CONDITIONNÉ
+================================================= */}
+<Text style={styles.label}>
+  Type d'emballage
+</Text>
+
+{/* TIN */}
+<View style={styles.packagingRow}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("Tin")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("Tin") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Tin
+    </Text>
+  </TouchableOpacity>
+
+  {emballagesSelectionnes.includes("Tin") && (
+    <View style={styles.formatsRow}>
+      {[
+        "250 ml",
+        "500 ml",
+        "1 L",
+        "2 L",
+        "3 L",
+        "4 L",
+        "5 L",
+        "16 L",
+        "20 L",
+      ].map((format) => {
+        const selected =
+          formatsEmballage.Tin?.includes(format) || false;
+
+        return (
+          <TouchableOpacity
+            key={`Tin-${format}`}
+            style={styles.formatItem}
+            onPress={() => {
+              setFormatsEmballage((prev) => {
+                const current = prev.Tin || [];
+
+                const updated = current.includes(format)
+                  ? current.filter((item) => item !== format)
+                  : [...current, format];
+
+                return {
+                  ...prev,
+                  Tin: updated,
+                };
+              });
+            }}
+          >
+            <Text style={styles.checkbox}>
+              {selected ? "☑" : "☐"}
             </Text>
 
-            {/* TIN */}
-            <TouchableOpacity
-              style={
-                styles.checkboxContainer
-              }
-              onPress={() =>
-                toggleEmballageConditionne(
-                  "Tin"
-                )
-              }
-            >
-              <Text
-                style={styles.checkbox}
-              >
-                {emballagesSelectionnes.includes(
-                  "Tin"
-                )
-                  ? "☑"
-                  : "☐"}
-              </Text>
+            <Text style={styles.checkboxLabel}>
+              {format}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  )}
+</View>
 
-              <Text
-                style={
-                  styles.checkboxLabel
-                }
-              >
-                Tin
-              </Text>
-            </TouchableOpacity>
 
-            {/* PET */}
-            <TouchableOpacity
-              style={
-                styles.checkboxContainer
-              }
-              onPress={() =>
-                toggleEmballageConditionne(
-                  "PET"
-                )
-              }
-            >
-              <Text
-                style={styles.checkbox}
-              >
-                {emballagesSelectionnes.includes(
-                  "PET"
-                )
-                  ? "☑"
-                  : "☐"}
-              </Text>
+{/* PET */}
+<View style={styles.packagingRow}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("PET")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("PET") ? "☑" : "☐"}
+    </Text>
 
-              <Text
-                style={
-                  styles.checkboxLabel
-                }
-              >
-                PET
-              </Text>
-            </TouchableOpacity>
+    <Text style={styles.checkboxLabel}>
+      PET
+    </Text>
+  </TouchableOpacity>
 
-            {/* GLASS */}
-            <TouchableOpacity
-              style={
-                styles.checkboxContainer
-              }
-              onPress={() =>
-                toggleEmballageConditionne(
-                  "Glass"
-                )
-              }
-            >
-              <Text
-                style={styles.checkbox}
-              >
-                {emballagesSelectionnes.includes(
-                  "Glass"
-                )
-                  ? "☑"
-                  : "☐"}
-              </Text>
+  {emballagesSelectionnes.includes("PET") && (
+    <View style={styles.formatsRow}>
+      {[
+        "250 ml",
+        "500 ml",
+        "1 L",
+        "3 L",
+        "5 L",
+      ].map((format) => {
+        const selected =
+          formatsEmballage.PET?.includes(format) || false;
 
-              <Text
-                style={
-                  styles.checkboxLabel
-                }
-              >
-                Glass
-              </Text>
-            </TouchableOpacity>
+        return (
+          <TouchableOpacity
+            key={`PET-${format}`}
+            style={styles.formatItem}
+            onPress={() => {
+              setFormatsEmballage((prev) => {
+                const current = prev.PET || [];
 
-            {/* AUTRE */}
-            <TouchableOpacity
-              style={
-                styles.checkboxContainer
-              }
-              onPress={() =>
-                toggleEmballageConditionne(
-                  "Autre"
-                )
-              }
-            >
-              <Text
-                style={styles.checkbox}
-              >
-                {emballagesSelectionnes.includes(
-                  "Autre"
-                )
-                  ? "☑"
-                  : "☐"}
-              </Text>
+                const updated = current.includes(format)
+                  ? current.filter((item) => item !== format)
+                  : [...current, format];
 
-              <Text
-                style={
-                  styles.checkboxLabel
-                }
-              >
-                Autre
-              </Text>
-            </TouchableOpacity>
+                return {
+                  ...prev,
+                  PET: updated,
+                };
+              });
+            }}
+          >
+            <Text style={styles.checkbox}>
+              {selected ? "☑" : "☐"}
+            </Text>
 
-            {/* AUTRE EMBALLAGE */}
-            {emballagesSelectionnes.includes(
-              "Autre"
-            ) && (
-              <>
-                <Text
-                  style={styles.label}
-                >
-                  Préciser l'emballage
+            <Text style={styles.checkboxLabel}>
+              {format}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  )}
+</View>
+
+
+{/* GLASS */}
+<View style={styles.packagingRowGlass}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("Glass")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("Glass") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Glass
+    </Text>
+  </TouchableOpacity>
+
+  {emballagesSelectionnes.includes("Glass") && (
+    <View style={styles.glassFormatsContainer}>
+
+      {/* MARASCA */}
+      <View style={styles.glassRow}>
+        <Text style={styles.subTypeLabel}>
+          MARASCA
+        </Text>
+
+        <View style={styles.formatsRow}>
+          {[
+            "250 ml",
+            "500 ml",
+            "750 ml",
+            "1 L",
+          ].map((format) => {
+            const selected =
+              formatsEmballage.Glass?.MARASCA?.includes(format) ||
+              false;
+
+            return (
+              <TouchableOpacity
+                key={`MARASCA-${format}`}
+                style={styles.formatItem}
+                onPress={() => {
+                  setFormatsEmballage((prev) => {
+                    const current =
+                      prev.Glass?.MARASCA || [];
+
+                    const updated = current.includes(format)
+                      ? current.filter(
+                          (item) => item !== format
+                        )
+                      : [...current, format];
+
+                    return {
+                      ...prev,
+                      Glass: {
+                        ...(prev.Glass || {}),
+                        MARASCA: updated,
+                      },
+                    };
+                  });
+                }}
+              >
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
                 </Text>
 
-                <TextInput
-                  style={
-                    styles.input
-                  }
-                  placeholder="Saisir le type d'emballage"
-                  value={
-                    autreEmballage
-                  }
-                  onChangeText={
-                    setAutreEmballage
-                  }
-                />
-              </>
-            )}
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-            {/* =================================================
-                FORMATS CONDITIONNÉ
-            ================================================= */}
-            {emballagesSelectionnes.map(
-              (type) => {
-                if (
-                  type === "Autre"
-                ) {
-                  return null;
-                }
 
-                return (
-                  <View
-                    key={type}
-                    style={{
-                      marginTop: 15,
-                    }}
-                  >
-                    <Text
-                      style={
-                        styles.label
-                      }
-                    >
-                      Formats souhaités -{" "}
-                      {type}
-                    </Text>
+      {/* DORICA */}
+      <View style={styles.glassRow}>
+        <Text style={styles.subTypeLabel}>
+          DORICA
+        </Text>
 
-                    {/* GLASS */}
-                    {type ===
-                    "Glass" ? (
-                      <>
-                        <Text
-                          style={
-                            styles.label
-                          }
-                        >
-                          MARASCA
-                        </Text>
+        <View style={styles.formatsRow}>
+          {[
+            "250 ml",
+            "500 ml",
+            "750 ml",
+          ].map((format) => {
+            const selected =
+              formatsEmballage.Glass?.DORICA?.includes(format) ||
+              false;
 
-                        {[
-                          "250 ml",
-                          "500 ml",
-                          "750 ml",
-                          "1 L",
-                        ].map(
-                          (format) => {
-                            const selected =
-                              formatsEmballage
-                                .Glass
-                                ?.MARASCA?.includes(
-                                  format
-                                ) ||
-                              false;
+            return (
+              <TouchableOpacity
+                key={`DORICA-${format}`}
+                style={styles.formatItem}
+                onPress={() => {
+                  setFormatsEmballage((prev) => {
+                    const current =
+                      prev.Glass?.DORICA || [];
 
-                            return (
-                              <TouchableOpacity
-                                key={`MARASCA-${format}`}
-                                style={
-                                  styles.checkboxContainer
-                                }
-                                onPress={() => {
-                                  setFormatsEmballage(
-                                    (
-                                      prev
-                                    ) => {
-                                      const current =
-                                        prev
-                                          .Glass
-                                          ?.MARASCA ||
-                                        [];
+                    const updated = current.includes(format)
+                      ? current.filter(
+                          (item) => item !== format
+                        )
+                      : [...current, format];
 
-                                      const updated =
-                                        current.includes(
-                                          format
-                                        )
-                                          ? current.filter(
-                                              (
-                                                item
-                                              ) =>
-                                                item !==
-                                                format
-                                            )
-                                          : [
-                                              ...current,
-                                              format,
-                                            ];
-
-                                      return {
-                                        ...prev,
-                                        Glass:
-                                          {
-                                            ...(
-                                              prev.Glass ||
-                                              {}
-                                            ),
-                                            MARASCA:
-                                              updated,
-                                          },
-                                      };
-                                    }
-                                  );
-                                }}
-                              >
-                                <Text
-                                  style={
-                                    styles.checkbox
-                                  }
-                                >
-                                  {selected
-                                    ? "☑"
-                                    : "☐"}
-                                </Text>
-
-                                <Text
-                                  style={
-                                    styles.checkboxLabel
-                                  }
-                                >
-                                  {format}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          }
-                        )}
-
-                        <Text
-                          style={[
-                            styles.label,
-                            {
-                              marginTop: 15,
-                            },
-                          ]}
-                        >
-                          DORICA
-                        </Text>
-
-                        {[
-                          "250 ml",
-                          "500 ml",
-                          "750 ml",
-                        ].map(
-                          (format) => {
-                            const selected =
-                              formatsEmballage
-                                .Glass
-                                ?.DORICA?.includes(
-                                  format
-                                ) ||
-                              false;
-
-                            return (
-                              <TouchableOpacity
-                                key={`DORICA-${format}`}
-                                style={
-                                  styles.checkboxContainer
-                                }
-                                onPress={() => {
-                                  setFormatsEmballage(
-                                    (
-                                      prev
-                                    ) => {
-                                      const current =
-                                        prev
-                                          .Glass
-                                          ?.DORICA ||
-                                        [];
-
-                                      const updated =
-                                        current.includes(
-                                          format
-                                        )
-                                          ? current.filter(
-                                              (
-                                                item
-                                              ) =>
-                                                item !==
-                                                format
-                                            )
-                                          : [
-                                              ...current,
-                                              format,
-                                            ];
-
-                                      return {
-                                        ...prev,
-                                        Glass:
-                                          {
-                                            ...(
-                                              prev.Glass ||
-                                              {}
-                                            ),
-                                            DORICA:
-                                              updated,
-                                          },
-                                      };
-                                    }
-                                  );
-                                }}
-                              >
-                                <Text
-                                  style={
-                                    styles.checkbox
-                                  }
-                                >
-                                  {selected
-                                    ? "☑"
-                                    : "☐"}
-                                </Text>
-
-                                <Text
-                                  style={
-                                    styles.checkboxLabel
-                                  }
-                                >
-                                  {format}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          }
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {(
-                          type === "Tin"
-                            ? [
-                                "250 ml",
-                                "500 ml",
-                                "1 L",
-                                "2 L",
-                                "3 L",
-                                "4 L",
-                                "5 L",
-                                "16 L",
-                                "20 L",
-                              ]
-                            : [
-                                "250 ml",
-                                "500 ml",
-                                "1 L",
-                                "3 L",
-                                "5 L",
-                              ]
-                        ).map(
-                          (format) => {
-                            const selected =
-                              formatsEmballage[
-                                type
-                              ]?.includes(
-                                format
-                              ) ||
-                              false;
-
-                            return (
-                              <TouchableOpacity
-                                key={`${type}-${format}`}
-                                style={
-                                  styles.checkboxContainer
-                                }
-                                onPress={() => {
-                                  setFormatsEmballage(
-                                    (
-                                      prev
-                                    ) => {
-                                      const current =
-                                        prev[
-                                          type
-                                        ] ||
-                                        [];
-
-                                      const updated =
-                                        current.includes(
-                                          format
-                                        )
-                                          ? current.filter(
-                                              (
-                                                item
-                                              ) =>
-                                                item !==
-                                                format
-                                            )
-                                          : [
-                                              ...current,
-                                              format,
-                                            ];
-
-                                      return {
-                                        ...prev,
-                                        [type]:
-                                          updated,
-                                      };
-                                    }
-                                  );
-                                }}
-                              >
-                                <Text
-                                  style={
-                                    styles.checkbox
-                                  }
-                                >
-                                  {selected
-                                    ? "☑"
-                                    : "☐"}
-                                </Text>
-
-                                <Text
-                                  style={
-                                    styles.checkboxLabel
-                                  }
-                                >
-                                  {format}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          }
-                        )}
-                      </>
-                    )}
-                  </View>
-                );
-              }
-            )}
-
-            {/* =================================================
-                QUANTITÉ DE LA COMMANDE
-            ================================================= */}
-            <Text style={styles.label}>
-              Quantité de la commande
-            </Text>
-
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={
-                  quantiteCommande
-                }
-                onValueChange={
-                  setQuantiteCommande
-                }
+                    return {
+                      ...prev,
+                      Glass: {
+                        ...(prev.Glass || {}),
+                        DORICA: updated,
+                      },
+                    };
+                  });
+                }}
               >
-                <Picker.Item
-                  label="Sélectionner"
-                  value=""
-                />
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
+                </Text>
 
-                <Picker.Item
-                  label="Conteneur 20 pieds"
-                  value="conteneur_20"
-                />
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-                <Picker.Item
-                  label="Conteneur 40 pieds"
-                  value="conteneur_40"
-                />
-              </Picker>
-            </View>
+    </View>
+  )}
+</View>
 
-            {/* NOMBRE DE PALETTES */}
-            <Text style={styles.label}>
-              Nombre de palettes
-            </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre de palettes"
-              value={nombrePalettes}
-              onChangeText={
-                setNombrePalettes
-              }
-              keyboardType="numeric"
-            />
+{/* AUTRE */}
+<View style={styles.packagingRow}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("Autre")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("Autre") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Autre
+    </Text>
+  </TouchableOpacity>
+</View>
+
+
+{/* AUTRE EMBALLAGE */}
+{emballagesSelectionnes.includes("Autre") && (
+  <>
+    <Text style={styles.label}>
+      Préciser l'emballage
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le type d'emballage"
+      value={autreEmballage}
+      onChangeText={setAutreEmballage}
+    />
+  </>
+)}
+
+
+
+{/* =================================================
+    QUANTITÉ DE LA COMMANDE
+================================================= */}
+
+<Text style={styles.label}>
+  Quantité de la commande
+</Text>
+
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={quantiteCommande}
+    onValueChange={setQuantiteCommande}
+  >
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="FCL 20 pieds"
+      value="conteneur_20"
+    />
+
+    <Picker.Item
+      label="FCL 40 pieds"
+      value="conteneur_40"
+    />
+
+    <Picker.Item
+      label="Palettes"
+      value="palettes"
+    />
+  </Picker>
+</View>
+
+{/* =================================================
+    NOMBRE DE PALETTES
+    Affiché uniquement si Palettes est sélectionné
+================================================= */}
+
+{quantiteCommande === "palettes" && (
+  <>
+    <Text style={styles.label}>
+      Nombre de palettes
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nombre de palettes"
+      value={nombrePalettes}
+      onChangeText={setNombrePalettes}
+      keyboardType="numeric"
+    />
+  </>
+)}
+
 
             {/* =================================================
                 CERTIFICATIONS
@@ -2096,172 +1932,304 @@ export default function HomeScreen() {
                   keyboardType="numeric"
                 />
 
-                {/* =================================================
-                    PACKAGING
-                    NOM INTERFACE = PACKAGING
-                    CHAMPS BASE = NOUVELLE MARQUE
-                ================================================= */}
-                <Text
-                  style={styles.label}
-                >
-                  Packaging
+               {/* =================================================
+    TYPE D'EMBALLAGE CONDITIONNÉ
+================================================= */}
+<Text style={styles.label}>
+  Type d'emballage
+</Text>
+
+{/* TIN */}
+<View style={styles.packagingRow}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("Tin")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("Tin") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Tin
+    </Text>
+  </TouchableOpacity>
+
+  {emballagesSelectionnes.includes("Tin") && (
+    <View style={styles.formatsRow}>
+      {[
+        "250 ml",
+        "500 ml",
+        "1 L",
+        "2 L",
+        "3 L",
+        "4 L",
+        "5 L",
+        "16 L",
+        "20 L",
+      ].map((format) => {
+        const selected =
+          formatsEmballage.Tin?.includes(format) || false;
+
+        return (
+          <TouchableOpacity
+            key={`Tin-${format}`}
+            style={styles.formatItem}
+            onPress={() => {
+              setFormatsEmballage((prev) => {
+                const current = prev.Tin || [];
+
+                const updated = current.includes(format)
+                  ? current.filter((item) => item !== format)
+                  : [...current, format];
+
+                return {
+                  ...prev,
+                  Tin: updated,
+                };
+              });
+            }}
+          >
+            <Text style={styles.checkbox}>
+              {selected ? "☑" : "☐"}
+            </Text>
+
+            <Text style={styles.checkboxLabel}>
+              {format}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  )}
+</View>
+
+
+{/* PET */}
+<View style={styles.packagingRow}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("PET")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("PET") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      PET
+    </Text>
+  </TouchableOpacity>
+
+  {emballagesSelectionnes.includes("PET") && (
+    <View style={styles.formatsRow}>
+      {[
+        "250 ml",
+        "500 ml",
+        "1 L",
+        "3 L",
+        "5 L",
+      ].map((format) => {
+        const selected =
+          formatsEmballage.PET?.includes(format) || false;
+
+        return (
+          <TouchableOpacity
+            key={`PET-${format}`}
+            style={styles.formatItem}
+            onPress={() => {
+              setFormatsEmballage((prev) => {
+                const current = prev.PET || [];
+
+                const updated = current.includes(format)
+                  ? current.filter((item) => item !== format)
+                  : [...current, format];
+
+                return {
+                  ...prev,
+                  PET: updated,
+                };
+              });
+            }}
+          >
+            <Text style={styles.checkbox}>
+              {selected ? "☑" : "☐"}
+            </Text>
+
+            <Text style={styles.checkboxLabel}>
+              {format}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  )}
+</View>
+
+
+{/* GLASS */}
+<View style={styles.packagingRowGlass}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("Glass")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("Glass") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Glass
+    </Text>
+  </TouchableOpacity>
+
+  {emballagesSelectionnes.includes("Glass") && (
+    <View style={styles.glassFormatsContainer}>
+
+      {/* MARASCA */}
+      <View style={styles.glassRow}>
+        <Text style={styles.subTypeLabel}>
+          MARASCA
+        </Text>
+
+        <View style={styles.formatsRow}>
+          {[
+            "250 ml",
+            "500 ml",
+            "750 ml",
+            "1 L",
+          ].map((format) => {
+            const selected =
+              formatsEmballage.Glass?.MARASCA?.includes(format) ||
+              false;
+
+            return (
+              <TouchableOpacity
+                key={`MARASCA-${format}`}
+                style={styles.formatItem}
+                onPress={() => {
+                  setFormatsEmballage((prev) => {
+                    const current =
+                      prev.Glass?.MARASCA || [];
+
+                    const updated = current.includes(format)
+                      ? current.filter(
+                          (item) => item !== format
+                        )
+                      : [...current, format];
+
+                    return {
+                      ...prev,
+                      Glass: {
+                        ...(prev.Glass || {}),
+                        MARASCA: updated,
+                      },
+                    };
+                  });
+                }}
+              >
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
                 </Text>
 
-                {/* TIN */}
-                <TouchableOpacity
-                  style={
-                    styles.checkboxContainer
-                  }
-                  onPress={() =>
-                    toggleEmballageNouvelleMarque(
-                      "Tin"
-                    )
-                  }
-                >
-                  <Text
-                    style={
-                      styles.checkbox
-                    }
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "Tin"
-                    )
-                      ? "☑"
-                      : "☐"}
-                  </Text>
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-                  <Text
-                    style={
-                      styles.checkboxLabel
-                    }
-                  >
-                    Tin
-                  </Text>
-                </TouchableOpacity>
 
-                {/* PET */}
-                <TouchableOpacity
-                  style={
-                    styles.checkboxContainer
-                  }
-                  onPress={() =>
-                    toggleEmballageNouvelleMarque(
-                      "PET"
-                    )
-                  }
-                >
-                  <Text
-                    style={
-                      styles.checkbox
-                    }
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "PET"
-                    )
-                      ? "☑"
-                      : "☐"}
-                  </Text>
+      {/* DORICA */}
+      <View style={styles.glassRow}>
+        <Text style={styles.subTypeLabel}>
+          DORICA
+        </Text>
 
-                  <Text
-                    style={
-                      styles.checkboxLabel
-                    }
-                  >
-                    PET
-                  </Text>
-                </TouchableOpacity>
+        <View style={styles.formatsRow}>
+          {[
+            "250 ml",
+            "500 ml",
+            "750 ml",
+          ].map((format) => {
+            const selected =
+              formatsEmballage.Glass?.DORICA?.includes(format) ||
+              false;
 
-                {/* GLASS */}
-                <TouchableOpacity
-                  style={
-                    styles.checkboxContainer
-                  }
-                  onPress={() =>
-                    toggleEmballageNouvelleMarque(
-                      "Glass"
-                    )
-                  }
-                >
-                  <Text
-                    style={
-                      styles.checkbox
-                    }
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "Glass"
-                    )
-                      ? "☑"
-                      : "☐"}
-                  </Text>
+            return (
+              <TouchableOpacity
+                key={`DORICA-${format}`}
+                style={styles.formatItem}
+                onPress={() => {
+                  setFormatsEmballage((prev) => {
+                    const current =
+                      prev.Glass?.DORICA || [];
 
-                  <Text
-                    style={
-                      styles.checkboxLabel
-                    }
-                  >
-                    Glass
-                  </Text>
-                </TouchableOpacity>
+                    const updated = current.includes(format)
+                      ? current.filter(
+                          (item) => item !== format
+                        )
+                      : [...current, format];
 
-                {/* AUTRE */}
-                <TouchableOpacity
-                  style={
-                    styles.checkboxContainer
-                  }
-                  onPress={() =>
-                    toggleEmballageNouvelleMarque(
-                      "Autre"
-                    )
-                  }
-                >
-                  <Text
-                    style={
-                      styles.checkbox
-                    }
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "Autre"
-                    )
-                      ? "☑"
-                      : "☐"}
-                  </Text>
+                    return {
+                      ...prev,
+                      Glass: {
+                        ...(prev.Glass || {}),
+                        DORICA: updated,
+                      },
+                    };
+                  });
+                }}
+              >
+                <Text style={styles.checkbox}>
+                  {selected ? "☑" : "☐"}
+                </Text>
 
-                  <Text
-                    style={
-                      styles.checkboxLabel
-                    }
-                  >
-                    Autre
-                  </Text>
-                </TouchableOpacity>
+                <Text style={styles.checkboxLabel}>
+                  {format}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-                {/* AUTRE EMBALLAGE */}
-                {nouvelleMarqueEmballagesSelectionnes.includes(
-                  "Autre"
-                ) && (
-                  <>
-                    <Text
-                      style={
-                        styles.label
-                      }
-                    >
-                      Préciser l'emballage
-                    </Text>
+    </View>
+  )}
+</View>
 
-                    <TextInput
-                      style={
-                        styles.input
-                      }
-                      placeholder="Saisir le type d'emballage"
-                      value={
-                        nouvelleMarqueAutreEmballage
-                      }
-                      onChangeText={
-                        setNouvelleMarqueAutreEmballage
-                      }
-                    />
-                  </>
-                )}
+
+{/* AUTRE */}
+<View style={styles.packagingRow}>
+  <TouchableOpacity
+    style={styles.typeContainer}
+    onPress={() => toggleEmballageConditionne("Autre")}
+  >
+    <Text style={styles.checkbox}>
+      {emballagesSelectionnes.includes("Autre") ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Autre
+    </Text>
+  </TouchableOpacity>
+</View>
+
+
+{/* AUTRE EMBALLAGE */}
+{emballagesSelectionnes.includes("Autre") && (
+  <>
+    <Text style={styles.label}>
+      Préciser l'emballage
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le type d'emballage"
+      value={autreEmballage}
+      onChangeText={setAutreEmballage}
+    />
+  </>
+)}
 
                 {/* =================================================
                     FORMATS SOUHAITÉS
@@ -2612,6 +2580,8 @@ export default function HomeScreen() {
   );
 }
 
+
+
 // =====================================================
 // STYLES
 // =====================================================
@@ -2717,7 +2687,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EE672A",
+    borderColor: "#5C681F",
   },
 
   newBrandTitle: {
@@ -2727,7 +2697,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: "#EE672A",
+    backgroundColor: "#5C681F",
     paddingVertical: 15,
     borderRadius: 8,
     marginTop: 25,
@@ -2763,4 +2733,63 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
   },
+
+  packagingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    width: "100%",
+  },
+  
+  packagingRowGlass: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+    width: "100%",
+  },
+  
+  typeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 90,
+  },
+  
+  checkbox: {
+    fontSize: 22,
+    marginRight: 5,
+  },
+  
+  checkboxLabel: {
+    fontSize: 15,
+  },
+  
+  formatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "nowrap",
+    flex: 1,
+  },
+  
+  formatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  
+  glassFormatsContainer: {
+    flex: 1,
+  },
+  
+  glassRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  
+  subTypeLabel: {
+    width: 85,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  
 });

@@ -7,10 +7,12 @@ import {
   Alert,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 
 const API_URL = "http://192.168.1.146:5000";
 
 export default function Traitement() {
+  const router = useRouter();
   // =====================================================
   // RÉCUPÉRER L'ID DU VISITEUR
   // =====================================================
@@ -232,6 +234,22 @@ export default function Traitement() {
             : "Envoyer un email au visiteur"}
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+  style={styles.button}
+  onPress={() =>
+    router.push({
+      pathname: "/pdf",
+      params: {
+        id: String(id),
+      },
+    })
+  }
+>
+  <Text style={styles.buttonText}>
+    Voir la fiche PDF
+  </Text>
+</TouchableOpacity>
 
     </View>
   );
