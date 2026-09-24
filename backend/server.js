@@ -8,6 +8,7 @@ const cors = require("cors");
 const mysql = require("mysql2/promise");
 const axios = require("axios");
 const FormData = require("form-data");
+const { Readable } = require("stream");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
 
@@ -120,7 +121,8 @@ function normalizeTypeCommande(value) {
 //
 // Exemple :
 // ID 85 + 1 = 86
-// vrac       => 86V2026
+//
+// vrac        => 86V2026
 // conditionné => 86B2026
 //
 // ============================================================
@@ -149,7 +151,12 @@ async function getVisitorById(id) {
   }
 
   const [rows] = await pool.query(
-    "SELECT * FROM visiteurs WHERE id = ? LIMIT 1",
+    `
+      SELECT *
+      FROM visiteurs
+      WHERE id = ?
+      LIMIT 1
+    `,
     [visitorId]
   );
 
@@ -164,14 +171,19 @@ async function getVisitorById(id) {
 // PDF GENERATION
 // ============================================================
 //
+// pdf.jsx envoie le HTML complet avec :
+// pdfHtml
+//
+// Puppeteer utilise page.setContent().
+//
 // IMPORTANT :
-// pdf.jsx envoie maintenant le HTML complet avec pdfHtml.
+// page.pdf() peut retourner un Uint8Array selon la version
+// de Puppeteer.
 //
-// On NE fait PAS page.goto(pdfHtml).
-// On utilise page.setContent(pdfHtml).
-//
-// Cela permet à Puppeteer de générer exactement le PDF
-// à partir du HTML construit dans pdf.jsx.
+// On convertit donc toujours le résultat en Buffer Node.js.
+// Cela évite notamment :
+// "source.on is not a function"
+// lors de l'upload FormData vers Meta.
 // ============================================================
 
 async function generatePdfFromHtml(htmlContent) {
@@ -183,7 +195,9 @@ async function generatePdfFromHtml(htmlContent) {
     }
 
     if (htmlContent.trim().length < 100) {
-      throw new Error("Contenu HTML du PDF trop court ou invalide.");
+      throw new Error(
+        "Contenu HTML du PDF trop court ou invalide."
+      );
     }
 
     console.log("=======================================");
@@ -211,8 +225,7 @@ async function generatePdfFromHtml(htmlContent) {
     });
 
     // --------------------------------------------------------
-    // IMPORTANT :
-    // On injecte directement le HTML reçu de pdf.jsx.
+    // Injecter directement le HTML
     // --------------------------------------------------------
 
     await page.setContent(htmlContent, {
@@ -221,7 +234,7 @@ async function generatePdfFromHtml(htmlContent) {
     });
 
     // --------------------------------------------------------
-    // Vérification du document
+    // Vérifier le document
     // --------------------------------------------------------
 
     const documentExists = await page.evaluate(() => {
@@ -244,7 +257,7 @@ async function generatePdfFromHtml(htmlContent) {
     // Génération PDF
     // --------------------------------------------------------
 
-    const pdfBuffer = await page.pdf({
+    const pdfData = await page.pdf({
       format: "A4",
 
       printBackground: true,
@@ -259,14 +272,36 @@ async function generatePdfFromHtml(htmlContent) {
       },
     });
 
-    console.log("✅ PDF généré :", pdfBuffer.length, "bytes");
+    // ========================================================
+    // IMPORTANT
+    // Conversion explicite en Buffer Node.js
+    // ========================================================
+
+    const pdfBuffer = Buffer.from(pdfData);
+
+    console.log(
+      "✅ PDF généré :",
+      pdfBuffer.length,
+      "bytes"
+    );
+
+    console.log(
+      "Type PDF :",
+      Buffer.isBuffer(pdfBuffer)
+        ? "Buffer Node.js"
+        : typeof pdfBuffer
+    );
 
     await browser.close();
+
     browser = null;
 
     return pdfBuffer;
   } catch (error) {
-    console.error("❌ ERREUR GÉNÉRATION PDF :", error);
+    console.error(
+      "❌ ERREUR GÉNÉRATION PDF :",
+      error
+    );
 
     if (browser) {
       try {
@@ -290,25 +325,35 @@ async function generatePdfFromHtml(htmlContent) {
 function createEmailTransporter() {
   const host = process.env.SMTP_HOST;
 
-  const port = Number(process.env.SMTP_PORT || 465);
+  const port = Number(
+    process.env.SMTP_PORT || 465
+  );
 
   const secure =
-    String(process.env.SMTP_SECURE || "true").toLowerCase() === "true";
+    String(
+      process.env.SMTP_SECURE || "true"
+    ).toLowerCase() === "true";
 
   const user = process.env.SMTP_USER;
 
   const pass = process.env.SMTP_PASS;
 
   if (!host) {
-    throw new Error("SMTP_HOST est manquant dans .env");
+    throw new Error(
+      "SMTP_HOST est manquant dans .env"
+    );
   }
 
   if (!user) {
-    throw new Error("SMTP_USER est manquant dans .env");
+    throw new Error(
+      "SMTP_USER est manquant dans .env"
+    );
   }
 
   if (!pass) {
-    throw new Error("SMTP_PASS est manquant dans .env");
+    throw new Error(
+      "SMTP_PASS est manquant dans .env"
+    );
   }
 
   return nodemailer.createTransport({
@@ -340,7 +385,9 @@ app.get("/", (req, res) => {
 
 app.get("/api/test-db", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT 1 AS test");
+    const [rows] = await pool.query(
+      "SELECT 1 AS test"
+    );
 
     res.json({
       success: true,
@@ -348,11 +395,15 @@ app.get("/api/test-db", async (req, res) => {
       data: rows,
     });
   } catch (error) {
-    console.error("❌ TEST DB :", error);
+    console.error(
+      "❌ TEST DB :",
+      error
+    );
 
     res.status(500).json({
       success: false,
-      message: "Erreur de connexion à MySQL.",
+      message:
+        "Erreur de connexion à MySQL.",
       error: error.message,
     });
   }
@@ -362,175 +413,281 @@ app.get("/api/test-db", async (req, res) => {
 // POST - AJOUT VISITEUR
 // ============================================================
 
-app.post("/api/visiteurs", async (req, res) => {
-  try {
-    console.log("=======================================");
-    console.log("NOUVEAU VISITEUR");
-    console.log("=======================================");
-
-    const body = req.body || {};
-
-    // --------------------------------------------------------
-    // INFORMATIONS GÉNÉRALES
-    // --------------------------------------------------------
-
-    const nom = cleanString(body.nom);
-    const prenom = cleanString(body.prenom);
-    const email = cleanString(body.email);
-
-    const age =
-      body.age === undefined ||
-      body.age === null ||
-      body.age === ""
-        ? null
-        : Number(body.age);
-
-    const origine = cleanString(body.origine);
-    const indicatif = cleanString(body.indicatif);
-    const telephone = cleanString(body.telephone);
-
-    const societe = cleanString(
-      body.societe || body.adresse_societe
-        ? body.societe
-        : body.company
-    );
-
-    const adresse_societe = cleanString(body.adresse_societe);
-
-    const fonction = cleanString(body.fonction);
-
-    const langue_communication = cleanString(
-      body.langue_communication
-    );
-
-    const profile = cleanString(
-      body.profile || body.profil
-    );
-
-    const type_commande = normalizeTypeCommande(
-      body.type_commande
-    );
-
-    // --------------------------------------------------------
-    // VRAC
-    // --------------------------------------------------------
-
-    const qualite_grade = cleanString(
-      body.qualite_grade
-    );
-
-    const volume_estime = cleanString(
-      body.volume_estime
-    );
-
-    const destination = cleanString(
-      body.destination
-    );
-
-    const incoterm = cleanString(
-      body.incoterm
-    );
-
-    const format_livraison = cleanString(
-      body.format_livraison
-    );
-
-    const frequence = cleanString(
-      body.frequence
-    );
-
-    const exigences = cleanJson(
-      body.exigences
-    );
-
-    const infos = cleanString(
-      body.infos
-    );
-
-    // --------------------------------------------------------
-    // CONDITIONNÉ
-    // --------------------------------------------------------
-
-    const pays_conditionne = cleanString(
-      body.pays_conditionne
-    );
-
-    const canal = cleanString(
-      body.canal
-    );
-
-    const volumes_conditionne = cleanJson(
-      body.volumes_conditionne ||
-        body.volumes ||
-        body.volumes_souhaites
-    );
-
-    // --------------------------------------------------------
-    // EMBALLAGE
-    // --------------------------------------------------------
-
-    const type_emballage = cleanJson(
-      body.type_emballage ||
-        body.emballagesSelectionnes ||
-        body.emballages
-    );
-
-    const packaging = cleanJson(
-      body.packaging ||
-        body.formatsEmballage
-    );
-
-    const formats_souhaites = cleanJson(
-      body.formats_souhaites ||
-        body.formatsSouhaites
-    );
-
-    // --------------------------------------------------------
-    // MARQUE
-    // --------------------------------------------------------
-
-    const type_marque = cleanString(
-      body.type_marque
-    );
-
-    const marche_cible = cleanString(
-      body.marche_cible
-    );
-
-    const quantite_prevue = cleanJson(
-      body.quantite_prevue
-    );
-
-    const nouvelle_marque_formats = cleanJson(
-      body.nouvelle_marque_formats
-    );
-
-    const nouvelle_marque_design_conditionnement =
-      cleanString(
-        body.nouvelle_marque_design_conditionnement
+app.post(
+  "/api/visiteurs",
+  async (req, res) => {
+    try {
+      console.log(
+        "======================================="
       );
 
-    // --------------------------------------------------------
-    // CONTENEUR
-    // --------------------------------------------------------
+      console.log(
+        "NOUVEAU VISITEUR"
+      );
 
-    const type_conteneur = cleanString(
-      body.type_conteneur
-    );
+      console.log(
+        "======================================="
+      );
 
-    const nombre_palettes =
-      body.nombre_palettes === undefined ||
-      body.nombre_palettes === null ||
-      body.nombre_palettes === ""
-        ? null
-        : Number(body.nombre_palettes);
+      const body = req.body || {};
 
-    // --------------------------------------------------------
-    // INSERTION
-    // --------------------------------------------------------
+      // ------------------------------------------------------
+      // INFORMATIONS GENERALES
+      // ------------------------------------------------------
 
-    const sql = `
-      INSERT INTO visiteurs (
+      const nom = cleanString(
+        body.nom
+      );
+
+      const prenom = cleanString(
+        body.prenom
+      );
+
+      const email = cleanString(
+        body.email
+      );
+
+      const age =
+        body.age === undefined ||
+        body.age === null ||
+        body.age === ""
+          ? null
+          : Number(body.age);
+
+      const origine = cleanString(
+        body.origine
+      );
+
+      const indicatif = cleanString(
+        body.indicatif
+      );
+
+      const telephone = cleanString(
+        body.telephone
+      );
+
+      const societe = cleanString(
+        body.societe ||
+          body.adresse_societe
+          ? body.societe
+          : body.company
+      );
+
+      const adresse_societe =
+        cleanString(
+          body.adresse_societe
+        );
+
+      const fonction = cleanString(
+        body.fonction
+      );
+
+      const langue_communication =
+        cleanString(
+          body.langue_communication
+        );
+
+      const profile = cleanString(
+        body.profile ||
+          body.profil
+      );
+
+      const type_commande =
+        normalizeTypeCommande(
+          body.type_commande
+        );
+
+      // ------------------------------------------------------
+      // VRAC
+      // ------------------------------------------------------
+
+      const qualite_grade =
+        cleanString(
+          body.qualite_grade
+        );
+
+      const volume_estime =
+        cleanString(
+          body.volume_estime
+        );
+
+      const destination =
+        cleanString(
+          body.destination
+        );
+
+      const incoterm =
+        cleanString(
+          body.incoterm
+        );
+
+      const format_livraison =
+        cleanString(
+          body.format_livraison
+        );
+
+      const frequence =
+        cleanString(
+          body.frequence
+        );
+
+      const exigences =
+        cleanJson(
+          body.exigences
+        );
+
+      const infos =
+        cleanString(
+          body.infos
+        );
+
+      // ------------------------------------------------------
+      // CONDITIONNE
+      // ------------------------------------------------------
+
+      const pays_conditionne =
+        cleanString(
+          body.pays_conditionne
+        );
+
+      const canal =
+        cleanString(
+          body.canal
+        );
+
+      const volumes_conditionne =
+        cleanJson(
+          body.volumes_conditionne ||
+            body.volumes ||
+            body.volumes_souhaites
+        );
+
+      // ------------------------------------------------------
+      // EMBALLAGE
+      // ------------------------------------------------------
+
+      const type_emballage =
+        cleanJson(
+          body.type_emballage ||
+            body.emballagesSelectionnes ||
+            body.emballages
+        );
+
+      const packaging =
+        cleanJson(
+          body.packaging ||
+            body.formatsEmballage
+        );
+
+      const formats_souhaites =
+        cleanJson(
+          body.formats_souhaites ||
+            body.formatsSouhaites
+        );
+
+      // ------------------------------------------------------
+      // MARQUE
+      // ------------------------------------------------------
+
+      const type_marque =
+        cleanString(
+          body.type_marque
+        );
+
+      const marche_cible =
+        cleanString(
+          body.marche_cible
+        );
+
+      const quantite_prevue =
+        cleanJson(
+          body.quantite_prevue
+        );
+
+      const nouvelle_marque_formats =
+        cleanJson(
+          body.nouvelle_marque_formats
+        );
+
+      const nouvelle_marque_design_conditionnement =
+        cleanString(
+          body.nouvelle_marque_design_conditionnement
+        );
+
+      // ------------------------------------------------------
+      // CONTENEUR
+      // ------------------------------------------------------
+
+      const type_conteneur =
+        cleanString(
+          body.type_conteneur
+        );
+
+      const nombre_palettes =
+        body.nombre_palettes === undefined ||
+        body.nombre_palettes === null ||
+        body.nombre_palettes === ""
+          ? null
+          : Number(body.nombre_palettes);
+
+      // ------------------------------------------------------
+      // SQL
+      // ------------------------------------------------------
+
+      const sql = `
+        INSERT INTO visiteurs (
+          nom,
+          prenom,
+          email,
+          age,
+          origine,
+          indicatif,
+          telephone,
+          societe,
+          adresse_societe,
+          fonction,
+          langue_communication,
+          profile,
+          type_commande,
+
+          qualite_grade,
+          volume_estime,
+          destination,
+          incoterm,
+          format_livraison,
+          frequence,
+          exigences,
+          infos,
+
+          pays_conditionne,
+          canal,
+          volumes_conditionne,
+
+          type_emballage,
+          packaging,
+          formats_souhaites,
+
+          type_marque,
+          marche_cible,
+          quantite_prevue,
+          nouvelle_marque_formats,
+          nouvelle_marque_design_conditionnement,
+
+          type_conteneur,
+          nombre_palettes
+        )
+
+        VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?
+        )
+      `;
+
+      const values = [
         nom,
         prenom,
         email,
@@ -569,423 +726,502 @@ app.post("/api/visiteurs", async (req, res) => {
         nouvelle_marque_design_conditionnement,
 
         type_conteneur,
-        nombre_palettes
-      )
+        nombre_palettes,
+      ];
 
-      VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?
-      )
-    `;
+      const [result] =
+        await pool.execute(
+          sql,
+          values
+        );
 
-    const values = [
-      nom,
-      prenom,
-      email,
-      age,
-      origine,
-      indicatif,
-      telephone,
-      societe,
-      adresse_societe,
-      fonction,
-      langue_communication,
-      profile,
-      type_commande,
+      const insertedId =
+        result.insertId;
 
-      qualite_grade,
-      volume_estime,
-      destination,
-      incoterm,
-      format_livraison,
-      frequence,
-      exigences,
-      infos,
+      // ------------------------------------------------------
+      // REFERENCE
+      // ------------------------------------------------------
 
-      pays_conditionne,
-      canal,
-      volumes_conditionne,
+      const reference =
+        generateReference(
+          insertedId,
+          type_commande
+        );
 
-      // IMPORTANT :
-      // type_emballage et packaging sont stockés séparément.
-      type_emballage,
-      packaging,
-      formats_souhaites,
+      await pool.execute(
+        `
+          UPDATE visiteurs
+          SET reference = ?
+          WHERE id = ?
+        `,
+        [
+          reference,
+          insertedId,
+        ]
+      );
 
-      type_marque,
-      marche_cible,
-      quantite_prevue,
-      nouvelle_marque_formats,
-      nouvelle_marque_design_conditionnement,
+      console.log(
+        "✅ Visiteur enregistré"
+      );
 
-      type_conteneur,
-      nombre_palettes,
-    ];
+      console.log(
+        "ID :",
+        insertedId
+      );
 
-    const [result] = await pool.execute(
-      sql,
-      values
-    );
+      console.log(
+        "REFERENCE :",
+        reference
+      );
 
-    const insertedId = result.insertId;
+      res.status(201).json({
+        success: true,
 
-    // --------------------------------------------------------
-    // REFERENCE
-    // --------------------------------------------------------
+        message:
+          "Visiteur enregistré avec succès.",
 
-    const reference = generateReference(
-      insertedId,
-      type_commande
-    );
+        id: insertedId,
 
-    await pool.execute(
-      `
-        UPDATE visiteurs
-        SET reference = ?
-        WHERE id = ?
-      `,
-      [reference, insertedId]
-    );
+        reference,
 
-    console.log("✅ Visiteur enregistré");
-    console.log("ID :", insertedId);
-    console.log("REFERENCE :", reference);
+        type_commande,
+      });
+    } catch (error) {
+      console.error(
+        "======================================="
+      );
 
-    res.status(201).json({
-      success: true,
+      console.error(
+        "❌ ERREUR AJOUT VISITEUR"
+      );
 
-      message: "Visiteur enregistré avec succès.",
+      console.error(
+        "======================================="
+      );
 
-      id: insertedId,
+      console.error(error);
 
-      reference,
+      res.status(500).json({
+        success: false,
 
-      type_commande,
-    });
-  } catch (error) {
-    console.error("=======================================");
-    console.error("❌ ERREUR AJOUT VISITEUR");
-    console.error("=======================================");
-    console.error(error);
+        message:
+          "Erreur lors de l'enregistrement du visiteur.",
 
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors de l'enregistrement du visiteur.",
-      error: error.message,
-      sqlMessage: error.sqlMessage,
-      sqlCode: error.code,
-    });
+        error: error.message,
+
+        sqlMessage:
+          error.sqlMessage,
+
+        sqlCode:
+          error.code,
+      });
+    }
   }
-});
+);
 
 // ============================================================
 // GET - TOUS LES VISITEURS
 // ============================================================
 
-app.get("/api/visiteurs", async (req, res) => {
-  try {
-    const [rows] = await pool.query(
-      `
-        SELECT *
-        FROM visiteurs
-        ORDER BY id DESC
-      `
-    );
+app.get(
+  "/api/visiteurs",
+  async (req, res) => {
+    try {
+      const [rows] =
+        await pool.query(
+          `
+            SELECT *
+            FROM visiteurs
+            ORDER BY id DESC
+          `
+        );
 
-    res.json({
-      success: true,
-      count: rows.length,
-      data: rows,
-    });
-  } catch (error) {
-    console.error("❌ GET VISITEURS :", error);
+      res.json({
+        success: true,
+        count: rows.length,
+        data: rows,
+      });
+    } catch (error) {
+      console.error(
+        "❌ GET VISITEURS :",
+        error
+      );
 
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors de la récupération des visiteurs.",
-      error: error.message,
-    });
+      res.status(500).json({
+        success: false,
+
+        message:
+          "Erreur lors de la récupération des visiteurs.",
+
+        error:
+          error.message,
+      });
+    }
   }
-});
+);
 
 // ============================================================
 // GET - VISITEUR PAR ID
 // ============================================================
-//
-// Utilisé par pdf.jsx :
-// GET /api/visiteurs/85
-//
-// ============================================================
 
-app.get("/api/visiteurs/:id", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+app.get(
+  "/api/visiteurs/:id",
+  async (req, res) => {
+    try {
+      const id =
+        Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Identifiant visiteur invalide.",
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Identifiant visiteur invalide.",
+        });
+      }
+
+      const visitor =
+        await getVisitorById(id);
+
+      // ------------------------------------------------------
+      // Si ancienne donnée sans référence
+      // ------------------------------------------------------
+
+      if (!visitor.reference) {
+        const reference =
+          generateReference(
+            visitor.id,
+            visitor.type_commande
+          );
+
+        try {
+          await pool.execute(
+            `
+              UPDATE visiteurs
+              SET reference = ?
+              WHERE id = ?
+            `,
+            [
+              reference,
+              visitor.id,
+            ]
+          );
+
+          visitor.reference =
+            reference;
+        } catch (
+          referenceError
+        ) {
+          console.error(
+            "⚠️ Impossible de sauvegarder la référence :",
+            referenceError.message
+          );
+
+          visitor.reference =
+            reference;
+        }
+      }
+
+      res.json({
+        success: true,
+
+        data: visitor,
+
+        visitor,
       });
-    }
-
-    const visitor = await getVisitorById(id);
-
-    // Si ancienne donnée sans référence
-    if (!visitor.reference) {
-      const reference = generateReference(
-        visitor.id,
-        visitor.type_commande
+    } catch (error) {
+      console.error(
+        "❌ GET VISITEUR :",
+        error
       );
 
-      try {
-        await pool.execute(
-          `
-            UPDATE visiteurs
-            SET reference = ?
-            WHERE id = ?
-          `,
-          [reference, visitor.id]
-        );
-
-        visitor.reference = reference;
-      } catch (referenceError) {
-        console.error(
-          "⚠️ Impossible de sauvegarder la référence :",
-          referenceError.message
-        );
-
-        visitor.reference = reference;
+      if (
+        error.message ===
+        "Visiteur introuvable."
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            error.message,
+        });
       }
-    }
 
-    res.json({
-      success: true,
-      data: visitor,
-      visitor,
-    });
-  } catch (error) {
-    console.error("❌ GET VISITEUR :", error);
-
-    if (error.message === "Visiteur introuvable.") {
-      return res.status(404).json({
+      res.status(500).json({
         success: false,
-        message: error.message,
+
+        message:
+          "Erreur lors de la récupération du visiteur.",
+
+        error:
+          error.message,
       });
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors de la récupération du visiteur.",
-      error: error.message,
-    });
   }
-});
+);
 
 // ============================================================
 // PUT - MODIFIER VISITEUR
 // ============================================================
 
-app.put("/api/visiteurs/:id", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+app.put(
+  "/api/visiteurs/:id",
+  async (req, res) => {
+    try {
+      const id =
+        Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Identifiant visiteur invalide.",
-      });
-    }
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
 
-    await getVisitorById(id);
+          message:
+            "Identifiant visiteur invalide.",
+        });
+      }
 
-    const body = req.body || {};
+      await getVisitorById(id);
 
-    const fields = [];
-    const values = [];
+      const body =
+        req.body || {};
 
-    const allowedFields = [
-      "nom",
-      "prenom",
-      "email",
-      "age",
-      "origine",
-      "indicatif",
-      "telephone",
-      "societe",
-      "adresse_societe",
-      "fonction",
-      "langue_communication",
-      "profile",
-      "type_commande",
+      const fields = [];
+      const values = [];
 
-      "qualite_grade",
-      "volume_estime",
-      "destination",
-      "incoterm",
-      "format_livraison",
-      "frequence",
-      "exigences",
-      "infos",
+      const allowedFields = [
+        "nom",
+        "prenom",
+        "email",
+        "age",
+        "origine",
+        "indicatif",
+        "telephone",
+        "societe",
+        "adresse_societe",
+        "fonction",
+        "langue_communication",
+        "profile",
+        "type_commande",
 
-      "pays_conditionne",
-      "canal",
-      "volumes_conditionne",
+        "qualite_grade",
+        "volume_estime",
+        "destination",
+        "incoterm",
+        "format_livraison",
+        "frequence",
+        "exigences",
+        "infos",
 
-      "type_emballage",
-      "packaging",
-      "formats_souhaites",
+        "pays_conditionne",
+        "canal",
+        "volumes_conditionne",
 
-      "type_marque",
-      "marche_cible",
-      "quantite_prevue",
-      "nouvelle_marque_formats",
-      "nouvelle_marque_design_conditionnement",
+        "type_emballage",
+        "packaging",
+        "formats_souhaites",
 
-      "type_conteneur",
-      "nombre_palettes",
+        "type_marque",
+        "marche_cible",
+        "quantite_prevue",
+        "nouvelle_marque_formats",
+        "nouvelle_marque_design_conditionnement",
 
-      "qualification",
-    ];
+        "type_conteneur",
+        "nombre_palettes",
 
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        fields.push(`${field} = ?`);
+        "qualification",
+      ];
 
+      for (
+        const field of allowedFields
+      ) {
         if (
-          [
-            "exigences",
-            "volumes_conditionne",
-            "type_emballage",
-            "packaging",
-            "formats_souhaites",
-            "quantite_prevue",
-            "nouvelle_marque_formats",
-          ].includes(field)
+          body[field] !== undefined
         ) {
-          values.push(cleanJson(body[field]));
-        } else {
-          values.push(body[field]);
+          fields.push(
+            `${field} = ?`
+          );
+
+          if (
+            [
+              "exigences",
+              "volumes_conditionne",
+              "type_emballage",
+              "packaging",
+              "formats_souhaites",
+              "quantite_prevue",
+              "nouvelle_marque_formats",
+            ].includes(field)
+          ) {
+            values.push(
+              cleanJson(
+                body[field]
+              )
+            );
+          } else {
+            values.push(
+              body[field]
+            );
+          }
         }
       }
-    }
 
-    if (!fields.length) {
-      return res.status(400).json({
+      if (!fields.length) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Aucune donnée à modifier.",
+        });
+      }
+
+      values.push(id);
+
+      const sql = `
+        UPDATE visiteurs
+        SET ${fields.join(", ")}
+        WHERE id = ?
+      `;
+
+      await pool.execute(
+        sql,
+        values
+      );
+
+      const visitor =
+        await getVisitorById(id);
+
+      res.json({
+        success: true,
+
+        message:
+          "Visiteur modifié avec succès.",
+
+        data: visitor,
+      });
+    } catch (error) {
+      console.error(
+        "❌ PUT VISITEUR :",
+        error
+      );
+
+      res.status(500).json({
         success: false,
-        message: "Aucune donnée à modifier.",
+
+        message:
+          "Erreur lors de la modification du visiteur.",
+
+        error:
+          error.message,
+
+        sqlMessage:
+          error.sqlMessage,
       });
     }
-
-    values.push(id);
-
-    const sql = `
-      UPDATE visiteurs
-      SET ${fields.join(", ")}
-      WHERE id = ?
-    `;
-
-    await pool.execute(sql, values);
-
-    const visitor = await getVisitorById(id);
-
-    res.json({
-      success: true,
-      message: "Visiteur modifié avec succès.",
-      data: visitor,
-    });
-  } catch (error) {
-    console.error("❌ PUT VISITEUR :", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors de la modification du visiteur.",
-      error: error.message,
-      sqlMessage: error.sqlMessage,
-    });
   }
-});
+);
 
 // ============================================================
 // DELETE - SUPPRIMER VISITEUR
 // ============================================================
 
-app.delete("/api/visiteurs/:id", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
+app.delete(
+  "/api/visiteurs/:id",
+  async (req, res) => {
+    try {
+      const id =
+        Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Identifiant visiteur invalide.",
+        });
+      }
+
+      await getVisitorById(id);
+
+      await pool.execute(
+        `
+          DELETE FROM visiteurs
+          WHERE id = ?
+        `,
+        [id]
+      );
+
+      res.json({
+        success: true,
+
+        message:
+          "Visiteur supprimé avec succès.",
+
+        id,
+      });
+    } catch (error) {
+      console.error(
+        "❌ DELETE VISITEUR :",
+        error
+      );
+
+      res.status(500).json({
         success: false,
-        message: "Identifiant visiteur invalide.",
+
+        message:
+          "Erreur lors de la suppression du visiteur.",
+
+        error:
+          error.message,
       });
     }
-
-    await getVisitorById(id);
-
-    await pool.execute(
-      `
-        DELETE FROM visiteurs
-        WHERE id = ?
-      `,
-      [id]
-    );
-
-    res.json({
-      success: true,
-      message: "Visiteur supprimé avec succès.",
-      id,
-    });
-  } catch (error) {
-    console.error("❌ DELETE VISITEUR :", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors de la suppression du visiteur.",
-      error: error.message,
-    });
   }
-});
+);
 
 // ============================================================
-// QUALIFICATION
-// ============================================================
-//
-// POST /api/visiteurs/:id/qualification
-//
-// Body exemple :
-// {
-//   "qualification": "qualifié"
-// }
-//
+// QUALIFICATION - POST
 // ============================================================
 
 app.post(
   "/api/visiteurs/:id/qualification",
   async (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id =
+        Number(req.params.id);
 
-      if (!Number.isInteger(id) || id <= 0) {
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Identifiant visiteur invalide.",
+
+          message:
+            "Identifiant visiteur invalide.",
         });
       }
 
       await getVisitorById(id);
 
-      const qualification = cleanString(
-        req.body?.qualification
-      );
+      const qualification =
+        cleanString(
+          req.body?.qualification
+        );
 
       if (!qualification) {
         return res.status(400).json({
           success: false,
-          message: "La qualification est obligatoire.",
+
+          message:
+            "La qualification est obligatoire.",
         });
       }
 
@@ -995,15 +1231,23 @@ app.post(
           SET qualification = ?
           WHERE id = ?
         `,
-        [qualification, id]
+        [
+          qualification,
+          id,
+        ]
       );
 
-      const visitor = await getVisitorById(id);
+      const visitor =
+        await getVisitorById(id);
 
       res.json({
         success: true,
-        message: "Qualification enregistrée avec succès.",
+
+        message:
+          "Qualification enregistrée avec succès.",
+
         qualification,
+
         data: visitor,
       });
     } catch (error) {
@@ -1014,8 +1258,12 @@ app.post(
 
       res.status(500).json({
         success: false,
-        message: "Erreur lors de l'enregistrement de la qualification.",
-        error: error.message,
+
+        message:
+          "Erreur lors de l'enregistrement de la qualification.",
+
+        error:
+          error.message,
       });
     }
   }
@@ -1029,25 +1277,34 @@ app.put(
   "/api/visiteurs/:id/qualification",
   async (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id =
+        Number(req.params.id);
 
-      if (!Number.isInteger(id) || id <= 0) {
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Identifiant visiteur invalide.",
+
+          message:
+            "Identifiant visiteur invalide.",
         });
       }
 
       await getVisitorById(id);
 
-      const qualification = cleanString(
-        req.body?.qualification
-      );
+      const qualification =
+        cleanString(
+          req.body?.qualification
+        );
 
       if (!qualification) {
         return res.status(400).json({
           success: false,
-          message: "La qualification est obligatoire.",
+
+          message:
+            "La qualification est obligatoire.",
         });
       }
 
@@ -1057,12 +1314,18 @@ app.put(
           SET qualification = ?
           WHERE id = ?
         `,
-        [qualification, id]
+        [
+          qualification,
+          id,
+        ]
       );
 
       res.json({
         success: true,
-        message: "Qualification mise à jour.",
+
+        message:
+          "Qualification mise à jour.",
+
         qualification,
       });
     } catch (error) {
@@ -1073,8 +1336,12 @@ app.put(
 
       res.status(500).json({
         success: false,
-        message: "Erreur qualification.",
-        error: error.message,
+
+        message:
+          "Erreur qualification.",
+
+        error:
+          error.message,
       });
     }
   }
@@ -1084,8 +1351,8 @@ app.put(
 // EMAIL - ENVOYER LE PDF
 // ============================================================
 //
-// IMPORTANT :
 // pdf.jsx envoie :
+//
 // {
 //   visitorId,
 //   reference,
@@ -1094,248 +1361,370 @@ app.put(
 //   pdfHtml
 // }
 //
-// Le serveur utilise directement pdfHtml.
 // ============================================================
 
-app.post("/api/email/send", async (req, res) => {
-  try {
-    console.log("");
-    console.log("=======================================");
-    console.log("ENVOI EMAIL");
-    console.log("=======================================");
-
-    const {
-      visitorId,
-      visiteurId,
-      nomComplet,
-      message,
-      reference,
-      toEmail,
-      pdfHtml,
-    } = req.body || {};
-
-    const id = Number(
-      visitorId || visiteurId
-    );
-
-    console.log("Visitor ID :", id);
-    console.log("Reference reçue :", reference);
-    console.log(
-      "PDF HTML :",
-      pdfHtml ? `${pdfHtml.length} caractères` : "MANQUANT"
-    );
-
-    // --------------------------------------------------------
-    // Vérification ID
-    // --------------------------------------------------------
-
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Identifiant visiteur manquant ou invalide.",
-      });
-    }
-
-    // --------------------------------------------------------
-    // Vérification HTML
-    // --------------------------------------------------------
-
-    if (
-      !pdfHtml ||
-      typeof pdfHtml !== "string" ||
-      pdfHtml.trim().length < 100
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Le contenu HTML du PDF est manquant ou invalide.",
-      });
-    }
-
-    // --------------------------------------------------------
-    // Récupération visiteur
-    // --------------------------------------------------------
-
-    const visitor = await getVisitorById(id);
-
-    // --------------------------------------------------------
-    // Référence
-    // --------------------------------------------------------
-
-    let finalReference =
-      cleanString(reference) ||
-      cleanString(visitor.reference);
-
-    if (!finalReference) {
-      finalReference = generateReference(
-        visitor.id,
-        visitor.type_commande
+app.post(
+  "/api/email/send",
+  async (req, res) => {
+    try {
+      console.log("");
+      console.log(
+        "======================================="
+      );
+      console.log(
+        "ENVOI EMAIL"
+      );
+      console.log(
+        "======================================="
       );
 
-      await pool.execute(
-        `
-          UPDATE visiteurs
-          SET reference = ?
-          WHERE id = ?
-        `,
-        [finalReference, visitor.id]
+      const {
+        visitorId,
+        visiteurId,
+        nomComplet,
+        message,
+        reference,
+        toEmail,
+        pdfHtml,
+      } = req.body || {};
+
+      const id =
+        Number(
+          visitorId ||
+            visiteurId
+        );
+
+      console.log(
+        "Visitor ID :",
+        id
       );
-    }
 
-    // --------------------------------------------------------
-    // Destinataire
-    // --------------------------------------------------------
+      console.log(
+        "Reference reçue :",
+        reference
+      );
 
-    const recipient =
-      cleanString(toEmail) ||
-      cleanString(visitor.email) ||
-      cleanString(process.env.EMAIL_TO) ||
-      "Contact@olived.tn";
+      console.log(
+        "PDF HTML :",
+        pdfHtml
+          ? `${pdfHtml.length} caractères`
+          : "MANQUANT"
+      );
 
-    console.log("Destinataire :", recipient);
-    console.log("Référence finale :", finalReference);
+      // ------------------------------------------------------
+      // Vérification ID
+      // ------------------------------------------------------
 
-    // --------------------------------------------------------
-    // Génération PDF
-    // --------------------------------------------------------
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
 
-    const pdfBuffer =
-      await generatePdfFromHtml(pdfHtml);
+          message:
+            "Identifiant visiteur manquant ou invalide.",
+        });
+      }
 
-    console.log(
-      "PDF prêt pour email :",
-      pdfBuffer.length,
-      "bytes"
-    );
+      // ------------------------------------------------------
+      // Vérification HTML
+      // ------------------------------------------------------
 
-    // --------------------------------------------------------
-    // Transporteur
-    // --------------------------------------------------------
+      if (
+        !pdfHtml ||
+        typeof pdfHtml !==
+          "string" ||
+        pdfHtml.trim()
+          .length < 100
+      ) {
+        return res.status(400).json({
+          success: false,
 
-    const transporter =
-      createEmailTransporter();
+          message:
+            "Le contenu HTML du PDF est manquant ou invalide.",
+        });
+      }
 
-    await transporter.verify();
+      // ------------------------------------------------------
+      // Visiteur
+      // ------------------------------------------------------
 
-    console.log("✅ SMTP OK");
+      const visitor =
+        await getVisitorById(id);
 
-    // --------------------------------------------------------
-    // Nom complet
-    // --------------------------------------------------------
+      // ------------------------------------------------------
+      // Reference
+      // ------------------------------------------------------
 
-    const finalNomComplet =
-      cleanString(nomComplet) ||
-      [visitor.nom]
-        .filter(Boolean)
-        .join(" ") ||
-      "Client";
+      let finalReference =
+        cleanString(reference) ||
+        cleanString(
+          visitor.reference
+        );
 
-    // --------------------------------------------------------
-    // Email
-    // --------------------------------------------------------
+      if (!finalReference) {
+        finalReference =
+          generateReference(
+            visitor.id,
+            visitor.type_commande
+          );
 
-    const mailSubject =
-      `Official Price Offer OLIVED - ${finalReference}`;
+        await pool.execute(
+          `
+            UPDATE visiteurs
+            SET reference = ?
+            WHERE id = ?
+          `,
+          [
+            finalReference,
+            visitor.id,
+          ]
+        );
+      }
 
-    const mailText =
-      cleanString(message) ||
-      `Dear ${finalNomComplet},
+      // ------------------------------------------------------
+      // Destinataire
+      // ------------------------------------------------------
 
-Please find attached the official OLIVED price offer.
+      const recipient =
+        cleanString(toEmail) ||
+        cleanString(
+          visitor.email
+        ) ||
+        cleanString(
+          process.env.EMAIL_TO
+        ) ||
+        "Contact@olived.tn";
+
+      console.log(
+        "Destinataire :",
+        recipient
+      );
+
+      console.log(
+        "Référence finale :",
+        finalReference
+      );
+
+      // ------------------------------------------------------
+      // Génération PDF
+      // ------------------------------------------------------
+
+      const pdfBuffer =
+        await generatePdfFromHtml(
+          pdfHtml
+        );
+
+      console.log(
+        "PDF prêt pour email :",
+        pdfBuffer.length,
+        "bytes"
+      );
+
+      // ------------------------------------------------------
+      // SMTP
+      // ------------------------------------------------------
+
+      const transporter =
+        createEmailTransporter();
+
+      await transporter.verify();
+
+      console.log(
+        "✅ SMTP OK"
+      );
+
+      // ------------------------------------------------------
+      // Nom client
+      // ------------------------------------------------------
+
+      const finalNomComplet =
+        cleanString(
+          nomComplet
+        ) ||
+        [
+          visitor.prenom,
+          visitor.nom,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .trim() ||
+        "Client";
+
+      // ------------------------------------------------------
+      // Email
+      // ------------------------------------------------------
+
+      const mailSubject =
+        `Official Price Offer OLIVED - ${finalReference}`;
+
+      const mailText =
+        cleanString(message) ||
+        `Dear ${finalNomComplet},
+
+        I hope you are doing well.
+
+        Please find attached our quotation for the requested olive oil products.
+        
+        The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
+        
+        Please do not hesitate to contact us should you need any further information or clarification.
+        
+        We look forward to hearing from you and hope to have the opportunity to work with you.
 
 Reference: ${finalReference}
 
 Best regards,
 OLIVED`;
 
-    const mailHtml = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-        
+      const mailHtml = `
+        <div
+          style="
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+          "
+        >
+          <p>
+            Dear ${finalNomComplet},
+          </p>
 
-        <p>
-          Dear ${finalNomComplet},
-        </p>
+          <p>
+          I hope you are doing well.
 
-        <p>
-          Please find attached the official OLIVED price offer.
-        </p>
+          Please find attached our quotation for the requested olive oil products.
+          
+          The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
+          
+          Please do not hesitate to contact us should you need any further information or clarification.
+          
+          We look forward to hearing from you and hope to have the opportunity to work with you.
+          </p>
 
-        <p>
-          <strong>Reference:</strong>
-          ${finalReference}
-        </p>
+          <p>
+            <strong>Reference:</strong>
+            ${finalReference}
+          </p>
 
-        <p>
-          Best regards,<br>
-          <strong>OLIVED</strong>
-        </p>
-      </div>
-    `;
+          <p>
+            Best regards,<br>
+            <strong>OLIVED</strong>
+          </p>
+        </div>
+      `;
 
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      const info =
+        await transporter.sendMail({
+          from:
+            process.env.SMTP_USER,
 
-      to: recipient,
+          to:
+            recipient,
 
-      subject: mailSubject,
+          subject:
+            mailSubject,
 
-      text: mailText,
+          text:
+            mailText,
 
-      html: mailHtml,
+          html:
+            mailHtml,
 
-      attachments: [
-        {
-          filename:
-            `Official_Price_Offer_${finalReference}.pdf`,
+          attachments: [
+            {
+              filename:
+                `Official_Price_Offer_${finalReference}.pdf`,
 
-          content: pdfBuffer,
+              content:
+                pdfBuffer,
 
-          contentType: "application/pdf",
-        },
-      ],
-    });
+              contentType:
+                "application/pdf",
+            },
+          ],
+        });
 
-    console.log("=======================================");
-    console.log("✅ EMAIL ENVOYÉ");
-    console.log("Message ID :", info.messageId);
-    console.log("Destinataire :", recipient);
-    console.log("Reference :", finalReference);
-    console.log("=======================================");
+      console.log(
+        "======================================="
+      );
 
-    res.json({
-      success: true,
+      console.log(
+        "✅ EMAIL ENVOYÉ"
+      );
 
-      message: "Email envoyé avec succès.",
+      console.log(
+        "Message ID :",
+        info.messageId
+      );
 
-      messageId: info.messageId,
+      console.log(
+        "Destinataire :",
+        recipient
+      );
 
-      reference: finalReference,
+      console.log(
+        "Reference :",
+        finalReference
+      );
 
-      recipient,
+      console.log(
+        "======================================="
+      );
 
-      filename:
-        `Official_Price_Offer_${finalReference}.pdf`,
-    });
-  } catch (error) {
-    console.error("=======================================");
-    console.error("❌ ERREUR ENVOI EMAIL");
-    console.error("=======================================");
-    console.error(error);
+      res.json({
+        success: true,
 
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors de l'envoi de l'email.",
-      error: error.message,
-      code: error.code,
-    });
+        message:
+          "Email envoyé avec succès.",
+
+        messageId:
+          info.messageId,
+
+        reference:
+          finalReference,
+
+        recipient,
+
+        filename:
+          `Official_Price_Offer_${finalReference}.pdf`,
+      });
+    } catch (error) {
+      console.error(
+        "======================================="
+      );
+
+      console.error(
+        "❌ ERREUR ENVOI EMAIL"
+      );
+
+      console.error(
+        "======================================="
+      );
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+
+        message:
+          "Erreur lors de l'envoi de l'email.",
+
+        error:
+          error.message,
+
+        code:
+          error.code,
+      });
+    }
   }
-});
+);
 
 // ============================================================
 // WHATSAPP - ENVOYER PDF
 // ============================================================
 //
 // pdf.jsx envoie :
+//
 // {
 //   visitorId,
 //   reference,
@@ -1346,384 +1735,636 @@ OLIVED`;
 //
 // ============================================================
 
-app.post("/api/whatsapp/send", async (req, res) => {
-  try {
-    console.log("");
-    console.log("=======================================");
-    console.log("ENVOI WHATSAPP");
-    console.log("=======================================");
-
-    const {
-      visitorId,
-      visiteurId,
-      reference,
-      telephone,
-      nomComplet,
-      pdfHtml,
-    } = req.body || {};
-
-    const id = Number(
-      visitorId || visiteurId
-    );
-
-    console.log("Visitor ID :", id);
-    console.log("Reference :", reference);
-    console.log(
-      "PDF HTML :",
-      pdfHtml ? `${pdfHtml.length} caractères` : "MANQUANT"
-    );
-
-    // --------------------------------------------------------
-    // Vérification
-    // --------------------------------------------------------
-
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Identifiant visiteur manquant ou invalide.",
-      });
-    }
-
-    if (
-      !pdfHtml ||
-      typeof pdfHtml !== "string" ||
-      pdfHtml.trim().length < 100
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Le contenu HTML du PDF est manquant ou invalide.",
-      });
-    }
-
-    // --------------------------------------------------------
-    // Visiteur
-    // --------------------------------------------------------
-
-    const visitor = await getVisitorById(id);
-
-    // --------------------------------------------------------
-    // Référence
-    // --------------------------------------------------------
-
-    let finalReference =
-      cleanString(reference) ||
-      cleanString(visitor.reference);
-
-    if (!finalReference) {
-      finalReference = generateReference(
-        visitor.id,
-        visitor.type_commande
+app.post(
+  "/api/whatsapp/send",
+  async (req, res) => {
+    try {
+      console.log("");
+      console.log(
+        "======================================="
+      );
+      console.log(
+        "ENVOI WHATSAPP"
+      );
+      console.log(
+        "======================================="
       );
 
-      await pool.execute(
-        `
-          UPDATE visiteurs
-          SET reference = ?
-          WHERE id = ?
-        `,
-        [finalReference, visitor.id]
+      const {
+        visitorId,
+        visiteurId,
+        reference,
+        telephone,
+        nomComplet,
+        pdfHtml,
+      } = req.body || {};
+
+      const id =
+        Number(
+          visitorId ||
+            visiteurId
+        );
+
+      console.log(
+        "Visitor ID :",
+        id
       );
-    }
 
-    // --------------------------------------------------------
-    // Téléphone
-    // --------------------------------------------------------
+      console.log(
+        "Reference :",
+        reference
+      );
 
-    let indicatif =
-      cleanString(visitor.indicatif) || "";
+      console.log(
+        "PDF HTML :",
+        pdfHtml
+          ? `${pdfHtml.length} caractères`
+          : "MANQUANT"
+      );
 
-    let phone =
-      cleanString(telephone) ||
-      cleanString(visitor.telephone) ||
-      "";
+      // ------------------------------------------------------
+      // Vérification ID
+      // ------------------------------------------------------
 
-    // --------------------------------------------------------
-    // Nettoyage téléphone
-    // --------------------------------------------------------
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
 
-    indicatif = indicatif.replace(/[^\d+]/g, "");
-
-    phone = phone.replace(/\D/g, "");
-
-    let whatsappNumber =
-      `${indicatif}${phone}`;
-
-    whatsappNumber =
-      whatsappNumber.replace(/[^\d]/g, "");
-
-    // --------------------------------------------------------
-    // Vérification numéro
-    // --------------------------------------------------------
-
-    if (!whatsappNumber) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Numéro de téléphone WhatsApp introuvable.",
-      });
-    }
-
-    console.log(
-      "Numéro WhatsApp :",
-      whatsappNumber
-    );
-
-    // --------------------------------------------------------
-    // Génération PDF
-    // --------------------------------------------------------
-
-    const pdfBuffer =
-      await generatePdfFromHtml(pdfHtml);
-
-    console.log(
-      "PDF WhatsApp généré :",
-      pdfBuffer.length,
-      "bytes"
-    );
-
-    // --------------------------------------------------------
-    // Variables Meta WhatsApp
-    // --------------------------------------------------------
-
-    const accessToken =
-      process.env.WHATSAPP_ACCESS_TOKEN;
-
-    const phoneNumberId =
-      process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-    const graphVersion =
-      process.env.WHATSAPP_GRAPH_VERSION ||
-      "v23.0";
-
-    if (!accessToken) {
-      return res.status(500).json({
-        success: false,
-        message:
-          "WHATSAPP_ACCESS_TOKEN est manquant dans .env",
-      });
-    }
-
-    if (!phoneNumberId) {
-      return res.status(500).json({
-        success: false,
-        message:
-          "WHATSAPP_PHONE_NUMBER_ID est manquant dans .env",
-      });
-    }
-
-    // --------------------------------------------------------
-    // URL Graph API
-    // --------------------------------------------------------
-
-    const uploadUrl =
-      `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`;
-
-    // --------------------------------------------------------
-    // Upload PDF
-    // --------------------------------------------------------
-
-    const form = new FormData();
-
-    form.append(
-      "messaging_product",
-      "whatsapp"
-    );
-
-    form.append(
-      "type",
-      "application/pdf"
-    );
-
-    form.append(
-      "file",
-      pdfBuffer,
-      {
-        filename:
-          `Official_Price_Offer_${finalReference}.pdf`,
-
-        contentType:
-          "application/pdf",
+          message:
+            "Identifiant visiteur manquant ou invalide.",
+        });
       }
-    );
 
-    const uploadResponse =
-      await axios.post(
-        uploadUrl,
-        form,
+      // ------------------------------------------------------
+      // Vérification HTML
+      // ------------------------------------------------------
+
+      if (
+        !pdfHtml ||
+        typeof pdfHtml !==
+          "string" ||
+        pdfHtml.trim()
+          .length < 100
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Le contenu HTML du PDF est manquant ou invalide.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // VISITEUR
+      // ------------------------------------------------------
+
+      const visitor =
+        await getVisitorById(id);
+
+      // ------------------------------------------------------
+      // REFERENCE
+      // ------------------------------------------------------
+
+      let finalReference =
+        cleanString(reference) ||
+        cleanString(
+          visitor.reference
+        );
+
+      if (!finalReference) {
+        finalReference =
+          generateReference(
+            visitor.id,
+            visitor.type_commande
+          );
+
+        await pool.execute(
+          `
+            UPDATE visiteurs
+            SET reference = ?
+            WHERE id = ?
+          `,
+          [
+            finalReference,
+            visitor.id,
+          ]
+        );
+      }
+
+      // ------------------------------------------------------
+      // TELEPHONE
+      // ------------------------------------------------------
+
+      let indicatif =
+        cleanString(
+          visitor.indicatif
+        ) || "";
+
+      let phone =
+        cleanString(
+          telephone
+        ) ||
+        cleanString(
+          visitor.telephone
+        ) ||
+        "";
+
+      // ------------------------------------------------------
+      // Nettoyage indicatif
+      // ------------------------------------------------------
+
+      indicatif =
+        indicatif.replace(
+          /[^\d+]/g,
+          ""
+        );
+
+      // ------------------------------------------------------
+      // Nettoyage téléphone
+      // ------------------------------------------------------
+
+      phone =
+        phone.replace(
+          /\D/g,
+          ""
+        );
+
+      // ------------------------------------------------------
+      // Construire numéro complet
+      // ------------------------------------------------------
+
+      let whatsappNumber =
+        `${indicatif}${phone}`;
+
+      whatsappNumber =
+        whatsappNumber.replace(
+          /\D/g,
+          ""
+        );
+
+      // ------------------------------------------------------
+      // Cas où le téléphone envoyé
+      // contient déjà le préfixe
+      // ------------------------------------------------------
+
+      if (
+        whatsappNumber.startsWith(
+          "00"
+        )
+      ) {
+        whatsappNumber =
+          whatsappNumber.substring(2);
+      }
+
+      // ------------------------------------------------------
+      // Vérification
+      // ------------------------------------------------------
+
+      if (!whatsappNumber) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Numéro de téléphone WhatsApp introuvable.",
+        });
+      }
+
+      console.log(
+        "Numéro WhatsApp :",
+        whatsappNumber
+      );
+
+      // ------------------------------------------------------
+      // PDF
+      // ------------------------------------------------------
+
+      const pdfBuffer =
+        await generatePdfFromHtml(
+          pdfHtml
+        );
+
+      console.log(
+        "PDF WhatsApp généré :",
+        pdfBuffer.length,
+        "bytes"
+      );
+
+      // ------------------------------------------------------
+      // Vérifier Buffer
+      // ------------------------------------------------------
+
+      if (
+        !Buffer.isBuffer(
+          pdfBuffer
+        )
+      ) {
+        throw new Error(
+          "Le PDF généré n'est pas un Buffer Node.js."
+        );
+      }
+
+      console.log(
+        "Buffer PDF OK :",
+        Buffer.isBuffer(
+          pdfBuffer
+        )
+      );
+
+      // ------------------------------------------------------
+      // VARIABLES META
+      // ------------------------------------------------------
+
+      const accessToken =
+        process.env.WHATSAPP_ACCESS_TOKEN;
+
+      const phoneNumberId =
+        process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+      const graphVersion =
+        process.env.WHATSAPP_GRAPH_VERSION ||
+        "v23.0";
+
+      if (!accessToken) {
+        return res.status(500).json({
+          success: false,
+
+          message:
+            "WHATSAPP_ACCESS_TOKEN est manquant dans .env",
+        });
+      }
+
+      if (!phoneNumberId) {
+        return res.status(500).json({
+          success: false,
+
+          message:
+            "WHATSAPP_PHONE_NUMBER_ID est manquant dans .env",
+        });
+      }
+
+      // ------------------------------------------------------
+      // URL MEDIA
+      // ------------------------------------------------------
+
+      const uploadUrl =
+        `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`;
+
+      console.log(
+        "Upload URL :",
+        uploadUrl
+      );
+
+      // ------------------------------------------------------
+      // FORMDATA
+      // ------------------------------------------------------
+
+      const form =
+        new FormData();
+
+      form.append(
+        "messaging_product",
+        "whatsapp"
+      );
+
+      form.append(
+        "type",
+        "application/pdf"
+      );
+
+      // ======================================================
+      // CORRECTION PRINCIPALE
+      // ======================================================
+      //
+      // On utilise un vrai Readable Stream Node.js.
+      //
+      // Cela évite :
+      //
+      // source.on is not a function
+      //
+      // ======================================================
+
+      const pdfStream =
+        Readable.from(
+          pdfBuffer
+        );
+
+      form.append(
+        "file",
+        pdfStream,
         {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
+          filename:
+            `Official_Price_Offer_${finalReference}.pdf`,
 
-            ...form.getHeaders(),
-          },
+          contentType:
+            "application/pdf",
 
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-
-          timeout: 60000,
+          knownLength:
+            pdfBuffer.length,
         }
       );
 
-    const mediaId =
-      uploadResponse.data?.id;
+      // ------------------------------------------------------
+      // HEADERS
+      // ------------------------------------------------------
 
-    if (!mediaId) {
-      throw new Error(
-        "WhatsApp n'a pas retourné de media ID."
-      );
-    }
+      const formHeaders =
+        form.getHeaders();
 
-    console.log(
-      "✅ Media ID WhatsApp :",
-      mediaId
-    );
+      const uploadHeaders = {
+        ...formHeaders,
 
-    // --------------------------------------------------------
-    // Nom client
-    // --------------------------------------------------------
+        Authorization:
+          `Bearer ${accessToken}`,
+      };
 
-    const finalNomComplet =
-      cleanString(nomComplet) ||
-      [visitor.nom]
-        .filter(Boolean)
-        .join(" ") ||
-      "Client";
-
-    // --------------------------------------------------------
-    // Envoi document WhatsApp
-    // --------------------------------------------------------
-
-    const sendUrl =
-      `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
-
-    const whatsappResponse =
-      await axios.post(
-        sendUrl,
-
-        {
-          messaging_product: "whatsapp",
-
-          recipient_type: "individual",
-
-          to: whatsappNumber,
-
-          type: "document",
-
-          document: {
-            id: mediaId,
-
-            caption:
-              `OLIVED - Official Price Offer\nReference: ${finalReference}`,
-
-            filename:
-              `Official_Price_Offer_${finalReference}.pdf`,
-          },
-        },
-
-        {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
-
-            "Content-Type":
-              "application/json",
-          },
-
-          timeout: 60000,
-        }
+      console.log(
+        "Envoi PDF vers Meta..."
       );
 
-    console.log("=======================================");
-    console.log("✅ WHATSAPP ENVOYÉ");
-    console.log(
-      "Message ID :",
-      whatsappResponse.data?.messages?.[0]?.id
-    );
-    console.log(
-      "Numéro :",
-      whatsappNumber
-    );
-    console.log(
-      "Reference :",
-      finalReference
-    );
-    console.log("=======================================");
+      // ------------------------------------------------------
+      // UPLOAD MEDIA
+      // ------------------------------------------------------
 
-    res.json({
-      success: true,
+      const uploadResponse =
+        await axios.post(
+          uploadUrl,
 
-      message:
-        "PDF envoyé avec succès sur WhatsApp.",
+          form,
 
-      reference: finalReference,
+          {
+            headers:
+              uploadHeaders,
 
-      phone: whatsappNumber,
+            maxContentLength:
+              Infinity,
 
-      mediaId,
+            maxBodyLength:
+              Infinity,
 
-      messageId:
-        whatsappResponse.data?.messages?.[0]?.id,
-    });
-  } catch (error) {
-    console.error("=======================================");
-    console.error("❌ ERREUR WHATSAPP");
-    console.error("=======================================");
+            timeout:
+              60000,
+          }
+        );
 
-    if (error.response) {
-      console.error(
-        "HTTP :",
-        error.response.status
-      );
-
-      console.error(
-        "DATA :",
+      console.log(
+        "Réponse upload Meta :",
         JSON.stringify(
-          error.response.data,
+          uploadResponse.data,
           null,
           2
         )
       );
-    } else {
-      console.error(error.message);
+
+      // ------------------------------------------------------
+      // MEDIA ID
+      // ------------------------------------------------------
+
+      const mediaId =
+        uploadResponse.data?.id;
+
+      if (!mediaId) {
+        throw new Error(
+          "WhatsApp n'a pas retourné de media ID."
+        );
+      }
+
+      console.log(
+        "✅ Media ID WhatsApp :",
+        mediaId
+      );
+
+      // ------------------------------------------------------
+      // NOM CLIENT
+      // ------------------------------------------------------
+
+      const finalNomComplet =
+        cleanString(
+          nomComplet
+        ) ||
+        [
+          visitor.prenom,
+          visitor.nom,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .trim() ||
+        "Client";
+
+      console.log(
+        "Nom client :",
+        finalNomComplet
+      );
+
+      // ------------------------------------------------------
+      // URL MESSAGES
+      // ------------------------------------------------------
+
+      const sendUrl =
+        `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
+
+      // ------------------------------------------------------
+      // MESSAGE WHATSAPP
+      // ------------------------------------------------------
+
+      const whatsappPayload = {
+        messaging_product:
+          "whatsapp",
+
+        recipient_type:
+          "individual",
+
+        to:
+          whatsappNumber,
+
+        type:
+          "document",
+
+        document: {
+          id:
+            mediaId,
+
+          caption:
+            `OLIVED - Official Price Offer\nReference: ${finalReference}`,
+
+          filename:
+            `Official_Price_Offer_${finalReference}.pdf`,
+        },
+      };
+
+      console.log(
+        "Envoi document WhatsApp..."
+      );
+
+      // ------------------------------------------------------
+      // ENVOI MESSAGE
+      // ------------------------------------------------------
+
+      const whatsappResponse =
+        await axios.post(
+          sendUrl,
+
+          whatsappPayload,
+
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+
+              "Content-Type":
+                "application/json",
+            },
+
+            timeout:
+              60000,
+          }
+        );
+
+      // ------------------------------------------------------
+      // RESULTAT
+      // ------------------------------------------------------
+
+      const messageId =
+        whatsappResponse.data
+          ?.messages?.[0]?.id;
+
+      console.log(
+        "======================================="
+      );
+
+      console.log(
+        "✅ WHATSAPP ENVOYÉ"
+      );
+
+      console.log(
+        "Message ID :",
+        messageId
+      );
+
+      console.log(
+        "Numéro :",
+        whatsappNumber
+      );
+
+      console.log(
+        "Reference :",
+        finalReference
+      );
+
+      console.log(
+        "======================================="
+      );
+
+      res.json({
+        success: true,
+
+        message:
+          "PDF envoyé avec succès sur WhatsApp.",
+
+        reference:
+          finalReference,
+
+        phone:
+          whatsappNumber,
+
+        mediaId,
+
+        messageId,
+      });
+    } catch (error) {
+      console.error(
+        "======================================="
+      );
+
+      console.error(
+        "❌ ERREUR WHATSAPP"
+      );
+
+      console.error(
+        "======================================="
+      );
+
+      console.error(
+        "Message :",
+        error.message
+      );
+
+      // ------------------------------------------------------
+      // Erreur Axios / Meta
+      // ------------------------------------------------------
+
+      if (error.response) {
+        console.error(
+          "HTTP :",
+          error.response.status
+        );
+
+        console.error(
+          "DATA :",
+          JSON.stringify(
+            error.response.data,
+            null,
+            2
+          )
+        );
+
+        console.error(
+          "HEADERS :",
+          JSON.stringify(
+            error.response.headers,
+            null,
+            2
+          )
+        );
+      }
+
+      // ------------------------------------------------------
+      // Réponse utilisateur
+      // ------------------------------------------------------
+
+      res.status(500).json({
+        success: false,
+
+        message:
+          "Erreur lors de l'envoi du PDF sur WhatsApp.",
+
+        error:
+          error.response?.data ||
+          error.message,
+      });
     }
-
-    res.status(500).json({
-      success: false,
-
-      message:
-        "Erreur lors de l'envoi du PDF sur WhatsApp.",
-
-      error:
-        error.response?.data ||
-        error.message,
-    });
   }
-});
+);
 
 // ============================================================
-// ROUTE DE RECHERCHE VISITEURS TUNISIE + VRAC
+// ROUTE - TUNISIE + VRAC
 // ============================================================
 
 app.get(
   "/api/visiteurs/tunisie/vrac",
   async (req, res) => {
     try {
-      const [rows] = await pool.query(
-        `
-          SELECT *
-          FROM visiteurs
-          WHERE origine = 'Tunisie'
-            AND type_commande = 'vrac'
-          ORDER BY id DESC
-        `
-      );
+      const [rows] =
+        await pool.query(
+          `
+            SELECT *
+            FROM visiteurs
+            WHERE origine = 'Tunisie'
+              AND type_commande = 'vrac'
+            ORDER BY id DESC
+          `
+        );
 
       res.json({
         success: true,
-        count: rows.length,
-        data: rows,
+
+        count:
+          rows.length,
+
+        data:
+          rows,
       });
     } catch (error) {
       console.error(
@@ -1733,9 +2374,12 @@ app.get(
 
       res.status(500).json({
         success: false,
+
         message:
           "Erreur lors de la récupération des visiteurs.",
-        error: error.message,
+
+        error:
+          error.message,
       });
     }
   }
@@ -1748,61 +2392,100 @@ app.get(
 async function startServer() {
   try {
     // --------------------------------------------------------
-    // Test DB au démarrage
+    // TEST MYSQL
     // --------------------------------------------------------
 
-    const connection = await pool.getConnection();
+    const connection =
+      await pool.getConnection();
 
-    console.log("=======================================");
-    console.log("MYSQL CONNECTÉ");
-    console.log("=======================================");
+    console.log(
+      "======================================="
+    );
+
+    console.log(
+      "MYSQL CONNECTÉ"
+    );
+
+    console.log(
+      "======================================="
+    );
 
     console.log(
       "Database :",
-      process.env.DB_NAME || "visiteurs_db"
+      process.env.DB_NAME ||
+        "visiteurs_db"
     );
 
     connection.release();
 
     // --------------------------------------------------------
-    // Start Express
+    // START EXPRESS
     // --------------------------------------------------------
 
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log("");
-      console.log("=======================================");
-      console.log("OLIVED SERVER");
-      console.log("=======================================");
+    app.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+        console.log("");
 
-      console.log(
-        `Local : http://localhost:${PORT}`
-      );
+        console.log(
+          "======================================="
+        );
 
-      console.log(
-        `Réseau : http://192.168.1.146:${PORT}`
-      );
+        console.log(
+          "OLIVED SERVER"
+        );
 
-      console.log("");
-      console.log(
-        "API test :"
-      );
+        console.log(
+          "======================================="
+        );
 
-      console.log(
-        `http://localhost:${PORT}/api/test-db`
-      );
+        console.log(
+          `Local : http://localhost:${PORT}`
+        );
 
-      console.log("=======================================");
-      console.log("");
-    });
+        console.log(
+          `Réseau : http://192.168.1.146:${PORT}`
+        );
+
+        console.log("");
+
+        console.log(
+          "API test :"
+        );
+
+        console.log(
+          `http://localhost:${PORT}/api/test-db`
+        );
+
+        console.log(
+          "======================================="
+        );
+
+        console.log("");
+      }
+    );
   } catch (error) {
-    console.error("=======================================");
-    console.error("❌ IMPOSSIBLE DE DÉMARRER LE SERVEUR");
-    console.error("=======================================");
+    console.error(
+      "======================================="
+    );
+
+    console.error(
+      "❌ IMPOSSIBLE DE DÉMARRER LE SERVEUR"
+    );
+
+    console.error(
+      "======================================="
+    );
 
     console.error(error);
 
     process.exit(1);
   }
 }
+
+// ============================================================
+// LANCEMENT
+// ============================================================
 
 startServer();

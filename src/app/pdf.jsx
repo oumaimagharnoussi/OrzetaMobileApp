@@ -16,6 +16,7 @@ import {
   ScrollView,
   useWindowDimensions,
   Image,
+  Linking,
 } from "react-native";
 
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -1133,36 +1134,83 @@ export default function PDFScreen() {
 
   const envoyerParWhatsApp = async () => {
     try {
-      const content = await html();
+      if (!visiteur) {
+        throw new Error("Aucune donnée client disponible.");
+      }
   
-      const response = await fetch(`${API_URL}/api/whatsapp/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          visitorId: Number(visitorId),
-          reference,
-          telephone: getPhone(visiteur),
-          nomComplet,
-          pdfHtml: content,
-        }),
-      });
+      const telephone = getPhone(visiteur);
   
-      const data = await response.json();
-  
-      if (!response.ok || !data.success) {
+      if (!telephone) {
         throw new Error(
-          data?.message ||
-          data?.error ||
-          "Erreur lors de l'envoi WhatsApp."
+          "Le numéro de téléphone du visiteur est manquant."
         );
       }
   
-      Alert.alert("Succès", "PDF envoyé avec succès.");
+      const nomComplet = [
+        visiteur.prenom,
+        visiteur.nom,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+  
+      const message =
+        `Bonjour ${nomComplet || "Monsieur/Madame"},\n\n` +
+        `Merci pour votre visite chez OLIVED.\n\n` +
+        `Veuillez trouver ci-dessous votre offre de prix officielle.\n` +
+        `Référence : ${reference}\n\n` +
+        `Cordialement,\n` +
+        `OLIVED`;
+  
+      // Nettoyage du numéro :
+      // +216 98 462 000 -> 21698462000
+      const whatsappNumber = telephone.replace(/[^\d]/g, "");
+  
+      // Encodage du message pour WhatsApp
+      const encodedMessage = encodeURIComponent(message);
+  
+      // URL WhatsApp
+      const whatsappUrl =
+        `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+  
+      console.log("=======================================");
+      console.log("OUVERTURE WHATSAPP");
+      console.log("Nom :", nomComplet);
+      console.log("Téléphone :", whatsappNumber);
+      console.log("Référence :", reference);
+      console.log("=======================================");
+  
+      if (Platform.OS === "web") {
+        // Sur navigateur
+        window.open(
+          whatsappUrl,
+          "_blank"
+        );
+      } else {
+        // Sur Android / iPhone
+        const supported = await Linking.canOpenURL(
+          whatsappUrl
+        );
+  
+        if (!supported) {
+          throw new Error(
+            "WhatsApp n'est pas disponible sur cet appareil."
+          );
+        }
+  
+        await Linking.openURL(whatsappUrl);
+      }
     } catch (error) {
-      console.error("ERREUR WHATSAPP :", error);
-      Alert.alert("Erreur", error.message);
+      console.error(
+        "ERREUR OUVERTURE WHATSAPP :",
+        error
+      );
+  
+      Alert.alert(
+        "Erreur WhatsApp",
+        error?.message ||
+          "Impossible d'ouvrir WhatsApp."
+      );
     }
   };
 
