@@ -118,14 +118,6 @@ function normalizeTypeCommande(value) {
 // ============================================================
 // GENERATION REFERENCE
 // ============================================================
-//
-// Exemple :
-// ID 85 + 1 = 86
-//
-// vrac        => 86V2026
-// conditionné => 86B2026
-//
-// ============================================================
 
 function generateReference(id, typeCommande) {
   const numero = Number(id) + 1;
@@ -140,7 +132,7 @@ function generateReference(id, typeCommande) {
 }
 
 // ============================================================
-// GET VISITOR
+// GET VISITOR BY ID
 // ============================================================
 
 async function getVisitorById(id) {
@@ -170,21 +162,6 @@ async function getVisitorById(id) {
 // ============================================================
 // PDF GENERATION
 // ============================================================
-//
-// pdf.jsx envoie le HTML complet avec :
-// pdfHtml
-//
-// Puppeteer utilise page.setContent().
-//
-// IMPORTANT :
-// page.pdf() peut retourner un Uint8Array selon la version
-// de Puppeteer.
-//
-// On convertit donc toujours le résultat en Buffer Node.js.
-// Cela évite notamment :
-// "source.on is not a function"
-// lors de l'upload FormData vers Meta.
-// ============================================================
 
 async function generatePdfFromHtml(htmlContent) {
   let browser = null;
@@ -202,7 +179,11 @@ async function generatePdfFromHtml(htmlContent) {
 
     console.log("=======================================");
     console.log("GÉNÉRATION PDF AVEC PUPPETEER");
-    console.log("HTML reçu :", htmlContent.length, "caractères");
+    console.log(
+      "HTML reçu :",
+      htmlContent.length,
+      "caractères"
+    );
     console.log("=======================================");
 
     browser = await puppeteer.launch({
@@ -224,21 +205,15 @@ async function generatePdfFromHtml(htmlContent) {
       deviceScaleFactor: 1,
     });
 
-    // --------------------------------------------------------
-    // Injecter directement le HTML
-    // --------------------------------------------------------
-
     await page.setContent(htmlContent, {
       waitUntil: "networkidle0",
       timeout: 60000,
     });
 
-    // --------------------------------------------------------
-    // Vérifier le document
-    // --------------------------------------------------------
-
     const documentExists = await page.evaluate(() => {
-      return Boolean(document.querySelector(".document"));
+      return Boolean(
+        document.querySelector(".document")
+      );
     });
 
     if (!documentExists) {
@@ -247,21 +222,11 @@ async function generatePdfFromHtml(htmlContent) {
       );
     }
 
-    // --------------------------------------------------------
-    // Media screen
-    // --------------------------------------------------------
-
     await page.emulateMediaType("screen");
-
-    // --------------------------------------------------------
-    // Génération PDF
-    // --------------------------------------------------------
 
     const pdfData = await page.pdf({
       format: "A4",
-
       printBackground: true,
-
       preferCSSPageSize: true,
 
       margin: {
@@ -272,11 +237,6 @@ async function generatePdfFromHtml(htmlContent) {
       },
     });
 
-    // ========================================================
-    // IMPORTANT
-    // Conversion explicite en Buffer Node.js
-    // ========================================================
-
     const pdfBuffer = Buffer.from(pdfData);
 
     console.log(
@@ -285,18 +245,12 @@ async function generatePdfFromHtml(htmlContent) {
       "bytes"
     );
 
-    console.log(
-      "Type PDF :",
-      Buffer.isBuffer(pdfBuffer)
-        ? "Buffer Node.js"
-        : typeof pdfBuffer
-    );
-
     await browser.close();
 
     browser = null;
 
     return pdfBuffer;
+
   } catch (error) {
     console.error(
       "❌ ERREUR GÉNÉRATION PDF :",
@@ -394,6 +348,7 @@ app.get("/api/test-db", async (req, res) => {
       message: "Connexion MySQL réussie.",
       data: rows,
     });
+
   } catch (error) {
     console.error(
       "❌ TEST DB :",
@@ -417,17 +372,10 @@ app.post(
   "/api/visiteurs",
   async (req, res) => {
     try {
-      console.log(
-        "======================================="
-      );
-
-      console.log(
-        "NOUVEAU VISITEUR"
-      );
-
-      console.log(
-        "======================================="
-      );
+      console.log("");
+      console.log("=======================================");
+      console.log("NOUVEAU VISITEUR");
+      console.log("=======================================");
 
       const body = req.body || {};
 
@@ -496,6 +444,53 @@ app.post(
         normalizeTypeCommande(
           body.type_commande
         );
+
+      // ------------------------------------------------------
+      // ⭐ QUALIFICATION
+      // ------------------------------------------------------
+      //
+      // CORRECTION :
+      // La qualification envoyée depuis index.jsx
+      // est maintenant enregistrée directement lors du POST.
+      //
+      // Si aucune note n'est sélectionnée :
+      // qualification = NULL
+      //
+      // Si l'utilisateur choisit 4 étoiles :
+      // qualification = 4
+      //
+      // ------------------------------------------------------
+
+      let qualification = null;
+
+      if (
+        body.qualification !== undefined &&
+        body.qualification !== null &&
+        body.qualification !== ""
+      ) {
+        const q = Number(
+          body.qualification
+        );
+
+        if (
+          Number.isInteger(q) &&
+          q >= 1 &&
+          q <= 5
+        ) {
+          qualification = q;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message:
+              "La qualification doit être comprise entre 1 et 5.",
+          });
+        }
+      }
+
+      console.log(
+        "⭐ Qualification reçue :",
+        qualification
+      );
 
       // ------------------------------------------------------
       // VRAC
@@ -674,7 +669,9 @@ app.post(
           nouvelle_marque_design_conditionnement,
 
           type_conteneur,
-          nombre_palettes
+          nombre_palettes,
+
+          qualification
         )
 
         VALUES (
@@ -683,7 +680,8 @@ app.post(
           ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?, ?, ?,
-          ?, ?
+          ?, ?,
+          ?
         )
       `;
 
@@ -727,7 +725,15 @@ app.post(
 
         type_conteneur,
         nombre_palettes,
+
+        // ⭐ NOUVEAU
+        qualification,
       ];
+
+      console.log(
+        "Nombre de valeurs SQL :",
+        values.length
+      );
 
       const [result] =
         await pool.execute(
@@ -760,8 +766,29 @@ app.post(
         ]
       );
 
+      // ------------------------------------------------------
+      // VERIFICATION QUALIFICATION
+      // ------------------------------------------------------
+
+      const [verificationRows] =
+        await pool.execute(
+          `
+            SELECT
+              id,
+              qualification,
+              reference
+            FROM visiteurs
+            WHERE id = ?
+          `,
+          [insertedId]
+        );
+
       console.log(
-        "✅ Visiteur enregistré"
+        "======================================="
+      );
+
+      console.log(
+        "✅ VISITEUR ENREGISTRÉ"
       );
 
       console.log(
@@ -772,6 +799,15 @@ app.post(
       console.log(
         "REFERENCE :",
         reference
+      );
+
+      console.log(
+        "⭐ QUALIFICATION DB :",
+        verificationRows[0]?.qualification
+      );
+
+      console.log(
+        "======================================="
       );
 
       res.status(201).json({
@@ -785,7 +821,12 @@ app.post(
         reference,
 
         type_commande,
+
+        qualification:
+          verificationRows[0]?.qualification ??
+          null,
       });
+
     } catch (error) {
       console.error(
         "======================================="
@@ -796,10 +837,9 @@ app.post(
       );
 
       console.error(
-        "======================================="
+        "=======================================",
+        error
       );
-
-      console.error(error);
 
       res.status(500).json({
         success: false,
@@ -807,7 +847,8 @@ app.post(
         message:
           "Erreur lors de l'enregistrement du visiteur.",
 
-        error: error.message,
+        error:
+          error.message,
 
         sqlMessage:
           error.sqlMessage,
@@ -841,6 +882,7 @@ app.get(
         count: rows.length,
         data: rows,
       });
+
     } catch (error) {
       console.error(
         "❌ GET VISITEURS :",
@@ -887,7 +929,7 @@ app.get(
         await getVisitorById(id);
 
       // ------------------------------------------------------
-      // Si ancienne donnée sans référence
+      // REFERENCE
       // ------------------------------------------------------
 
       if (!visitor.reference) {
@@ -912,9 +954,8 @@ app.get(
 
           visitor.reference =
             reference;
-        } catch (
-          referenceError
-        ) {
+
+        } catch (referenceError) {
           console.error(
             "⚠️ Impossible de sauvegarder la référence :",
             referenceError.message
@@ -932,6 +973,7 @@ app.get(
 
         visitor,
       });
+
     } catch (error) {
       console.error(
         "❌ GET VISITEUR :",
@@ -1063,6 +1105,29 @@ app.put(
                 body[field]
               )
             );
+
+          } else if (
+            field === "qualification"
+          ) {
+            const q =
+              Number(
+                body[field]
+              );
+
+            if (
+              !Number.isInteger(q) ||
+              q < 1 ||
+              q > 5
+            ) {
+              return res.status(400).json({
+                success: false,
+                message:
+                  "La qualification doit être comprise entre 1 et 5.",
+              });
+            }
+
+            values.push(q);
+
           } else {
             values.push(
               body[field]
@@ -1104,6 +1169,7 @@ app.put(
 
         data: visitor,
       });
+
     } catch (error) {
       console.error(
         "❌ PUT VISITEUR :",
@@ -1167,6 +1233,7 @@ app.delete(
 
         id,
       });
+
     } catch (error) {
       console.error(
         "❌ DELETE VISITEUR :",
@@ -1187,15 +1254,56 @@ app.delete(
 );
 
 // ============================================================
-// QUALIFICATION - POST
+// ⭐ QUALIFICATION - PUT
+// ============================================================
+//
+// Cette route est utilisée par traitement.jsx.
+//
+// PUT
+// /api/visiteurs/:id/qualification
+//
+// Body :
+// {
+//   "qualification": 4
+// }
+//
 // ============================================================
 
-app.post(
+app.put(
   "/api/visiteurs/:id/qualification",
   async (req, res) => {
     try {
+      console.log("");
+      console.log("=================================");
+      console.log("REQUÊTE QUALIFICATION REÇUE");
+      console.log("=================================");
+
       const id =
         Number(req.params.id);
+
+      const qualification =
+        Number(
+          req.body?.qualification
+        );
+
+      console.log(
+        "ID :",
+        id
+      );
+
+      console.log(
+        "Qualification reçue :",
+        qualification
+      );
+
+      console.log(
+        "Body :",
+        req.body
+      );
+
+      // ------------------------------------------------------
+      // ID
+      // ------------------------------------------------------
 
       if (
         !Number.isInteger(id) ||
@@ -1205,58 +1313,135 @@ app.post(
           success: false,
 
           message:
-            "Identifiant visiteur invalide.",
+            "ID visiteur invalide.",
         });
       }
 
-      await getVisitorById(id);
+      // ------------------------------------------------------
+      // QUALIFICATION
+      // ------------------------------------------------------
 
-      const qualification =
-        cleanString(
-          req.body?.qualification
-        );
-
-      if (!qualification) {
+      if (
+        !Number.isInteger(
+          qualification
+        ) ||
+        qualification < 1 ||
+        qualification > 5
+      ) {
         return res.status(400).json({
           success: false,
 
           message:
-            "La qualification est obligatoire.",
+            "La qualification doit être comprise entre 1 et 5.",
         });
       }
 
-      await pool.execute(
-        `
-          UPDATE visiteurs
-          SET qualification = ?
-          WHERE id = ?
-        `,
-        [
-          qualification,
-          id,
-        ]
-      );
+      // ------------------------------------------------------
+      // VISITEUR
+      // ------------------------------------------------------
 
       const visitor =
         await getVisitorById(id);
 
-      res.json({
+      console.log(
+        "Visiteur trouvé :",
+        visitor.nom,
+        visitor.prenom
+      );
+
+      // ------------------------------------------------------
+      // UPDATE
+      // ------------------------------------------------------
+
+      const [result] =
+        await pool.execute(
+          `
+            UPDATE visiteurs
+            SET qualification = ?
+            WHERE id = ?
+          `,
+          [
+            qualification,
+            id,
+          ]
+        );
+
+      console.log(
+        "affectedRows :",
+        result.affectedRows
+      );
+
+      // ------------------------------------------------------
+      // VÉRIFICATION
+      // ------------------------------------------------------
+
+      const [rows] =
+        await pool.execute(
+          `
+            SELECT
+              id,
+              reference,
+              nom,
+              prenom,
+              qualification
+            FROM visiteurs
+            WHERE id = ?
+          `,
+          [id]
+        );
+
+      if (!rows.length) {
+        return res.status(404).json({
+          success: false,
+
+          message:
+            `Aucun visiteur trouvé avec l'id ${id}.`,
+        });
+      }
+
+      console.log(
+        "Qualification enregistrée en DB :",
+        rows[0].qualification
+      );
+
+      console.log(
+        "================================="
+      );
+
+      console.log(
+        "✅ QUALIFICATION ENREGISTRÉE"
+      );
+
+      console.log(
+        "================================="
+      );
+
+      return res.json({
         success: true,
 
         message:
           "Qualification enregistrée avec succès.",
 
-        qualification,
-
-        data: visitor,
+        data: rows[0],
       });
+
     } catch (error) {
+      console.error("");
       console.error(
-        "❌ ERREUR QUALIFICATION :",
-        error
+        "================================="
       );
 
-      res.status(500).json({
+      console.error(
+        "❌ ERREUR QUALIFICATION"
+      );
+
+      console.error(
+        "================================="
+      );
+
+      console.error(error);
+
+      return res.status(500).json({
         success: false,
 
         message:
@@ -1270,97 +1455,7 @@ app.post(
 );
 
 // ============================================================
-// QUALIFICATION - PUT
-// ============================================================
-
-app.put(
-  "/api/visiteurs/:id/qualification",
-  async (req, res) => {
-    try {
-      const id =
-        Number(req.params.id);
-
-      if (
-        !Number.isInteger(id) ||
-        id <= 0
-      ) {
-        return res.status(400).json({
-          success: false,
-
-          message:
-            "Identifiant visiteur invalide.",
-        });
-      }
-
-      await getVisitorById(id);
-
-      const qualification =
-        cleanString(
-          req.body?.qualification
-        );
-
-      if (!qualification) {
-        return res.status(400).json({
-          success: false,
-
-          message:
-            "La qualification est obligatoire.",
-        });
-      }
-
-      await pool.execute(
-        `
-          UPDATE visiteurs
-          SET qualification = ?
-          WHERE id = ?
-        `,
-        [
-          qualification,
-          id,
-        ]
-      );
-
-      res.json({
-        success: true,
-
-        message:
-          "Qualification mise à jour.",
-
-        qualification,
-      });
-    } catch (error) {
-      console.error(
-        "❌ PUT QUALIFICATION :",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-
-        message:
-          "Erreur qualification.",
-
-        error:
-          error.message,
-      });
-    }
-  }
-);
-
-// ============================================================
 // EMAIL - ENVOYER LE PDF
-// ============================================================
-//
-// pdf.jsx envoie :
-//
-// {
-//   visitorId,
-//   reference,
-//   nomComplet,
-//   toEmail,
-//   pdfHtml
-// }
-//
 // ============================================================
 
 app.post(
@@ -1411,10 +1506,6 @@ app.post(
           : "MANQUANT"
       );
 
-      // ------------------------------------------------------
-      // Vérification ID
-      // ------------------------------------------------------
-
       if (
         !Number.isInteger(id) ||
         id <= 0
@@ -1426,10 +1517,6 @@ app.post(
             "Identifiant visiteur manquant ou invalide.",
         });
       }
-
-      // ------------------------------------------------------
-      // Vérification HTML
-      // ------------------------------------------------------
 
       if (
         !pdfHtml ||
@@ -1446,16 +1533,8 @@ app.post(
         });
       }
 
-      // ------------------------------------------------------
-      // Visiteur
-      // ------------------------------------------------------
-
       const visitor =
         await getVisitorById(id);
-
-      // ------------------------------------------------------
-      // Reference
-      // ------------------------------------------------------
 
       let finalReference =
         cleanString(reference) ||
@@ -1483,10 +1562,6 @@ app.post(
         );
       }
 
-      // ------------------------------------------------------
-      // Destinataire
-      // ------------------------------------------------------
-
       const recipient =
         cleanString(toEmail) ||
         cleanString(
@@ -1507,10 +1582,6 @@ app.post(
         finalReference
       );
 
-      // ------------------------------------------------------
-      // Génération PDF
-      // ------------------------------------------------------
-
       const pdfBuffer =
         await generatePdfFromHtml(
           pdfHtml
@@ -1522,10 +1593,6 @@ app.post(
         "bytes"
       );
 
-      // ------------------------------------------------------
-      // SMTP
-      // ------------------------------------------------------
-
       const transporter =
         createEmailTransporter();
 
@@ -1534,10 +1601,6 @@ app.post(
       console.log(
         "✅ SMTP OK"
       );
-
-      // ------------------------------------------------------
-      // Nom client
-      // ------------------------------------------------------
 
       const finalNomComplet =
         cleanString(
@@ -1552,10 +1615,6 @@ app.post(
           .trim() ||
         "Client";
 
-      // ------------------------------------------------------
-      // Email
-      // ------------------------------------------------------
-
       const mailSubject =
         `Official Price Offer OLIVED - ${finalReference}`;
 
@@ -1563,15 +1622,15 @@ app.post(
         cleanString(message) ||
         `Dear ${finalNomComplet},
 
-        I hope you are doing well.
+I hope you are doing well.
 
-        Please find attached our quotation for the requested olive oil products.
-        
-        The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
-        
-        Please do not hesitate to contact us should you need any further information or clarification.
-        
-        We look forward to hearing from you and hope to have the opportunity to work with you.
+Please find attached our quotation for the requested olive oil products.
+
+The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
+
+Please do not hesitate to contact us should you need any further information or clarification.
+
+We look forward to hearing from you and hope to have the opportunity to work with you.
 
 Reference: ${finalReference}
 
@@ -1590,15 +1649,23 @@ OLIVED`;
           </p>
 
           <p>
-          I hope you are doing well.
+            I hope you are doing well.
+          </p>
 
-          Please find attached our quotation for the requested olive oil products.
-          
-          The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
-          
-          Please do not hesitate to contact us should you need any further information or clarification.
-          
-          We look forward to hearing from you and hope to have the opportunity to work with you.
+          <p>
+            Please find attached our quotation for the requested olive oil products.
+          </p>
+
+          <p>
+            The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
+          </p>
+
+          <p>
+            Please do not hesitate to contact us should you need any further information or clarification.
+          </p>
+
+          <p>
+            We look forward to hearing from you and hope to have the opportunity to work with you.
           </p>
 
           <p>
@@ -1688,6 +1755,7 @@ OLIVED`;
         filename:
           `Official_Price_Offer_${finalReference}.pdf`,
       });
+
     } catch (error) {
       console.error(
         "======================================="
@@ -1721,18 +1789,6 @@ OLIVED`;
 
 // ============================================================
 // WHATSAPP - ENVOYER PDF
-// ============================================================
-//
-// pdf.jsx envoie :
-//
-// {
-//   visitorId,
-//   reference,
-//   telephone,
-//   nomComplet,
-//   pdfHtml
-// }
-//
 // ============================================================
 
 app.post(
@@ -1782,10 +1838,6 @@ app.post(
           : "MANQUANT"
       );
 
-      // ------------------------------------------------------
-      // Vérification ID
-      // ------------------------------------------------------
-
       if (
         !Number.isInteger(id) ||
         id <= 0
@@ -1797,10 +1849,6 @@ app.post(
             "Identifiant visiteur manquant ou invalide.",
         });
       }
-
-      // ------------------------------------------------------
-      // Vérification HTML
-      // ------------------------------------------------------
 
       if (
         !pdfHtml ||
@@ -1817,16 +1865,8 @@ app.post(
         });
       }
 
-      // ------------------------------------------------------
-      // VISITEUR
-      // ------------------------------------------------------
-
       const visitor =
         await getVisitorById(id);
-
-      // ------------------------------------------------------
-      // REFERENCE
-      // ------------------------------------------------------
 
       let finalReference =
         cleanString(reference) ||
@@ -1854,10 +1894,6 @@ app.post(
         );
       }
 
-      // ------------------------------------------------------
-      // TELEPHONE
-      // ------------------------------------------------------
-
       let indicatif =
         cleanString(
           visitor.indicatif
@@ -1872,29 +1908,17 @@ app.post(
         ) ||
         "";
 
-      // ------------------------------------------------------
-      // Nettoyage indicatif
-      // ------------------------------------------------------
-
       indicatif =
         indicatif.replace(
           /[^\d+]/g,
           ""
         );
 
-      // ------------------------------------------------------
-      // Nettoyage téléphone
-      // ------------------------------------------------------
-
       phone =
         phone.replace(
           /\D/g,
           ""
         );
-
-      // ------------------------------------------------------
-      // Construire numéro complet
-      // ------------------------------------------------------
 
       let whatsappNumber =
         `${indicatif}${phone}`;
@@ -1905,11 +1929,6 @@ app.post(
           ""
         );
 
-      // ------------------------------------------------------
-      // Cas où le téléphone envoyé
-      // contient déjà le préfixe
-      // ------------------------------------------------------
-
       if (
         whatsappNumber.startsWith(
           "00"
@@ -1918,10 +1937,6 @@ app.post(
         whatsappNumber =
           whatsappNumber.substring(2);
       }
-
-      // ------------------------------------------------------
-      // Vérification
-      // ------------------------------------------------------
 
       if (!whatsappNumber) {
         return res.status(400).json({
@@ -1937,10 +1952,6 @@ app.post(
         whatsappNumber
       );
 
-      // ------------------------------------------------------
-      // PDF
-      // ------------------------------------------------------
-
       const pdfBuffer =
         await generatePdfFromHtml(
           pdfHtml
@@ -1952,10 +1963,6 @@ app.post(
         "bytes"
       );
 
-      // ------------------------------------------------------
-      // Vérifier Buffer
-      // ------------------------------------------------------
-
       if (
         !Buffer.isBuffer(
           pdfBuffer
@@ -1965,17 +1972,6 @@ app.post(
           "Le PDF généré n'est pas un Buffer Node.js."
         );
       }
-
-      console.log(
-        "Buffer PDF OK :",
-        Buffer.isBuffer(
-          pdfBuffer
-        )
-      );
-
-      // ------------------------------------------------------
-      // VARIABLES META
-      // ------------------------------------------------------
 
       const accessToken =
         process.env.WHATSAPP_ACCESS_TOKEN;
@@ -2005,21 +2001,8 @@ app.post(
         });
       }
 
-      // ------------------------------------------------------
-      // URL MEDIA
-      // ------------------------------------------------------
-
       const uploadUrl =
         `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`;
-
-      console.log(
-        "Upload URL :",
-        uploadUrl
-      );
-
-      // ------------------------------------------------------
-      // FORMDATA
-      // ------------------------------------------------------
 
       const form =
         new FormData();
@@ -2033,18 +2016,6 @@ app.post(
         "type",
         "application/pdf"
       );
-
-      // ======================================================
-      // CORRECTION PRINCIPALE
-      // ======================================================
-      //
-      // On utilise un vrai Readable Stream Node.js.
-      //
-      // Cela évite :
-      //
-      // source.on is not a function
-      //
-      // ======================================================
 
       const pdfStream =
         Readable.from(
@@ -2066,10 +2037,6 @@ app.post(
         }
       );
 
-      // ------------------------------------------------------
-      // HEADERS
-      // ------------------------------------------------------
-
       const formHeaders =
         form.getHeaders();
 
@@ -2084,16 +2051,10 @@ app.post(
         "Envoi PDF vers Meta..."
       );
 
-      // ------------------------------------------------------
-      // UPLOAD MEDIA
-      // ------------------------------------------------------
-
       const uploadResponse =
         await axios.post(
           uploadUrl,
-
           form,
-
           {
             headers:
               uploadHeaders,
@@ -2118,10 +2079,6 @@ app.post(
         )
       );
 
-      // ------------------------------------------------------
-      // MEDIA ID
-      // ------------------------------------------------------
-
       const mediaId =
         uploadResponse.data?.id;
 
@@ -2135,10 +2092,6 @@ app.post(
         "✅ Media ID WhatsApp :",
         mediaId
       );
-
-      // ------------------------------------------------------
-      // NOM CLIENT
-      // ------------------------------------------------------
 
       const finalNomComplet =
         cleanString(
@@ -2158,16 +2111,8 @@ app.post(
         finalNomComplet
       );
 
-      // ------------------------------------------------------
-      // URL MESSAGES
-      // ------------------------------------------------------
-
       const sendUrl =
         `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
-
-      // ------------------------------------------------------
-      // MESSAGE WHATSAPP
-      // ------------------------------------------------------
 
       const whatsappPayload = {
         messaging_product:
@@ -2198,10 +2143,6 @@ app.post(
         "Envoi document WhatsApp..."
       );
 
-      // ------------------------------------------------------
-      // ENVOI MESSAGE
-      // ------------------------------------------------------
-
       const whatsappResponse =
         await axios.post(
           sendUrl,
@@ -2221,10 +2162,6 @@ app.post(
               60000,
           }
         );
-
-      // ------------------------------------------------------
-      // RESULTAT
-      // ------------------------------------------------------
 
       const messageId =
         whatsappResponse.data
@@ -2273,6 +2210,7 @@ app.post(
 
         messageId,
       });
+
     } catch (error) {
       console.error(
         "======================================="
@@ -2290,10 +2228,6 @@ app.post(
         "Message :",
         error.message
       );
-
-      // ------------------------------------------------------
-      // Erreur Axios / Meta
-      // ------------------------------------------------------
 
       if (error.response) {
         console.error(
@@ -2319,10 +2253,6 @@ app.post(
           )
         );
       }
-
-      // ------------------------------------------------------
-      // Réponse utilisateur
-      // ------------------------------------------------------
 
       res.status(500).json({
         success: false,
@@ -2366,6 +2296,7 @@ app.get(
         data:
           rows,
       });
+
     } catch (error) {
       console.error(
         "❌ ERREUR TUNISIE VRAC :",
@@ -2391,10 +2322,6 @@ app.get(
 
 async function startServer() {
   try {
-    // --------------------------------------------------------
-    // TEST MYSQL
-    // --------------------------------------------------------
-
     const connection =
       await pool.getConnection();
 
@@ -2417,10 +2344,6 @@ async function startServer() {
     );
 
     connection.release();
-
-    // --------------------------------------------------------
-    // START EXPRESS
-    // --------------------------------------------------------
 
     app.listen(
       PORT,
@@ -2465,6 +2388,7 @@ async function startServer() {
         console.log("");
       }
     );
+
   } catch (error) {
     console.error(
       "======================================="

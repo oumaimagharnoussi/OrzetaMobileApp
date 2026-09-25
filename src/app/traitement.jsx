@@ -5,307 +5,462 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ScrollView,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 
-const API_URL = "http://192.168.1.146:5000";
+// ============================================================
+// API
+// ============================================================
+
+const API_URL =
+  "http://192.168.1.146:5000";
+
+// ============================================================
+// TRAITEMENT
+// ============================================================
 
 export default function Traitement() {
-  const router = useRouter();
-  // =====================================================
-  // RÉCUPÉRER L'ID DU VISITEUR
-  // =====================================================
   const { id } = useLocalSearchParams();
 
-  // =====================================================
-  // STATES
-  // =====================================================
-  const [sending, setSending] = useState(false);
-  const [savingQualification, setSavingQualification] = useState(false);
-  const [qualification, setQualification] = useState(0);
+  const [qualification, setQualification] =
+    useState(0);
 
-  // =====================================================
-  // ENREGISTRER LA QUALIFICATION
-  // =====================================================
-  const handleEnregistrerQualification = async () => {
-    if (!id) {
-      Alert.alert(
-        "Erreur",
-        "Identifiant du visiteur introuvable."
+  const [
+    savingQualification,
+    setSavingQualification,
+  ] = useState(false);
+
+  // ==========================================================
+  // ENREGISTRER QUALIFICATION
+  // ==========================================================
+
+  const handleEnregistrerQualification =
+    async () => {
+      console.log("");
+      console.log(
+        "================================="
       );
-      return;
-    }
-
-    if (qualification === 0) {
-      Alert.alert(
-        "Attention",
-        "Veuillez sélectionner une note de 1 à 5 étoiles."
+      console.log(
+        "CLIC SUR ENREGISTRER"
       );
-      return;
-    }
-
-    try {
-      setSavingQualification(true);
-
-      console.log("ID visiteur :", id);
-      console.log("Qualification :", qualification);
-
-      const response = await fetch(
-        `${API_URL}/api/visiteurs/${id}/qualification`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            qualification: qualification,
-          }),
-        }
+      console.log(
+        "================================="
       );
 
-      const data = await response.json();
+      console.log(
+        "ID :",
+        id
+      );
 
-      console.log("Réponse qualification :", data);
+      console.log(
+        "QUALIFICATION :",
+        qualification
+      );
 
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
-            "Erreur lors de l'enregistrement de la qualification."
+      console.log(
+        "TYPE QUALIFICATION :",
+        typeof qualification
+      );
+
+      console.log(
+        "API_URL :",
+        API_URL
+      );
+
+      // ------------------------------------------------------
+      // Vérifier ID
+      // ------------------------------------------------------
+
+      if (!id) {
+        Alert.alert(
+          "Erreur",
+          "Identifiant du visiteur introuvable."
         );
+
+        return;
       }
 
-      Alert.alert(
-        "Succès",
-        "Qualification enregistrée avec succès."
-      );
-    } catch (error) {
-      console.error(
-        "ERREUR QUALIFICATION :",
-        error
-      );
+      // ------------------------------------------------------
+      // Vérifier qualification
+      // ------------------------------------------------------
 
-      Alert.alert(
-        "Erreur",
-        error.message ||
-          "Impossible d'enregistrer la qualification."
-      );
-    } finally {
-      setSavingQualification(false);
-    }
-  };
-
-  // =====================================================
-  // ENVOYER EMAIL
-  // =====================================================
-  const handleEnvoyerEmail = async () => {
-    if (!id) {
-      Alert.alert(
-        "Erreur",
-        "Identifiant du visiteur introuvable."
-      );
-      return;
-    }
-
-    try {
-      setSending(true);
-
-      console.log("Envoi email pour visiteur :", id);
-
-      const response = await fetch(
-        `${API_URL}/api/visiteurs/${id}/email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      console.log("Réponse email :", data);
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
-            "Impossible d'envoyer l'email."
+      if (
+        qualification < 1 ||
+        qualification > 5
+      ) {
+        Alert.alert(
+          "Attention",
+          "Veuillez sélectionner une note de 1 à 5 étoiles."
         );
+
+        return;
       }
 
-      Alert.alert(
-        "Email envoyé",
-        "L'email a été envoyé au visiteur avec succès."
-      );
-    } catch (error) {
-      console.error(
-        "ERREUR EMAIL :",
-        error
-      );
+      try {
+        setSavingQualification(true);
 
-      Alert.alert(
-        "Erreur",
-        error.message ||
-          "Impossible d'envoyer l'email."
-      );
-    } finally {
-      setSending(false);
-    }
-  };
+        // ----------------------------------------------------
+        // URL
+        // ----------------------------------------------------
 
-  // =====================================================
-  // AFFICHAGE
-  // =====================================================
+        const url =
+          `${API_URL}/api/visiteurs/${id}/qualification`;
+
+        console.log(
+          "URL PUT :",
+          url
+        );
+
+        // ----------------------------------------------------
+        // FETCH
+        // ----------------------------------------------------
+
+        const response =
+          await fetch(
+            url,
+            {
+              method: "PUT",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                qualification:
+                  Number(
+                    qualification
+                  ),
+              }),
+            }
+          );
+
+        console.log(
+          "STATUS HTTP :",
+          response.status
+        );
+
+        // ----------------------------------------------------
+        // Réponse serveur
+        // ----------------------------------------------------
+
+        const data =
+          await response.json();
+
+        console.log(
+          "RÉPONSE SERVEUR :",
+          data
+        );
+
+        // ----------------------------------------------------
+        // Vérification
+        // ----------------------------------------------------
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "Impossible d'enregistrer la qualification."
+          );
+        }
+
+        console.log(
+          "================================="
+        );
+
+        console.log(
+          "✅ QUALIFICATION ENREGISTRÉE"
+        );
+
+        console.log(
+          "ID :",
+          data.data?.id
+        );
+
+        console.log(
+          "Qualification DB :",
+          data.data?.qualification
+        );
+
+        console.log(
+          "================================="
+        );
+
+        Alert.alert(
+          "Succès",
+          `Qualification ${qualification}/5 enregistrée avec succès.`
+        );
+
+      } catch (error) {
+        console.error(
+          "================================="
+        );
+
+        console.error(
+          "❌ ERREUR ENREGISTREMENT QUALIFICATION"
+        );
+
+        console.error(
+          error
+        );
+
+        console.error(
+          "================================="
+        );
+
+        Alert.alert(
+          "Erreur",
+          error.message ||
+            "Impossible d'enregistrer la qualification."
+        );
+
+      } finally {
+        setSavingQualification(false);
+      }
+    };
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      contentContainerStyle={
+        styles.container
+      }
+    >
+      {/* ================================================== */}
+      {/* TITRE */}
+      {/* ================================================== */}
 
-      {/* =================================================
-          QUALIFICATION DU VISITEUR
-      ================================================== */}
-      <View style={styles.ratingContainer}>
+      <Text style={styles.title}>
+        Traitement du visiteur
+      </Text>
 
-        <Text style={styles.ratingTitle}>
+      <Text style={styles.subtitle}>
+        ID visiteur : {id || "N/A"}
+      </Text>
+
+      {/* ================================================== */}
+      {/* QUALIFICATION */}
+      {/* ================================================== */}
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>
           Qualification du visiteur
         </Text>
 
+        <Text style={styles.description}>
+          Veuillez sélectionner une note
+          de 1 à 5 étoiles.
+        </Text>
+
+        {/* ================================================= */}
         {/* ÉTOILES */}
+        {/* ================================================= */}
+
         <View style={styles.starsContainer}>
-          {[1, 2, 3, 4, 5].map((etoile) => (
-            <TouchableOpacity
-              key={etoile}
-              onPress={() =>
-                setQualification(etoile)
-              }
-              activeOpacity={0.7}
-            >
-              <Text style={styles.star}>
-                {etoile <= qualification
-                  ? "★"
-                  : "☆"}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {[1, 2, 3, 4, 5].map(
+            (etoile) => (
+              <TouchableOpacity
+                key={etoile}
+                onPress={() =>
+                  setQualification(
+                    etoile
+                  )
+                }
+                activeOpacity={0.7}
+                disabled={
+                  savingQualification
+                }
+              >
+                <Text
+                  style={[
+                    styles.star,
+                    etoile <=
+                      qualification
+                      ? styles.starSelected
+                      : styles.starEmpty,
+                  ]}
+                >
+                  {etoile <=
+                  qualification
+                    ? "★"
+                    : "☆"}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
         </View>
 
-        {/* TEXTE NOTE */}
-        <Text style={styles.ratingText}>
-          {qualification === 0
-            ? "Sélectionner une note"
-            : `${qualification} / 5 étoiles`}
+        {/* ================================================= */}
+        {/* NOTE */}
+        {/* ================================================= */}
+
+        <Text style={styles.note}>
+          {qualification > 0
+            ? `${qualification}/5`
+            : "Aucune qualification sélectionnée"}
+        </Text>
+
+        {/* ================================================= */}
+        {/* BOUTON */}
+        {/* ================================================= */}
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            savingQualification &&
+              styles.buttonDisabled,
+          ]}
+          onPress={
+            handleEnregistrerQualification
+          }
+          disabled={
+            savingQualification
+          }
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>
+            {savingQualification
+              ? "Enregistrement..."
+              : "Enregistrer la qualification"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ================================================== */}
+      {/* INFORMATIONS */}
+      {/* ================================================== */}
+
+      <View style={styles.infoCard}>
+        <Text style={styles.infoTitle}>
+          Information
+        </Text>
+
+        <Text style={styles.infoText}>
+          La qualification sélectionnée
+          sera enregistrée dans la base
+          de données du visiteur.
         </Text>
       </View>
 
-      {/* =================================================
-          BOUTON ENREGISTRER QUALIFICATION
-      ================================================== */}
+      {/* ================================================== */}
+      {/* RETOUR */}
+      {/* ================================================== */}
+
       <TouchableOpacity
-        style={[
-          styles.button,
-          savingQualification &&
-            styles.buttonDisabled,
-        ]}
-        onPress={
-          handleEnregistrerQualification
+        style={styles.backButton}
+        onPress={() =>
+          router.back()
         }
-        disabled={savingQualification}
       >
-        <Text style={styles.buttonText}>
-          {savingQualification
-            ? "Enregistrement..."
-            : "Enregistrer la qualification"}
+        <Text style={styles.backButtonText}>
+          Retour
         </Text>
       </TouchableOpacity>
-
-      {/* =================================================
-          BOUTON ENVOYER EMAIL
-      ================================================== */}
-      <TouchableOpacity
-        style={[
-          styles.button,
-          sending &&
-            styles.buttonDisabled,
-        ]}
-        onPress={handleEnvoyerEmail}
-        disabled={sending}
-      >
-        <Text style={styles.buttonText}>
-          {sending
-            ? "Envoi en cours..."
-            : "Envoyer un email au visiteur"}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-  style={styles.button}
-  onPress={() =>
-    router.push({
-      pathname: "/pdf",
-      params: {
-        id: String(id),
-      },
-    })
-  }
->
-  <Text style={styles.buttonText}>
-    Voir la fiche PDF
-  </Text>
-</TouchableOpacity>
-
-    </View>
+    </ScrollView>
   );
 }
 
-// =====================================================
+// ============================================================
 // STYLES
-// =====================================================
+// ============================================================
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    padding: 20,
+    flexGrow: 1,
+    padding: 24,
+    backgroundColor: "#F7F7F7",
   },
 
-  ratingContainer: {
-    alignItems: "center",
-    marginVertical: 25,
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#222222",
+    textAlign: "center",
+    marginTop: 30,
+    marginBottom: 8,
   },
 
-  ratingTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 12,
-    color: "#333333",
+  subtitle: {
+    fontSize: 16,
+    color: "#666666",
+    textAlign: "center",
+    marginBottom: 30,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+
+    elevation: 3,
+  },
+
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#222222",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+
+  description: {
+    fontSize: 15,
+    color: "#666666",
+    textAlign: "center",
+    marginBottom: 20,
   },
 
   starsContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginVertical: 15,
   },
 
   star: {
-    fontSize: 42,
-    color: "#EE672A",
+    fontSize: 48,
     marginHorizontal: 5,
   },
 
-  ratingText: {
-    fontSize: 16,
-    marginTop: 8,
-    color: "#555555",
+  starSelected: {
+    color: "#EE672A",
+  },
+
+  starEmpty: {
+    color: "#BBBBBB",
+  },
+
+  note: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#333333",
+    textAlign: "center",
+    marginTop: 5,
+    marginBottom: 25,
   },
 
   button: {
-    width: "90%",
     backgroundColor: "#EE672A",
+    borderRadius: 10,
     paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    marginTop: 12,
+    paddingHorizontal: 20,
     alignItems: "center",
+    justifyContent: "center",
   },
 
   buttonDisabled: {
@@ -313,9 +468,43 @@ const styles = StyleSheet.create({
   },
 
   buttonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+
+  infoCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+  },
+
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#222222",
+    marginBottom: 8,
+  },
+
+  infoText: {
+    fontSize: 14,
+    color: "#666666",
+    lineHeight: 21,
+  },
+
+  backButton: {
+    borderWidth: 1,
+    borderColor: "#EE672A",
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginBottom: 30,
+  },
+
+  backButtonText: {
+    color: "#EE672A",
     fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: "600",
   },
 });

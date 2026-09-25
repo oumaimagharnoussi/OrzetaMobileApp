@@ -700,24 +700,24 @@ export default function PDFScreen() {
 
     <div class="contact-row">
       Rue du Lac Tchad, Immeuble ZEN, B4
-      <span class="icon">⌖</span>
+      <span class="icon">📍</span>
       <br />
       Les Berges du Lac, 1053 Tunis
     </div>
 
     <div class="contact-row">
       +216 98462000
-      <span class="icon">☎</span>
+      <span class="icon">📞</span>
     </div>
 
     <div class="contact-row">
       sales@olived.tn
-      <span class="icon">✉</span>
+      <span class="icon">📧</span>
     </div>
 
     <div class="contact-row">
       www.olived.tn
-      <span class="icon">◎</span>
+      <span class="icon">🌐</span>
     </div>
 
   </div>
@@ -790,7 +790,7 @@ export default function PDFScreen() {
     <li>
       <b>Commodity:</b>
       Extra Virgin Olive Oil –
-      Harvest 2025/2026
+      Harvest 2026/2027
     </li>
 
     <li>
@@ -1147,23 +1147,28 @@ export default function PDFScreen() {
       }
   
       const nomComplet = [
-        visiteur.prenom,
+        
         visiteur.nom,
       ]
         .filter(Boolean)
         .join(" ")
         .trim();
-  
-      const message =
-        `Bonjour ${nomComplet || "Monsieur/Madame"},\n\n` +
-        `Merci pour votre visite chez OLIVED.\n\n` +
-        `Veuillez trouver ci-dessous votre offre de prix officielle.\n` +
-        `Référence : ${reference}\n\n` +
-        `Cordialement,\n` +
-        `OLIVED`;
+  // ===================================================
+  // MSG WHATSAPP
+  // ===================================================
+  const message =
+  `Dear ${nomComplet},\n\n` +
+  `I hope you are doing well.\n\n` +
+  `Please find attached our quotation for the requested olive oil products.\n` +
+  `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
+  `Please do not hesitate to contact us should you need any further information or clarification.\n` +
+  `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+  `Reference: ${reference}\n\n` +
+  `Best regards,\n` +
+  `OLIVED`;
   
       // Nettoyage du numéro :
-      // +216 98 462 000 -> 21698462000
+      
       const whatsappNumber = telephone.replace(/[^\d]/g, "");
   
       // Encodage du message pour WhatsApp
@@ -1393,17 +1398,13 @@ export default function PDFScreen() {
         </Text>
 
         <TouchableOpacity
-          style={styles.primary}
-          onPress={() =>
-            router.back()
-          }
-        >
-          <Text
-            style={styles.btnText}
-          >
-            Retour
-          </Text>
-        </TouchableOpacity>
+  style={styles.primary}
+  onPress={() => router.replace("/")}
+>
+  <Text style={styles.btnText}>
+    Retour
+  </Text>
+</TouchableOpacity>
       </View>
     );
   }

@@ -628,11 +628,11 @@ export default function HomeScreen() {
       console.log("=======================================");
       console.log("VISITEUR AJOUTÉ AVEC SUCCÈS");
       console.log("ID :", data.id);
-      console.log("NAVIGATION VERS /traitement");
+      console.log("NAVIGATION VERS /pdf");
       console.log("=======================================");
       
       // Navigation après insertion réussie
-      router.replace("/traitement");
+      router.replace("/pdft");
 
       // =================================================
       // RÉPONSE
@@ -658,9 +658,9 @@ Alert.alert(
 
 setTimeout(() => {
   console.log("ÉTAPE 2 : NAVIGATION");
-  console.log("NAVIGATION VERS /traitement");
+  console.log("NAVIGATION VERS /pdf");
 
-router.push("/traitement");
+router.push("/pdf");
 }, 1000);
       // =================================================
       // RESET FORMULAIRE
