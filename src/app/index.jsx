@@ -64,33 +64,22 @@ export default function HomeScreen() {
     Glass: "",
   });
 
-const toggleFormatEmballage = (type, format, sousType = null) => {
-  setNouvelleMarqueFormatsEmballage((prev) => {
-    const current = sousType
-      ? prev.Glass?.[sousType] || []
-      : prev[type] || [];
-
-    const updated = current.includes(format)
-      ? current.filter((item) => item !== format)
-      : [...current, format];
-
-    if (sousType) {
+  const toggleFormatEmballage = (type, format) => {
+    setNouvelleMarqueFormatsEmballage((prev) => {
+      const formatsActuels = Array.isArray(prev[type])
+        ? prev[type]
+        : [];
+  
+      const dejaSelectionne = formatsActuels.includes(format);
+  
       return {
         ...prev,
-        Glass: {
-          ...(prev.Glass || {}),
-          [sousType]: updated,
-        },
+        [type]: dejaSelectionne
+          ? formatsActuels.filter((item) => item !== format)
+          : [...formatsActuels, format],
       };
-    }
-
-    return {
-      ...prev,
-      [type]: updated,
-    };
-  });
-};
-
+    });
+  };
 const toggleFormatNouvelleMarque = (
   type,
   format,
@@ -132,33 +121,96 @@ const toggleFormatNouvelleMarque = (
 };
 
 const renderFormatCheckbox = (type, format, sousType = null) => {
-  const selected = sousType
-    ? nouvelleMarqueFormatsEmballage[type]?.[sousType]?.includes(format)
-    : nouvelleMarqueFormatsEmballage[type]?.includes(format);
+  const formatsType = nouvelleMarqueFormatsEmballage?.[type];
+
+  let selected = false;
+
+  if (sousType) {
+    // Glass > MARASCA / DORICA
+    selected =
+      formatsType &&
+      typeof formatsType === "object" &&
+      !Array.isArray(formatsType) &&
+      Array.isArray(formatsType[sousType])
+        ? formatsType[sousType].includes(format)
+        : false;
+  } else {
+    // Tin / PET / Glass > Autre
+    selected =
+      Array.isArray(formatsType)
+        ? formatsType.includes(format)
+        : false;
+  }
+
+  const toggleFormat = () => {
+    setNouvelleMarqueFormatsEmballage((prev) => {
+      const current = prev?.[type];
+
+      // ============================
+      // MARASCA / DORICA
+      // ============================
+      if (sousType) {
+        const currentSousType =
+          current &&
+          typeof current === "object" &&
+          !Array.isArray(current) &&
+          Array.isArray(current[sousType])
+            ? current[sousType]
+            : [];
+
+        const updatedSousType = currentSousType.includes(format)
+          ? currentSousType.filter((item) => item !== format)
+          : [...currentSousType, format];
+
+        return {
+          ...prev,
+          [type]: {
+            ...(current &&
+            typeof current === "object" &&
+            !Array.isArray(current)
+              ? current
+              : {}),
+            [sousType]: updatedSousType,
+          },
+        };
+      }
+
+      // ============================
+      // AUTRE / FORMAT NORMAL
+      // ============================
+
+      const currentFormats = Array.isArray(current)
+        ? current
+        : [];
+
+      const updatedFormats = currentFormats.includes(format)
+        ? currentFormats.filter((item) => item !== format)
+        : [...currentFormats, format];
+
+      return {
+        ...prev,
+        [type]: updatedFormats,
+      };
+    });
+  };
 
   return (
     <TouchableOpacity
-      key={`${type}-${sousType || ""}-${format}`}
-      style={styles.formatCheckbox}
-      onPress={() => {
-        if (sousType) {
-          toggleFormatNouvelleMarque(type, format, sousType);
-        } else {
-          toggleFormatNouvelleMarque(type, format);
-        }
-      }}
+      key={`${type}-${sousType || "general"}-${format}`}
+      style={styles.formatCheckboxContainer}
+      onPress={toggleFormat}
+      activeOpacity={0.7}
     >
-      <Text style={styles.checkbox}>
+      <Text style={styles.formatCheckbox}>
         {selected ? "☑" : "☐"}
       </Text>
 
-      <Text style={styles.checkboxLabel}>
+      <Text style={styles.formatCheckboxLabel}>
         {format}
       </Text>
     </TouchableOpacity>
   );
 };
-
   // =====================================================
   // PROFILE
   // =====================================================
@@ -3831,6 +3883,9 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
 {/* ================= GLASS ================= */}
 
 <View style={styles.packagingSection}>
+
+  {/* ================= TYPE GLASS ================= */}
+
   <TouchableOpacity
     style={styles.packagingType}
     onPress={() => toggleEmballageNouvelleMarque("Glass")}
@@ -3846,43 +3901,66 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
     </Text>
   </TouchableOpacity>
 
+
+  {/* ================= DETAILS GLASS ================= */}
+
   {nouvelleMarqueEmballagesSelectionnes.includes("Glass") && (
+
     <View style={styles.packagingDetails}>
 
-      {/* ================= MARASCA ================= */}
-
-      <View style={styles.packagingFormatsRow}>
-        <Text style={styles.packagingBrand}>
+      {/* =================================================
           MARASCA
-        </Text>
+      ================================================= */}
 
-        {["250 ml", "500 ml", "750 ml", "1 L"].map((format) =>
-          renderFormatCheckbox("Glass", format, "MARASCA")
-        )}
-      </View>
+<View style={styles.packagingFormatsRow}>
+  <Text style={styles.packagingBrand}>
+    MARASCA
+  </Text>
 
-      {/* ================= DORICA ================= */}
+  {["250 ml", "500 ml", "750 ml", "1 L"].map((format) =>
+    renderFormatCheckbox("Glass", format, "MARASCA")
+  )}
+</View>
 
-      <View style={styles.packagingFormatsRow}>
-        <Text style={styles.packagingBrand}>
+
+      {/* =================================================
           DORICA
-        </Text>
+      ================================================= */}
 
-        {["250 ml", "500 ml", "750 ml"].map((format) =>
-          renderFormatCheckbox("Glass", format, "DORICA")
-        )}
-      </View>
+<View style={styles.packagingFormatsRow}>
+  <Text style={styles.packagingBrand}>
+    DORICA
+  </Text>
 
-      {/* ================= AUTRE FORMAT GLASS ================= */}
+  {["250 ml", "500 ml", "750 ml"].map((format) =>
+    renderFormatCheckbox("Glass", format, "DORICA")
+  )}
+</View>
+
+
+      {/* =================================================
+          AUTRE FORMAT GLASS
+      ================================================= */}
 
       <View style={styles.packagingFormatsRow}>
-        {renderFormatCheckbox("Glass", "Autre")}
+
+        {renderFormatCheckbox(
+          "Glass",
+          "Autre"
+        )}
+
       </View>
 
-      {/* Champ affiché si Autre est sélectionné */}
-      {Array.isArray(nouvelleMarqueFormatsEmballage.Glass) &&
+
+      {/* =================================================
+          CHAMP AUTRE
+      ================================================= */}
+
+      {Array.isArray(nouvelleMarqueFormatsEmballage?.Glass) &&
         nouvelleMarqueFormatsEmballage.Glass.includes("Autre") && (
-          <>
+
+          <View style={{ width: "100%" }}>
+
             <Text style={styles.label}>
               Préciser l'emballage
             </Text>
@@ -3890,7 +3968,9 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
             <TextInput
               style={styles.input}
               placeholder="Saisir le type d'emballage"
-              value={nouvelleMarqueAutresFormats.Glass || ""}
+              value={
+                nouvelleMarqueAutresFormats?.Glass || ""
+              }
               onChangeText={(value) =>
                 setNouvelleMarqueAutresFormats((prev) => ({
                   ...prev,
@@ -3898,10 +3978,15 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
                 }))
               }
             />
-          </>
+
+          </View>
+
         )}
+
     </View>
+
   )}
+
 </View>
       {/* ================= AUTRE TYPE ================= */}
       <View style={styles.packagingSection}>
@@ -3944,6 +4029,7 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
 {/* FERMETURE SECTION CONDITIONNÉ */}
 </View>
 )}
+
 {/* =================================================
     QUALIFICATION DU VISITEUR
 ================================================= */}
@@ -4300,8 +4386,8 @@ packagingDetails: {
 
 packagingFormatsRow: {
   flexDirection: "row",
-  flexWrap: "wrap",
   alignItems: "center",
+  flexWrap: "wrap",
   marginBottom: 12,
 },
 
@@ -4317,6 +4403,22 @@ packagingBrand: {
   marginRight: 12,
   fontSize: 13,
   color: "#000",
+},
+formatCheckboxContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginRight: 15,
+  marginBottom: 10,
+},
+
+formatCheckbox: {
+  fontSize: 20,
+  marginRight: 5,
+},
+
+formatCheckboxLabel: {
+  fontSize: 14,
+  color: "#333",
 },
 
 });
