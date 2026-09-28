@@ -57,6 +57,108 @@ export default function HomeScreen() {
     Glass: "",
   });
 
+  const [nouvelleMarqueAutresFormats, setNouvelleMarqueAutresFormats] =
+  useState({
+    Tin: "",
+    PET: "",
+    Glass: "",
+  });
+
+const toggleFormatEmballage = (type, format, sousType = null) => {
+  setNouvelleMarqueFormatsEmballage((prev) => {
+    const current = sousType
+      ? prev.Glass?.[sousType] || []
+      : prev[type] || [];
+
+    const updated = current.includes(format)
+      ? current.filter((item) => item !== format)
+      : [...current, format];
+
+    if (sousType) {
+      return {
+        ...prev,
+        Glass: {
+          ...(prev.Glass || {}),
+          [sousType]: updated,
+        },
+      };
+    }
+
+    return {
+      ...prev,
+      [type]: updated,
+    };
+  });
+};
+
+const toggleFormatNouvelleMarque = (
+  type,
+  format,
+  sousType = null
+) => {
+  setNouvelleMarqueFormatsEmballage((prev) => {
+    // CAS GLASS : formats classés par marque
+    if (type === "Glass" && sousType) {
+      const formatsGlass = prev.Glass || {};
+      const formatsMarque = formatsGlass[sousType] || [];
+
+      const nouveauxFormats = formatsMarque.includes(format)
+        ? formatsMarque.filter((item) => item !== format)
+        : [...formatsMarque, format];
+
+      return {
+        ...prev,
+        Glass: {
+          ...formatsGlass,
+          [sousType]: nouveauxFormats,
+        },
+      };
+    }
+
+    // CAS TIN, PET et autres formats simples
+    const formats = Array.isArray(prev[type])
+      ? prev[type]
+      : [];
+
+    const nouveauxFormats = formats.includes(format)
+      ? formats.filter((item) => item !== format)
+      : [...formats, format];
+
+    return {
+      ...prev,
+      [type]: nouveauxFormats,
+    };
+  });
+};
+
+const renderFormatCheckbox = (type, format, sousType = null) => {
+  const selected = sousType
+    ? nouvelleMarqueFormatsEmballage[type]?.[sousType]?.includes(format)
+    : nouvelleMarqueFormatsEmballage[type]?.includes(format);
+
+  return (
+    <TouchableOpacity
+      key={`${type}-${sousType || ""}-${format}`}
+      style={styles.formatCheckbox}
+      onPress={() => {
+        if (sousType) {
+          toggleFormatNouvelleMarque(type, format, sousType);
+        } else {
+          toggleFormatNouvelleMarque(type, format);
+        }
+      }}
+    >
+      <Text style={styles.checkbox}>
+        {selected ? "☑" : "☐"}
+      </Text>
+
+      <Text style={styles.checkboxLabel}>
+        {format}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
   // =====================================================
   // PROFILE
   // =====================================================
@@ -133,10 +235,16 @@ export default function HomeScreen() {
     setNouvelleMarqueEmballagesSelectionnes,
   ] = useState([]);
 
-  const [
-    nouvelleMarqueFormatsEmballage,
-    setNouvelleMarqueFormatsEmballage,
-  ] = useState({});
+  const [nouvelleMarqueFormatsEmballage, setNouvelleMarqueFormatsEmballage] =
+  useState({
+    Tin: [],
+    PET: [],
+    Glass: {
+      MARASCA: [],
+      DORICA: [],
+    },
+    Autre: [],
+  });
 
   const [nouvelleMarqueAutreEmballage, setNouvelleMarqueAutreEmballage] =
     useState("");
@@ -1633,6 +1741,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
+    
       style={styles.container}
       contentContainerStyle={
         styles.content
@@ -2954,6 +3063,8 @@ export default function HomeScreen() {
 
             </View>
 
+            
+
             {/* =================================================
                 GLASS
             ================================================= */}
@@ -3302,7 +3413,7 @@ export default function HomeScreen() {
 
             </View>
 
-            {/* AUTRE */}
+                        {/* AUTRE */}
 
             <View
               style={styles.packagingRow}
@@ -3363,7 +3474,6 @@ export default function HomeScreen() {
                 />
               </>
             )}
-
 
             {/* =================================================
                 QUANTITÉ DE LA COMMANDE
@@ -3560,668 +3670,283 @@ export default function HomeScreen() {
 
             </View>
 
-            {/* =================================================
-                INFORMATIONS NOUVELLE MARQUE
-            ================================================= */}
+{/* =================================================
+    INFORMATIONS NOUVELLE MARQUE
+================================================= */}
 
-            {typeMarque ===
-              "Création de nouvelle marque" && (
+{typeMarque === "Création de nouvelle marque" && (
+  <View style={styles.newBrandSection}>
+    <Text style={styles.newBrandTitle}>
+      Informations nouvelle marque
+    </Text>
 
-              <View
-                style={
-                  styles.newBrandSection
-                }
-              >
+    {/* MARCHÉ CIBLE */}
+    <Text style={styles.label}>
+      Marché cible
+    </Text>
 
-                <Text
-                  style={
-                    styles.newBrandTitle
-                  }
-                >
-                  Informations nouvelle marque
-                </Text>
+    <TextInput
+      style={styles.input}
+      placeholder="Ex : Tunisie, France, Italie..."
+      value={marcheCible}
+      onChangeText={setMarcheCible}
+    />
 
-                {/* MARCHÉ CIBLE */}
+    {/* QUANTITÉ PRÉVUE */}
+    <Text style={styles.label}>
+      Quantité prévue
+    </Text>
 
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Marché cible
+    <TextInput
+      style={styles.input}
+      placeholder="Ex : 5000 litres / an"
+      value={quantitePrevue}
+      onChangeText={setQuantitePrevue}
+      keyboardType="numeric"
+    />
+
+    {/* =================================================
+        EMBALLAGE NOUVELLE MARQUE
+    ================================================= */}
+
+    <View style={styles.packagingContainer}>
+      <Text style={styles.label}>
+        Type d'emballage
+      </Text>
+
+      {/* ================= TIN ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("Tin")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("Tin")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>
+            Tin
+          </Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("Tin") && (
+          <View style={styles.packagingDetails}>
+            <View style={styles.packagingFormatsRow}>
+              {[
+                "250 ml",
+                "500 ml",
+                "1 L",
+                "2 L",
+                "3 L",
+                "4 L",
+                "5 L",
+                "16 L",
+                "20 L",
+                "Autre",
+              ].map((format) =>
+                renderFormatCheckbox("Tin", format)
+              )}
+            </View>
+
+            {nouvelleMarqueFormatsEmballage.Tin?.includes("Autre") && (
+              <>
+                <Text style={styles.label}>
+                  Préciser l'emballage
                 </Text>
 
                 <TextInput
-                  style={
-                    styles.input
-                  }
-                  placeholder="Ex : Tunisie, France, Italie..."
-                  value={
-                    marcheCible
-                  }
-                  onChangeText={
-                    setMarcheCible
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={nouvelleMarqueAutresFormats.Tin}
+                  onChangeText={(value) =>
+                    setNouvelleMarqueAutresFormats((prev) => ({
+                      ...prev,
+                      Tin: value,
+                    }))
                   }
                 />
-
-                {/* QUANTITÉ PRÉVUE */}
-
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Quantité prévue
-                </Text>
-
-                <TextInput
-                  style={
-                    styles.input
-                  }
-                  placeholder="Ex : 5000 litres / an"
-                  value={
-                    quantitePrevue
-                  }
-                  onChangeText={
-                    setQuantitePrevue
-                  }
-                  keyboardType="numeric"
-                />
-
-                {/* EMBALLAGE NOUVELLE MARQUE */}
-
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Type d'emballage
-                </Text>
-
-                {/* TIN */}
-
-                <View
-                  style={
-                    styles.packagingRow
-                  }
-                >
-
-                  <TouchableOpacity
-                    style={
-                      styles.typeContainer
-                    }
-                    onPress={() =>
-                      toggleEmballageNouvelleMarque(
-                        "Tin"
-                      )
-                    }
-                  >
-
-                    <Text
-                      style={
-                        styles.checkbox
-                      }
-                    >
-                      {nouvelleMarqueEmballagesSelectionnes.includes(
-                        "Tin"
-                      )
-                        ? "☑"
-                        : "☐"}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.checkboxLabel
-                      }
-                    >
-                      Tin
-                    </Text>
-
-                  </TouchableOpacity>
-
-                </View>
-
-                {/* PET */}
-
-                <View
-                  style={
-                    styles.packagingRow
-                  }
-                >
-
-                  <TouchableOpacity
-                    style={
-                      styles.typeContainer
-                    }
-                    onPress={() =>
-                      toggleEmballageNouvelleMarque(
-                        "PET"
-                      )
-                    }
-                  >
-
-                    <Text
-                      style={
-                        styles.checkbox
-                      }
-                    >
-                      {nouvelleMarqueEmballagesSelectionnes.includes(
-                        "PET"
-                      )
-                        ? "☑"
-                        : "☐"}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.checkboxLabel
-                      }
-                    >
-                      PET
-                    </Text>
-
-                  </TouchableOpacity>
-
-                </View>
-
-                {/* GLASS */}
-
-                <View
-                  style={
-                    styles.packagingRow
-                  }
-                >
-
-                  <TouchableOpacity
-                    style={
-                      styles.typeContainer
-                    }
-                    onPress={() =>
-                      toggleEmballageNouvelleMarque(
-                        "Glass"
-                      )
-                    }
-                  >
-
-                    <Text
-                      style={
-                        styles.checkbox
-                      }
-                    >
-                      {nouvelleMarqueEmballagesSelectionnes.includes(
-                        "Glass"
-                      )
-                        ? "☑"
-                        : "☐"}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.checkboxLabel
-                      }
-                    >
-                      Glass
-                    </Text>
-
-                  </TouchableOpacity>
-
-                </View>
-
-                {/* AUTRE */}
-
-                <View
-                  style={
-                    styles.packagingRow
-                  }
-                >
-
-                  <TouchableOpacity
-                    style={
-                      styles.typeContainer
-                    }
-                    onPress={() =>
-                      toggleEmballageNouvelleMarque(
-                        "Autre"
-                      )
-                    }
-                  >
-
-                    <Text
-                      style={
-                        styles.checkbox
-                      }
-                    >
-                      {nouvelleMarqueEmballagesSelectionnes.includes(
-                        "Autre"
-                      )
-                        ? "☑"
-                        : "☐"}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.checkboxLabel
-                      }
-                    >
-                      Autre
-                    </Text>
-
-                  </TouchableOpacity>
-
-                </View>
-
-                {nouvelleMarqueEmballagesSelectionnes.includes(
-                  "Autre"
-                ) && (
-
-                  <>
-                    <Text
-                      style={
-                        styles.label
-                      }
-                    >
-                      Préciser l'emballage
-                    </Text>
-
-                    <TextInput
-                      style={
-                        styles.input
-                      }
-                      placeholder="Saisir le type d'emballage"
-                      value={
-                        nouvelleMarqueAutreEmballage
-                      }
-                      onChangeText={
-                        setNouvelleMarqueAutreEmballage
-                      }
-                    />
-                  </>
-
-                )}
-
-                {/* FORMATS SOUHAITÉS */}
-
-                {nouvelleMarqueEmballagesSelectionnes
-                  .filter(
-                    (type) =>
-                      type !== "Autre"
-                  )
-                  .map((type) => (
-
-                    <View
-                      key={`nouvelle-marque-${type}`}
-                      style={{
-                        marginTop: 15,
-                      }}
-                    >
-
-                      <Text
-                        style={
-                          styles.label
-                        }
-                      >
-                        Formats souhaités -{" "}
-                        {type}
-                      </Text>
-
-                      {/* GLASS */}
-
-                      {type ===
-                      "Glass" ? (
-
-                        <>
-
-                          {/* MARASCA */}
-
-                          <Text
-                            style={
-                              styles.label
-                            }
-                          >
-                            MARASCA
-                          </Text>
-
-                          {[
-                            "250 ml",
-                            "500 ml",
-                            "750 ml",
-                            "1 L",
-                          ].map(
-                            (format) => {
-
-                              const selected =
-                                nouvelleMarqueFormatsEmballage
-                                  .Glass
-                                  ?.MARASCA
-                                  ?.includes(
-                                    format
-                                  ) ||
-                                false;
-
-                              return (
-
-                                <TouchableOpacity
-                                  key={`NM-MARASCA-${format}`}
-                                  style={
-                                    styles.checkboxContainer
-                                  }
-                                  onPress={() => {
-
-                                    setNouvelleMarqueFormatsEmballage(
-                                      (prev) => {
-
-                                        const current =
-                                          prev
-                                            .Glass
-                                            ?.MARASCA ||
-                                          [];
-
-                                        const updated =
-                                          current.includes(
-                                            format
-                                          )
-                                            ? current.filter(
-                                                (
-                                                  item
-                                                ) =>
-                                                  item !==
-                                                  format
-                                              )
-                                            : [
-                                                ...current,
-                                                format,
-                                              ];
-
-                                        return {
-
-                                          ...prev,
-
-                                          Glass: {
-                                            ...(prev.Glass ||
-                                              {}),
-
-                                            MARASCA:
-                                              updated,
-                                          },
-
-                                        };
-
-                                      }
-                                    );
-
-                                  }}
-                                >
-
-                                  <Text
-                                    style={
-                                      styles.checkbox
-                                    }
-                                  >
-                                    {selected
-                                      ? "☑"
-                                      : "☐"}
-                                  </Text>
-
-                                  <Text
-                                    style={
-                                      styles.checkboxLabel
-                                    }
-                                  >
-                                    {
-                                      format
-                                    }
-                                  </Text>
-
-                                </TouchableOpacity>
-
-                              );
-
-                            }
-                          )}
-
-                          {/* DORICA */}
-
-                          <Text
-                            style={[
-                              styles.label,
-                              {
-                                marginTop: 15,
-                              },
-                            ]}
-                          >
-                            DORICA
-                          </Text>
-
-                          {[
-                            "250 ml",
-                            "500 ml",
-                            "750 ml",
-                          ].map(
-                            (format) => {
-
-                              const selected =
-                                nouvelleMarqueFormatsEmballage
-                                  .Glass
-                                  ?.DORICA
-                                  ?.includes(
-                                    format
-                                  ) ||
-                                false;
-
-                              return (
-
-                                <TouchableOpacity
-                                  key={`NM-DORICA-${format}`}
-                                  style={
-                                    styles.checkboxContainer
-                                  }
-                                  onPress={() => {
-
-                                    setNouvelleMarqueFormatsEmballage(
-                                      (prev) => {
-
-                                        const current =
-                                          prev
-                                            .Glass
-                                            ?.DORICA ||
-                                          [];
-
-                                        const updated =
-                                          current.includes(
-                                            format
-                                          )
-                                            ? current.filter(
-                                                (
-                                                  item
-                                                ) =>
-                                                  item !==
-                                                  format
-                                              )
-                                            : [
-                                                ...current,
-                                                format,
-                                              ];
-
-                                        return {
-
-                                          ...prev,
-
-                                          Glass: {
-                                            ...(prev.Glass ||
-                                              {}),
-
-                                            DORICA:
-                                              updated,
-                                          },
-
-                                        };
-
-                                      }
-                                    );
-
-                                  }}
-                                >
-
-                                  <Text
-                                    style={
-                                      styles.checkbox
-                                    }
-                                  >
-                                    {selected
-                                      ? "☑"
-                                      : "☐"}
-                                  </Text>
-
-                                  <Text
-                                    style={
-                                      styles.checkboxLabel
-                                    }
-                                  >
-                                    {
-                                      format
-                                    }
-                                  </Text>
-
-                                </TouchableOpacity>
-
-                              );
-
-                            }
-                          )}
-
-                        </>
-
-                      ) : (
-
-                        <>
-
-                          {(
-                            type ===
-                            "Tin"
-                              ? [
-                                  "250 ml",
-                                  "500 ml",
-                                  "1 L",
-                                  "2 L",
-                                  "3 L",
-                                  "4 L",
-                                  "5 L",
-                                  "16 L",
-                                  "20 L",
-                                ]
-                              : [
-                                  "250 ml",
-                                  "500 ml",
-                                  "1 L",
-                                  "3 L",
-                                  "5 L",
-                                ]
-                          ).map(
-                            (format) => {
-
-                              const selected =
-                                nouvelleMarqueFormatsEmballage[
-                                  type
-                                ]?.includes(
-                                  format
-                                ) ||
-                                false;
-
-                              return (
-
-                                <TouchableOpacity
-                                  key={`NM-${type}-${format}`}
-                                  style={
-                                    styles.checkboxContainer
-                                  }
-                                  onPress={() => {
-
-                                    setNouvelleMarqueFormatsEmballage(
-                                      (prev) => {
-
-                                        const current =
-                                          prev[
-                                            type
-                                          ] ||
-                                          [];
-
-                                        const updated =
-                                          current.includes(
-                                            format
-                                          )
-                                            ? current.filter(
-                                                (
-                                                  item
-                                                ) =>
-                                                  item !==
-                                                  format
-                                              )
-                                            : [
-                                                ...current,
-                                                format,
-                                              ];
-
-                                        return {
-
-                                          ...prev,
-
-                                          [type]:
-                                            updated,
-
-                                        };
-
-                                      }
-                                    );
-
-                                  }}
-                                >
-
-                                  <Text
-                                    style={
-                                      styles.checkbox
-                                    }
-                                  >
-                                    {selected
-                                      ? "☑"
-                                      : "☐"}
-                                  </Text>
-
-                                  <Text
-                                    style={
-                                      styles.checkboxLabel
-                                    }
-                                  >
-                                    {
-                                      format
-                                    }
-                                  </Text>
-
-                                </TouchableOpacity>
-
-                              );
-
-                            }
-                          )}
-
-                        </>
-
-                      )}
-
-                    </View>
-
-                  ))}
-
-              </View>
-
+              </>
             )}
-
           </View>
-
         )}
+      </View>
 
-      {/* =================================================
-          QUALIFICATION DU VISITEUR
-      ================================================= */}
+      {/* ================= PET ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("PET")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("PET")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>
+            PET
+          </Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("PET") && (
+          <View style={styles.packagingDetails}>
+            <View style={styles.packagingFormatsRow}>
+              {[
+                "250 ml",
+                "500 ml",
+                "1 L",
+                "3 L",
+                "5 L",
+                "Autre",
+              ].map((format) =>
+                renderFormatCheckbox("PET", format)
+              )}
+            </View>
+
+            {nouvelleMarqueFormatsEmballage.PET?.includes("Autre") && (
+              <>
+                <Text style={styles.label}>
+                  Préciser l'emballage
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={nouvelleMarqueAutresFormats.PET}
+                  onChangeText={(value) =>
+                    setNouvelleMarqueAutresFormats((prev) => ({
+                      ...prev,
+                      PET: value,
+                    }))
+                  }
+                />
+              </>
+            )}
+          </View>
+        )}
+      </View>
+
+{/* ================= GLASS ================= */}
+
+<View style={styles.packagingSection}>
+  <TouchableOpacity
+    style={styles.packagingType}
+    onPress={() => toggleEmballageNouvelleMarque("Glass")}
+  >
+    <Text style={styles.checkbox}>
+      {nouvelleMarqueEmballagesSelectionnes.includes("Glass")
+        ? "☑"
+        : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Glass
+    </Text>
+  </TouchableOpacity>
+
+  {nouvelleMarqueEmballagesSelectionnes.includes("Glass") && (
+    <View style={styles.packagingDetails}>
+
+      {/* ================= MARASCA ================= */}
+
+      <View style={styles.packagingFormatsRow}>
+        <Text style={styles.packagingBrand}>
+          MARASCA
+        </Text>
+
+        {["250 ml", "500 ml", "750 ml", "1 L"].map((format) =>
+          renderFormatCheckbox("Glass", format, "MARASCA")
+        )}
+      </View>
+
+      {/* ================= DORICA ================= */}
+
+      <View style={styles.packagingFormatsRow}>
+        <Text style={styles.packagingBrand}>
+          DORICA
+        </Text>
+
+        {["250 ml", "500 ml", "750 ml"].map((format) =>
+          renderFormatCheckbox("Glass", format, "DORICA")
+        )}
+      </View>
+
+      {/* ================= AUTRE FORMAT GLASS ================= */}
+
+      <View style={styles.packagingFormatsRow}>
+        {renderFormatCheckbox("Glass", "Autre")}
+      </View>
+
+      {/* Champ affiché si Autre est sélectionné */}
+      {Array.isArray(nouvelleMarqueFormatsEmballage.Glass) &&
+        nouvelleMarqueFormatsEmballage.Glass.includes("Autre") && (
+          <>
+            <Text style={styles.label}>
+              Préciser l'emballage
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Saisir le type d'emballage"
+              value={nouvelleMarqueAutresFormats.Glass || ""}
+              onChangeText={(value) =>
+                setNouvelleMarqueAutresFormats((prev) => ({
+                  ...prev,
+                  Glass: value,
+                }))
+              }
+            />
+          </>
+        )}
+    </View>
+  )}
+</View>
+      {/* ================= AUTRE TYPE ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("Autre")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("Autre")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>
+            Autre
+          </Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("Autre") && (
+          <View style={styles.packagingDetails}>
+            <Text style={styles.label}>
+              Préciser l'emballage
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Saisir le type d'emballage"
+              value={nouvelleMarqueAutreEmballage}
+              onChangeText={setNouvelleMarqueAutreEmballage}
+            />
+          </View>
+        )}
+      </View>
+    </View>
+    {/* Fin packagingContainer */}
+  </View>
+  /* Fin newBrandSection */
+)}
+
+{/* FERMETURE SECTION CONDITIONNÉ */}
+</View>
+)}
+{/* =================================================
+    QUALIFICATION DU VISITEUR
+================================================= */}
 
       <View
         style={
@@ -4305,7 +4030,7 @@ export default function HomeScreen() {
 
       </TouchableOpacity>
 
-    </ScrollView>
+    </ScrollView> 
   );
 }
 
@@ -4546,5 +4271,52 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: "#555555",
   },
+
+  
+packagingContainer: {
+  width: "100%",
+  marginTop: 10,
+},
+
+packagingSection: {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  width: "100%",
+  marginTop: 12,
+},
+
+packagingType: {
+  flexDirection: "row",
+  alignItems: "center",
+  width: 80,
+  paddingTop: 2,
+},
+
+packagingDetails: {
+  flex: 1,
+  minWidth: 0,
+  marginLeft: 0,
+},
+
+packagingFormatsRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  alignItems: "center",
+  marginBottom: 12,
+},
+
+packagingFormatItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginRight: 12,
+  marginBottom: 4,
+},
+
+packagingBrand: {
+  minWidth: 65,
+  marginRight: 12,
+  fontSize: 13,
+  color: "#000",
+},
 
 });
