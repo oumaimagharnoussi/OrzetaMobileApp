@@ -34,7 +34,7 @@ export default function HomeScreen() {
   const [telephone, setTelephone] = useState("");
   const [indicatif, setIndicatif] = useState("+216");
   const [email, setEmail] = useState("");
-  const [age, setAge] = useState("");
+  const [site, setSite] = useState("");
   const [origine, setOrigine] = useState("");
   const [societe, setSociete] = useState("");
   const [adresseSociete, setAdresseSociete] = useState("");
@@ -1262,11 +1262,9 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
       email:
         email.trim() || null,
 
-      age:
-        age.trim() &&
-        !isNaN(Number(age))
-          ? Number(age)
-          : null,
+      site:
+        site.trim() ||
+          null,
 
       origine:
         origine || null,
@@ -1483,7 +1481,9 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
         typeCommande === "conditionné" &&
         (
           quantiteCommande === "conteneur_20" ||
-          quantiteCommande === "conteneur_40"
+          quantiteCommande === "conteneur_40" ||
+          quantiteCommande === "palettes"
+
         )
           ? quantiteCommande
           : null,
@@ -1679,7 +1679,7 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
       setPrenom("");
       setTelephone("");
       setEmail("");
-      setAge("");
+      setSite("");
       setOrigine("");
       setIndicatif("+216");
       setSociete("");
@@ -1968,8 +1968,8 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
       <TextInput
         style={styles.input}
         placeholder="http://..."
-        value={age}
-        onChangeText={setAge}
+        value={site}
+        onChangeText={setSite}
         autoCapitalize="none"
       />
 

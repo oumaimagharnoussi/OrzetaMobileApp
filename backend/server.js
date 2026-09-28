@@ -506,12 +506,31 @@ app.post(
           body.email
         );
 
-      const age =
-        body.age === undefined ||
-        body.age === null ||
-        body.age === ""
-          ? null
-          : Number(body.age);
+        const site =
+        cleanString(
+          body.site
+        );
+
+        const certifications_requises =
+        cleanString(
+          body.certificationsRequises
+        );
+      
+      const siteWeb =
+        cleanString(
+          body.site_web ??
+          body.siteWeb
+        );
+
+        const contactProfessionnel = cleanString(
+          body.contact_professionnel
+        );
+
+        const nomEntreprise = cleanString(body.nom_entreprise);
+
+        const certificationsRequises = cleanJson(
+          body.certifications_requises
+        );
 
       const origine =
         cleanString(
@@ -555,6 +574,8 @@ app.post(
         cleanString(
           body.fonction
         );
+
+        
 
       // ------------------------------------------------------
       // LANGUE
@@ -943,82 +964,23 @@ app.post(
       // ======================================================
 
       const sql = `
-        INSERT INTO visiteurs (
-          nom,
-          prenom,
-          email,
-          age,
-          origine,
-          indicatif,
-          telephone,
-          societe,
-          adresse_societe,
-          fonction,
-          langue_communication,
-          profile,
-          type_commande,
-          categorie,
-
-          qualite_grade,
-          volume_estime,
-          destination,
-          incoterm,
-          format_livraison,
-          frequence,
-          exigences,
-          infos,
-
-          pays_conditionne,
-          canal,
-          volumes_conditionne,
-
-          type_emballage,
-          packaging,
-          formats_souhaites,
-
-          type_marque,
-          marche_cible,
-          quantite_prevue,
-          nouvelle_marque_formats,
-          nouvelle_marque_design_conditionnement,
-
-          type_conteneur,
-          nombre_palettes,
-
-          qualification
-        )
-
-        VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?,
-          ?, ?, ?,
-          ?, ?, ?, ?, ?,
-          ?, ?,
-          ?
-        )
-      `;
-
-      // ======================================================
-      // VALEURS SQL
-      // ======================================================
-
-      const values = [
+      INSERT INTO visiteurs (
         nom,
         prenom,
         email,
-        age,
         origine,
         indicatif,
         telephone,
         societe,
         adresse_societe,
         fonction,
+        site_web,
+        nom_entreprise,
         langue_communication,
         profile,
         type_commande,
         categorie,
-
+    
         qualite_grade,
         volume_estime,
         destination,
@@ -1027,49 +989,101 @@ app.post(
         frequence,
         exigences,
         infos,
-
+        site,
+    
         pays_conditionne,
         canal,
         volumes_conditionne,
-
+    
         type_emballage,
         packaging,
         formats_souhaites,
-
+        contact_professionnel,
         type_marque,
         marche_cible,
         quantite_prevue,
         nouvelle_marque_formats,
         nouvelle_marque_design_conditionnement,
-
+    
         type_conteneur,
         nombre_palettes,
+        certifications_requises,
+        qualification
+      )
+      VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,
+        ?, ?, ?, ?, ?, ?, ?, ?,
+        ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?, ?, ?,?,
+        ?, ?,?,
+        ?
+      )
+    `;
 
-        qualification,
+      // ======================================================
+      // VALEURS SQL
+      // ======================================================
+      const values = [
+        nom,
+        prenom,
+        email,
+        origine,
+        indicatif,
+        telephone,
+        societe,
+        adresse_societe,
+        fonction,
+        siteWeb,
+        nomEntreprise,
+        langue_communication,
+        profile,
+        type_commande,
+        categorie,
+      
+        qualite_grade,
+        volume_estime,
+        destination,
+        incoterm,
+        format_livraison,
+        frequence,
+        exigences,
+        infos,
+        site,
+      
+        pays_conditionne,
+        canal,
+        volumes_conditionne,
+      
+        type_emballage,
+        packaging,
+        formats_souhaites,
+        contactProfessionnel,
+      
+        type_marque,
+        marche_cible,
+        quantite_prevue,
+        nouvelle_marque_formats,
+        nouvelle_marque_design_conditionnement,
+      
+        type_conteneur,
+        nombre_palettes,
+        certificationsRequises,
+        qualification
       ];
-
       // ======================================================
-      // VÉRIFICATION
-      // ======================================================
+// VÉRIFICATION DU NOMBRE DE VALEURS
+// ======================================================
 
-      console.log(
-        "Nombre de colonnes SQL :",
-        36
-      );
+console.log("Nombre de colonnes SQL : 40");
+console.log("Nombre de valeurs SQL :", values.length);
 
-      console.log(
-        "Nombre de valeurs SQL :",
-        values.length
-      );
-
-      if (
-        values.length !== 36
-      ) {
-        throw new Error(
-          `Erreur interne : ${values.length} valeurs pour 36 colonnes SQL.`
-        );
-      }
-
+if (values.length !== 40) {
+  throw new Error(
+    `Erreur interne : ${values.length} valeurs pour 40 colonnes SQL.`
+  );
+}
       // ======================================================
       // INSERT
       // ======================================================
@@ -1432,7 +1446,7 @@ app.put(
         "nom",
         "prenom",
         "email",
-        "age",
+        "site",
         "origine",
         "indicatif",
         "telephone",
@@ -1441,8 +1455,11 @@ app.put(
         "fonction",
         "langue_communication",
         "profile",
+        "site_web",
+        "nom_entreprise",
         "type_commande",
         "categorie",
+        "certifications_requises",
 
         "qualite_grade",
         "volume_estime",
@@ -1469,7 +1486,7 @@ app.put(
 
         "type_conteneur",
         "nombre_palettes",
-
+        "contact_professionnel",
         "qualification",
       ];
 
