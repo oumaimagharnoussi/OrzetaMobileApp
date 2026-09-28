@@ -69,6 +69,10 @@ function cleanString(value) {
   return str === "" ? null : str;
 }
 
+// ------------------------------------------------------------
+// Nettoyage JSON
+// ------------------------------------------------------------
+
 function cleanJson(value) {
   if (
     value === undefined ||
@@ -79,17 +83,48 @@ function cleanJson(value) {
     return null;
   }
 
+  // Objet ou tableau envoyé directement
   if (typeof value === "object") {
-    return JSON.stringify(value);
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      console.error(
+        "❌ Erreur conversion JSON objet :",
+        error.message
+      );
+
+      return null;
+    }
   }
 
-  try {
-    JSON.parse(value);
-    return value;
-  } catch (error) {
-    return JSON.stringify(value);
+  // Chaîne JSON
+  if (typeof value === "string") {
+    const valueClean = value.trim();
+
+    if (
+      valueClean === "" ||
+      valueClean === "null"
+    ) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(valueClean);
+
+      return JSON.stringify(parsed);
+    } catch (error) {
+      // Ce n'est pas forcément un JSON.
+      // On conserve la valeur comme chaîne JSON.
+      return JSON.stringify(valueClean);
+    }
   }
+
+  return JSON.stringify(value);
 }
+
+// ============================================================
+// NORMALISATION TYPE COMMANDE
+// ============================================================
 
 function normalizeTypeCommande(value) {
   const valueClean = cleanString(value);
@@ -122,11 +157,17 @@ function normalizeTypeCommande(value) {
 function generateReference(id, typeCommande) {
   const numero = Number(id) + 1;
 
-  const type = normalizeTypeCommande(typeCommande);
+  const type = normalizeTypeCommande(
+    typeCommande
+  );
 
-  const lettre = type === "vrac" ? "V" : "B";
+  const lettre =
+    type === "vrac"
+      ? "V"
+      : "B";
 
-  const annee = new Date().getFullYear();
+  const annee =
+    new Date().getFullYear();
 
   return `${numero}${lettre}${annee}`;
 }
@@ -138,22 +179,30 @@ function generateReference(id, typeCommande) {
 async function getVisitorById(id) {
   const visitorId = Number(id);
 
-  if (!Number.isInteger(visitorId) || visitorId <= 0) {
-    throw new Error("Identifiant visiteur invalide.");
+  if (
+    !Number.isInteger(visitorId) ||
+    visitorId <= 0
+  ) {
+    throw new Error(
+      "Identifiant visiteur invalide."
+    );
   }
 
-  const [rows] = await pool.query(
-    `
-      SELECT *
-      FROM visiteurs
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [visitorId]
-  );
+  const [rows] =
+    await pool.query(
+      `
+        SELECT *
+        FROM visiteurs
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [visitorId]
+    );
 
   if (!rows.length) {
-    throw new Error("Visiteur introuvable.");
+    throw new Error(
+      "Visiteur introuvable."
+    );
   }
 
   return rows[0];
@@ -163,41 +212,61 @@ async function getVisitorById(id) {
 // PDF GENERATION
 // ============================================================
 
-async function generatePdfFromHtml(htmlContent) {
+async function generatePdfFromHtml(
+  htmlContent
+) {
   let browser = null;
 
   try {
-    if (!htmlContent || typeof htmlContent !== "string") {
-      throw new Error("Contenu HTML du PDF manquant.");
+    if (
+      !htmlContent ||
+      typeof htmlContent !== "string"
+    ) {
+      throw new Error(
+        "Contenu HTML du PDF manquant."
+      );
     }
 
-    if (htmlContent.trim().length < 100) {
+    if (
+      htmlContent.trim().length < 100
+    ) {
       throw new Error(
         "Contenu HTML du PDF trop court ou invalide."
       );
     }
 
-    console.log("=======================================");
-    console.log("GÉNÉRATION PDF AVEC PUPPETEER");
+    console.log(
+      "======================================="
+    );
+
+    console.log(
+      "GÉNÉRATION PDF AVEC PUPPETEER"
+    );
+
     console.log(
       "HTML reçu :",
       htmlContent.length,
       "caractères"
     );
-    console.log("=======================================");
 
-    browser = await puppeteer.launch({
-      headless: true,
+    console.log(
+      "======================================="
+    );
 
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
+    browser =
+      await puppeteer.launch({
+        headless: true,
 
-    const page = await browser.newPage();
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+        ],
+      });
+
+    const page =
+      await browser.newPage();
 
     await page.setViewport({
       width: 1280,
@@ -205,16 +274,23 @@ async function generatePdfFromHtml(htmlContent) {
       deviceScaleFactor: 1,
     });
 
-    await page.setContent(htmlContent, {
-      waitUntil: "networkidle0",
-      timeout: 60000,
-    });
+    await page.setContent(
+      htmlContent,
+      {
+        waitUntil:
+          "networkidle0",
+        timeout: 60000,
+      }
+    );
 
-    const documentExists = await page.evaluate(() => {
-      return Boolean(
-        document.querySelector(".document")
-      );
-    });
+    const documentExists =
+      await page.evaluate(() => {
+        return Boolean(
+          document.querySelector(
+            ".document"
+          )
+        );
+      });
 
     if (!documentExists) {
       console.warn(
@@ -222,22 +298,26 @@ async function generatePdfFromHtml(htmlContent) {
       );
     }
 
-    await page.emulateMediaType("screen");
+    await page.emulateMediaType(
+      "screen"
+    );
 
-    const pdfData = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      preferCSSPageSize: true,
+    const pdfData =
+      await page.pdf({
+        format: "A4",
+        printBackground: true,
+        preferCSSPageSize: true,
 
-      margin: {
-        top: "0",
-        right: "0",
-        bottom: "0",
-        left: "0",
-      },
-    });
+        margin: {
+          top: "0",
+          right: "0",
+          bottom: "0",
+          left: "0",
+        },
+      });
 
-    const pdfBuffer = Buffer.from(pdfData);
+    const pdfBuffer =
+      Buffer.from(pdfData);
 
     console.log(
       "✅ PDF généré :",
@@ -277,20 +357,26 @@ async function generatePdfFromHtml(htmlContent) {
 // ============================================================
 
 function createEmailTransporter() {
-  const host = process.env.SMTP_HOST;
+  const host =
+    process.env.SMTP_HOST;
 
-  const port = Number(
-    process.env.SMTP_PORT || 465
-  );
+  const port =
+    Number(
+      process.env.SMTP_PORT || 465
+    );
 
   const secure =
     String(
-      process.env.SMTP_SECURE || "true"
-    ).toLowerCase() === "true";
+      process.env.SMTP_SECURE ||
+        "true"
+    ).toLowerCase() ===
+    "true";
 
-  const user = process.env.SMTP_USER;
+  const user =
+    process.env.SMTP_USER;
 
-  const pass = process.env.SMTP_PASS;
+  const pass =
+    process.env.SMTP_PASS;
 
   if (!host) {
     throw new Error(
@@ -326,43 +412,58 @@ function createEmailTransporter() {
 // ROUTE TEST
 // ============================================================
 
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "OLIVED API fonctionne correctement.",
-  });
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.json({
+      success: true,
+
+      message:
+        "OLIVED API fonctionne correctement.",
+    });
+  }
+);
 
 // ============================================================
 // TEST DATABASE
 // ============================================================
 
-app.get("/api/test-db", async (req, res) => {
-  try {
-    const [rows] = await pool.query(
-      "SELECT 1 AS test"
-    );
+app.get(
+  "/api/test-db",
+  async (req, res) => {
+    try {
+      const [rows] =
+        await pool.query(
+          "SELECT 1 AS test"
+        );
 
-    res.json({
-      success: true,
-      message: "Connexion MySQL réussie.",
-      data: rows,
-    });
+      res.json({
+        success: true,
 
-  } catch (error) {
-    console.error(
-      "❌ TEST DB :",
-      error
-    );
+        message:
+          "Connexion MySQL réussie.",
 
-    res.status(500).json({
-      success: false,
-      message:
-        "Erreur de connexion à MySQL.",
-      error: error.message,
-    });
+        data: rows,
+      });
+
+    } catch (error) {
+      console.error(
+        "❌ TEST DB :",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+
+        message:
+          "Erreur de connexion à MySQL.",
+
+        error:
+          error.message,
+      });
+    }
   }
-});
+);
 
 // ============================================================
 // POST - AJOUT VISITEUR
@@ -373,27 +474,37 @@ app.post(
   async (req, res) => {
     try {
       console.log("");
-      console.log("=======================================");
-      console.log("NOUVEAU VISITEUR");
-      console.log("=======================================");
-
-      const body = req.body || {};
-
-      // ------------------------------------------------------
-      // INFORMATIONS GENERALES
-      // ------------------------------------------------------
-
-      const nom = cleanString(
-        body.nom
+      console.log(
+        "======================================="
+      );
+      console.log(
+        "NOUVEAU VISITEUR"
+      );
+      console.log(
+        "======================================="
       );
 
-      const prenom = cleanString(
-        body.prenom
-      );
+      const body =
+        req.body || {};
 
-      const email = cleanString(
-        body.email
-      );
+      // ======================================================
+      // INFORMATIONS GÉNÉRALES
+      // ======================================================
+
+      const nom =
+        cleanString(
+          body.nom
+        );
+
+      const prenom =
+        cleanString(
+          body.prenom
+        );
+
+      const email =
+        cleanString(
+          body.email
+        );
 
       const age =
         body.age === undefined ||
@@ -402,89 +513,109 @@ app.post(
           ? null
           : Number(body.age);
 
-      const origine = cleanString(
-        body.origine
-      );
+      const origine =
+        cleanString(
+          body.origine
+        );
 
-      const indicatif = cleanString(
-        body.indicatif
-      );
+      const indicatif =
+        cleanString(
+          body.indicatif
+        );
 
-      const telephone = cleanString(
-        body.telephone
-      );
+      const telephone =
+        cleanString(
+          body.telephone
+        );
 
-      const societe = cleanString(
-        body.societe ||
-          body.adresse_societe
-          ? body.societe
-          : body.company
-      );
+      // ------------------------------------------------------
+      // SOCIETE
+      // ------------------------------------------------------
+
+      const societe =
+        cleanString(
+          body.societe ||
+          body.company
+        );
+
+      // ------------------------------------------------------
+      // ADRESSE
+      // ------------------------------------------------------
 
       const adresse_societe =
         cleanString(
           body.adresse_societe
         );
 
-      const fonction = cleanString(
-        body.fonction
-      );
+      // ------------------------------------------------------
+      // FONCTION
+      // ------------------------------------------------------
+
+      const fonction =
+        cleanString(
+          body.fonction
+        );
+
+      // ------------------------------------------------------
+      // LANGUE
+      // ------------------------------------------------------
 
       const langue_communication =
         cleanString(
           body.langue_communication
         );
 
-      const profile = cleanString(
-        body.profile ||
+      // ------------------------------------------------------
+      // PROFILE
+      // ------------------------------------------------------
+
+      const profile =
+        cleanString(
+          body.profile ||
           body.profil
-      );
+        );
+
+      // ------------------------------------------------------
+      // TYPE COMMANDE
+      // ------------------------------------------------------
 
       const type_commande =
         normalizeTypeCommande(
           body.type_commande
         );
 
-      // ------------------------------------------------------
+      // ======================================================
       // ⭐ QUALIFICATION
-      // ------------------------------------------------------
-      //
-      // CORRECTION :
-      // La qualification envoyée depuis index.jsx
-      // est maintenant enregistrée directement lors du POST.
-      //
-      // Si aucune note n'est sélectionnée :
-      // qualification = NULL
-      //
-      // Si l'utilisateur choisit 4 étoiles :
-      // qualification = 4
-      //
-      // ------------------------------------------------------
+      // ======================================================
 
       let qualification = null;
 
       if (
-        body.qualification !== undefined &&
-        body.qualification !== null &&
+        body.qualification !==
+          undefined &&
+        body.qualification !==
+          null &&
         body.qualification !== ""
       ) {
-        const q = Number(
-          body.qualification
-        );
+        const q =
+          Number(
+            body.qualification
+          );
 
         if (
-          Number.isInteger(q) &&
-          q >= 1 &&
-          q <= 5
+          !Number.isInteger(q) ||
+          q < 1 ||
+          q > 5
         ) {
-          qualification = q;
-        } else {
           return res.status(400).json({
             success: false,
+
             message:
               "La qualification doit être comprise entre 1 et 5.",
           });
         }
+
+        qualification = q;
       }
 
       console.log(
@@ -492,9 +623,14 @@ app.post(
         qualification
       );
 
-      // ------------------------------------------------------
+      // ======================================================
       // VRAC
-      // ------------------------------------------------------
+      // ======================================================
+
+      const categorie =
+        cleanString(
+          body.categorie
+        );
 
       const qualite_grade =
         cleanString(
@@ -502,9 +638,15 @@ app.post(
         );
 
       const volume_estime =
-        cleanString(
-          body.volume_estime
-        );
+        body.volume_estime ===
+            undefined ||
+        body.volume_estime ===
+            null ||
+        body.volume_estime === ""
+          ? null
+          : Number(
+              body.volume_estime
+            );
 
       const destination =
         cleanString(
@@ -521,68 +663,235 @@ app.post(
           body.format_livraison
         );
 
+      // ------------------------------------------------------
+      // Compatibilité frontend
+      //
+      // index.jsx envoie :
+      // frequence_commande
+      //
+      // DB utilise :
+      // frequence
+      // ------------------------------------------------------
+
       const frequence =
         cleanString(
-          body.frequence
+          body.frequence ??
+          body.frequence_commande
         );
+
+      // ------------------------------------------------------
+      // Compatibilité frontend
+      //
+      // index.jsx envoie :
+      // exigences_specifiques
+      //
+      // DB utilise :
+      // exigences
+      // ------------------------------------------------------
 
       const exigences =
         cleanJson(
-          body.exigences
+          body.exigences ??
+          body.exigences_specifiques
         );
+
+      // ------------------------------------------------------
+      // Compatibilité frontend
+      //
+      // index.jsx envoie :
+      // informations_complementaires
+      //
+      // DB utilise :
+      // infos
+      // ------------------------------------------------------
 
       const infos =
         cleanString(
-          body.infos
+          body.infos ??
+          body.informations_complementaires
         );
 
-      // ------------------------------------------------------
-      // CONDITIONNE
-      // ------------------------------------------------------
+      // ======================================================
+      // CONDITIONNÉ
+      // ======================================================
 
       const pays_conditionne =
         cleanString(
           body.pays_conditionne
         );
 
+      // ------------------------------------------------------
+      // Canal
+      // ------------------------------------------------------
+
       const canal =
         cleanString(
-          body.canal
+          body.canal ??
+          body.canal_distribution
         );
+
+      // ------------------------------------------------------
+      // Volumes conditionnés
+      // ------------------------------------------------------
 
       const volumes_conditionne =
         cleanJson(
-          body.volumes_conditionne ||
-            body.volumes ||
-            body.volumes_souhaites
+          body.volumes_conditionne ??
+          body.volumes_estimes ??
+          body.volumes ??
+          body.volumes_souhaites
         );
 
-      // ------------------------------------------------------
-      // EMBALLAGE
-      // ------------------------------------------------------
+      // ======================================================
+      // TYPE EMBALLAGE
+      // ======================================================
+      //
+      // NOUVEAU FORMAT ATTENDU
+      //
+      // {
+      //   "emballages": [
+      //     "Tin",
+      //     "PET",
+      //     "Glass"
+      //   ],
+      //
+      //   "autres": {
+      //     "Tin": "400 ml",
+      //     "PET": "500 ml",
+      //     "Glass": "750 ml"
+      //   }
+      // }
+      //
+      // ======================================================
 
-      const type_emballage =
-        cleanJson(
-          body.type_emballage ||
-            body.emballagesSelectionnes ||
-            body.emballages
-        );
+      let type_emballage =
+        null;
+
+      if (
+        body.type_emballage !==
+          undefined &&
+        body.type_emballage !==
+          null
+      ) {
+        type_emballage =
+          cleanJson(
+            body.type_emballage
+          );
+
+      } else if (
+        body.emballagesSelectionnes !==
+          undefined
+      ) {
+        type_emballage =
+          cleanJson({
+            emballages:
+              body.emballagesSelectionnes,
+          });
+
+      } else if (
+        body.emballages !==
+          undefined
+      ) {
+        type_emballage =
+          cleanJson({
+            emballages:
+              body.emballages,
+          });
+      }
+
+      // ======================================================
+      // PACKAGING
+      // ======================================================
+      //
+      // IMPORTANT :
+      // Ce champ est séparé de type_emballage.
+      //
+      // Exemple :
+      //
+      // {
+      //   "Tin": ["500 ml", "1 L"],
+      //
+      //   "PET": ["1 L"],
+      //
+      //   "Glass": {
+      //     "MARASCA": ["750 ml"],
+      //     "DORICA": ["500 ml"]
+      //   }
+      // }
+      //
+      // ======================================================
 
       const packaging =
         cleanJson(
-          body.packaging ||
-            body.formatsEmballage
+          body.packaging ??
+          body.formatsEmballage
         );
+
+      // ======================================================
+      // FORMATS SOUHAITÉS
+      // ======================================================
 
       const formats_souhaites =
         cleanJson(
-          body.formats_souhaites ||
-            body.formatsSouhaites
+          body.formats_souhaites ??
+          body.formatsSouhaites
         );
 
-      // ------------------------------------------------------
+      // ======================================================
+      // DEBUG EMBALLAGE
+      // ======================================================
+
+      console.log(
+        "======================================="
+      );
+
+      console.log(
+        "TYPE EMBALLAGE REÇU :"
+      );
+
+      console.log(
+        body.type_emballage
+      );
+
+      console.log(
+        "TYPE EMBALLAGE SQL :"
+      );
+
+      console.log(
+        type_emballage
+      );
+
+      console.log(
+        "PACKAGING REÇU :"
+      );
+
+      console.log(
+        body.packaging
+      );
+
+      console.log(
+        "PACKAGING SQL :"
+      );
+
+      console.log(
+        packaging
+      );
+
+      console.log(
+        "FORMATS SOUHAITÉS SQL :"
+      );
+
+      console.log(
+        formats_souhaites
+      );
+
+      console.log(
+        "======================================="
+      );
+
+      // ======================================================
       // MARQUE
-      // ------------------------------------------------------
+      // ======================================================
 
       const type_marque =
         cleanString(
@@ -595,7 +904,7 @@ app.post(
         );
 
       const quantite_prevue =
-        cleanJson(
+        cleanString(
           body.quantite_prevue
         );
 
@@ -609,9 +918,9 @@ app.post(
           body.nouvelle_marque_design_conditionnement
         );
 
-      // ------------------------------------------------------
+      // ======================================================
       // CONTENEUR
-      // ------------------------------------------------------
+      // ======================================================
 
       const type_conteneur =
         cleanString(
@@ -619,15 +928,19 @@ app.post(
         );
 
       const nombre_palettes =
-        body.nombre_palettes === undefined ||
-        body.nombre_palettes === null ||
+        body.nombre_palettes ===
+            undefined ||
+        body.nombre_palettes ===
+            null ||
         body.nombre_palettes === ""
           ? null
-          : Number(body.nombre_palettes);
+          : Number(
+              body.nombre_palettes
+            );
 
-      // ------------------------------------------------------
+      // ======================================================
       // SQL
-      // ------------------------------------------------------
+      // ======================================================
 
       const sql = `
         INSERT INTO visiteurs (
@@ -644,6 +957,7 @@ app.post(
           langue_communication,
           profile,
           type_commande,
+          categorie,
 
           qualite_grade,
           volume_estime,
@@ -675,7 +989,7 @@ app.post(
         )
 
         VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?,
           ?, ?, ?,
@@ -684,6 +998,10 @@ app.post(
           ?
         )
       `;
+
+      // ======================================================
+      // VALEURS SQL
+      // ======================================================
 
       const values = [
         nom,
@@ -699,6 +1017,7 @@ app.post(
         langue_communication,
         profile,
         type_commande,
+        categorie,
 
         qualite_grade,
         volume_estime,
@@ -726,14 +1045,34 @@ app.post(
         type_conteneur,
         nombre_palettes,
 
-        // ⭐ NOUVEAU
         qualification,
       ];
+
+      // ======================================================
+      // VÉRIFICATION
+      // ======================================================
+
+      console.log(
+        "Nombre de colonnes SQL :",
+        36
+      );
 
       console.log(
         "Nombre de valeurs SQL :",
         values.length
       );
+
+      if (
+        values.length !== 36
+      ) {
+        throw new Error(
+          `Erreur interne : ${values.length} valeurs pour 36 colonnes SQL.`
+        );
+      }
+
+      // ======================================================
+      // INSERT
+      // ======================================================
 
       const [result] =
         await pool.execute(
@@ -744,9 +1083,9 @@ app.post(
       const insertedId =
         result.insertId;
 
-      // ------------------------------------------------------
+      // ======================================================
       // REFERENCE
-      // ------------------------------------------------------
+      // ======================================================
 
       const reference =
         generateReference(
@@ -766,15 +1105,19 @@ app.post(
         ]
       );
 
-      // ------------------------------------------------------
-      // VERIFICATION QUALIFICATION
-      // ------------------------------------------------------
+      // ======================================================
+      // VÉRIFICATION VISITEUR
+      // ======================================================
 
-      const [verificationRows] =
+      const [
+        verificationRows,
+      ] =
         await pool.execute(
           `
             SELECT
               id,
+              type_emballage,
+              packaging,
               qualification,
               reference
             FROM visiteurs
@@ -782,6 +1125,10 @@ app.post(
           `,
           [insertedId]
         );
+
+      // ======================================================
+      // LOG FINAL
+      // ======================================================
 
       console.log(
         "======================================="
@@ -802,13 +1149,30 @@ app.post(
       );
 
       console.log(
+        "TYPE EMBALLAGE DB :",
+        verificationRows[0]
+          ?.type_emballage
+      );
+
+      console.log(
+        "PACKAGING DB :",
+        verificationRows[0]
+          ?.packaging
+      );
+
+      console.log(
         "⭐ QUALIFICATION DB :",
-        verificationRows[0]?.qualification
+        verificationRows[0]
+          ?.qualification
       );
 
       console.log(
         "======================================="
       );
+
+      // ======================================================
+      // RESPONSE
+      // ======================================================
 
       res.status(201).json({
         success: true,
@@ -823,7 +1187,18 @@ app.post(
         type_commande,
 
         qualification:
-          verificationRows[0]?.qualification ??
+          verificationRows[0]
+            ?.qualification ??
+          null,
+
+        type_emballage:
+          verificationRows[0]
+            ?.type_emballage ??
+          null,
+
+        packaging:
+          verificationRows[0]
+            ?.packaging ??
           null,
       });
 
@@ -837,7 +1212,10 @@ app.post(
       );
 
       console.error(
-        "=======================================",
+        "======================================="
+      );
+
+      console.error(
         error
       );
 
@@ -879,8 +1257,12 @@ app.get(
 
       res.json({
         success: true,
-        count: rows.length,
-        data: rows,
+
+        count:
+          rows.length,
+
+        data:
+          rows,
       });
 
     } catch (error) {
@@ -911,7 +1293,9 @@ app.get(
   async (req, res) => {
     try {
       const id =
-        Number(req.params.id);
+        Number(
+          req.params.id
+        );
 
       if (
         !Number.isInteger(id) ||
@@ -928,11 +1312,13 @@ app.get(
       const visitor =
         await getVisitorById(id);
 
-      // ------------------------------------------------------
+      // ======================================================
       // REFERENCE
-      // ------------------------------------------------------
+      // ======================================================
 
-      if (!visitor.reference) {
+      if (
+        !visitor.reference
+      ) {
         const reference =
           generateReference(
             visitor.id,
@@ -955,7 +1341,9 @@ app.get(
           visitor.reference =
             reference;
 
-        } catch (referenceError) {
+        } catch (
+          referenceError
+        ) {
           console.error(
             "⚠️ Impossible de sauvegarder la référence :",
             referenceError.message
@@ -969,9 +1357,11 @@ app.get(
       res.json({
         success: true,
 
-        data: visitor,
+        data:
+          visitor,
 
-        visitor,
+        visitor:
+          visitor,
       });
 
     } catch (error) {
@@ -986,6 +1376,7 @@ app.get(
       ) {
         return res.status(404).json({
           success: false,
+
           message:
             error.message,
         });
@@ -1013,7 +1404,9 @@ app.put(
   async (req, res) => {
     try {
       const id =
-        Number(req.params.id);
+        Number(
+          req.params.id
+        );
 
       if (
         !Number.isInteger(id) ||
@@ -1049,6 +1442,7 @@ app.put(
         "langue_communication",
         "profile",
         "type_commande",
+        "categorie",
 
         "qualite_grade",
         "volume_estime",
@@ -1083,11 +1477,16 @@ app.put(
         const field of allowedFields
       ) {
         if (
-          body[field] !== undefined
+          body[field] !==
+          undefined
         ) {
           fields.push(
             `${field} = ?`
           );
+
+          // --------------------------------------------------
+          // JSON
+          // --------------------------------------------------
 
           if (
             [
@@ -1096,7 +1495,6 @@ app.put(
               "type_emballage",
               "packaging",
               "formats_souhaites",
-              "quantite_prevue",
               "nouvelle_marque_formats",
             ].includes(field)
           ) {
@@ -1106,8 +1504,13 @@ app.put(
               )
             );
 
+          // --------------------------------------------------
+          // Qualification
+          // --------------------------------------------------
+
           } else if (
-            field === "qualification"
+            field ===
+            "qualification"
           ) {
             const q =
               Number(
@@ -1121,12 +1524,17 @@ app.put(
             ) {
               return res.status(400).json({
                 success: false,
+
                 message:
                   "La qualification doit être comprise entre 1 et 5.",
               });
             }
 
             values.push(q);
+
+          // --------------------------------------------------
+          // Autres champs
+          // --------------------------------------------------
 
           } else {
             values.push(
@@ -1136,7 +1544,9 @@ app.put(
         }
       }
 
-      if (!fields.length) {
+      if (
+        !fields.length
+      ) {
         return res.status(400).json({
           success: false,
 
@@ -1167,7 +1577,8 @@ app.put(
         message:
           "Visiteur modifié avec succès.",
 
-        data: visitor,
+        data:
+          visitor,
       });
 
     } catch (error) {
@@ -1201,7 +1612,9 @@ app.delete(
   async (req, res) => {
     try {
       const id =
-        Number(req.params.id);
+        Number(
+          req.params.id
+        );
 
       if (
         !Number.isInteger(id) ||
@@ -1256,30 +1669,26 @@ app.delete(
 // ============================================================
 // ⭐ QUALIFICATION - PUT
 // ============================================================
-//
-// Cette route est utilisée par traitement.jsx.
-//
-// PUT
-// /api/visiteurs/:id/qualification
-//
-// Body :
-// {
-//   "qualification": 4
-// }
-//
-// ============================================================
 
 app.put(
   "/api/visiteurs/:id/qualification",
   async (req, res) => {
     try {
       console.log("");
-      console.log("=================================");
-      console.log("REQUÊTE QUALIFICATION REÇUE");
-      console.log("=================================");
+      console.log(
+        "================================="
+      );
+      console.log(
+        "REQUÊTE QUALIFICATION REÇUE"
+      );
+      console.log(
+        "================================="
+      );
 
       const id =
-        Number(req.params.id);
+        Number(
+          req.params.id
+        );
 
       const qualification =
         Number(
@@ -1341,7 +1750,9 @@ app.put(
       // ------------------------------------------------------
 
       const visitor =
-        await getVisitorById(id);
+        await getVisitorById(
+          id
+        );
 
       console.log(
         "Visiteur trouvé :",
@@ -1401,7 +1812,8 @@ app.put(
 
       console.log(
         "Qualification enregistrée en DB :",
-        rows[0].qualification
+        rows[0]
+          .qualification
       );
 
       console.log(
@@ -1422,11 +1834,13 @@ app.put(
         message:
           "Qualification enregistrée avec succès.",
 
-        data: rows[0],
+        data:
+          rows[0],
       });
 
     } catch (error) {
       console.error("");
+
       console.error(
         "================================="
       );
@@ -1439,7 +1853,9 @@ app.put(
         "================================="
       );
 
-      console.error(error);
+      console.error(
+        error
+      );
 
       return res.status(500).json({
         success: false,
@@ -1481,12 +1897,13 @@ app.post(
         reference,
         toEmail,
         pdfHtml,
-      } = req.body || {};
+      } =
+        req.body || {};
 
       const id =
         Number(
           visitorId ||
-            visiteurId
+          visiteurId
         );
 
       console.log(
@@ -1769,7 +2186,9 @@ OLIVED`;
         "======================================="
       );
 
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         success: false,
@@ -1813,12 +2232,13 @@ app.post(
         telephone,
         nomComplet,
         pdfHtml,
-      } = req.body || {};
+      } =
+        req.body || {};
 
       const id =
         Number(
           visitorId ||
-            visiteurId
+          visiteurId
         );
 
       console.log(
@@ -1935,10 +2355,14 @@ app.post(
         )
       ) {
         whatsappNumber =
-          whatsappNumber.substring(2);
+          whatsappNumber.substring(
+            2
+          );
       }
 
-      if (!whatsappNumber) {
+      if (
+        !whatsappNumber
+      ) {
         return res.status(400).json({
           success: false,
 
@@ -1974,13 +2398,16 @@ app.post(
       }
 
       const accessToken =
-        process.env.WHATSAPP_ACCESS_TOKEN;
+        process.env
+          .WHATSAPP_ACCESS_TOKEN;
 
       const phoneNumberId =
-        process.env.WHATSAPP_PHONE_NUMBER_ID;
+        process.env
+          .WHATSAPP_PHONE_NUMBER_ID;
 
       const graphVersion =
-        process.env.WHATSAPP_GRAPH_VERSION ||
+        process.env
+          .WHATSAPP_GRAPH_VERSION ||
         "v23.0";
 
       if (!accessToken) {
@@ -2229,7 +2656,9 @@ app.post(
         error.message
       );
 
-      if (error.response) {
+      if (
+        error.response
+      ) {
         console.error(
           "HTTP :",
           error.response.status
@@ -2402,7 +2831,9 @@ async function startServer() {
       "======================================="
     );
 
-    console.error(error);
+    console.error(
+      error
+    );
 
     process.exit(1);
   }

@@ -39,7 +39,23 @@ export default function HomeScreen() {
   const [societe, setSociete] = useState("");
   const [adresseSociete, setAdresseSociete] = useState("");
   const [fonction, setFonction] = useState("");
-  const [langueCommunication] = useState("");
+  const [langueCommunication, setLangueCommunication] = useState("");
+
+  // =====================================================
+  // AUTRE EMBALLAGE PAR TYPE
+  // =====================================================
+
+  const [autresSelectionnes, setAutresSelectionnes] = useState({
+    Tin: false,
+    PET: false,
+    Glass: false,
+  });
+
+  const [autresEmballages, setAutresEmballages] = useState({
+    Tin: "",
+    PET: "",
+    Glass: "",
+  });
 
   // =====================================================
   // PROFILE
@@ -57,6 +73,7 @@ export default function HomeScreen() {
   // VRAC
   // =====================================================
 
+  const [categorie, setCategorie] = useState("");
   const [qualiteGrade, setQualiteGrade] = useState("");
   const [volumeEstime, setVolumeEstime] = useState("");
   const [destination, setDestination] = useState("");
@@ -82,6 +99,8 @@ export default function HomeScreen() {
   // Sélection multiple des emballages CONDITIONNÉ
   const [emballagesSelectionnes, setEmballagesSelectionnes] = useState([]);
   const [formatsEmballage, setFormatsEmballage] = useState({});
+
+  // Ancien Autre global conservé pour compatibilité
   const [autreEmballage, setAutreEmballage] = useState("");
 
   const [typeMarque, setTypeMarque] = useState("");
@@ -133,21 +152,187 @@ export default function HomeScreen() {
   // =====================================================
 
   const pays = [
-    "Tunisie",
+    "Afghanistan",
+    "Afrique du Sud",
+    "Albanie",
     "Algérie",
-    "Maroc",
-    "France",
-    "Italie",
-    "Espagne",
     "Allemagne",
-    "Belgique",
-    "Suisse",
-    "Canada",
-    "États-Unis",
+    "Andorre",
+    "Angola",
+    "Antigua-et-Barbuda",
     "Arabie Saoudite",
+    "Argentine",
+    "Arménie",
+    "Australie",
+    "Autriche",
+    "Azerbaïdjan",
+    "Bahamas",
+    "Bahreïn",
+    "Bangladesh",
+    "Barbade",
+    "Belgique",
+    "Belize",
+    "Bénin",
+    "Bhoutan",
+    "Biélorussie",
+    "Bolivie",
+    "Bosnie-Herzégovine",
+    "Botswana",
+    "Brésil",
+    "Brunei",
+    "Bulgarie",
+    "Burkina Faso",
+    "Burundi",
+    "Cambodge",
+    "Cameroun",
+    "Canada",
+    "Cap-Vert",
+    "Chili",
+    "Chine",
+    "Chypre",
+    "Colombie",
+    "Comores",
+    "Congo",
+    "Costa Rica",
+    "Côte d'Ivoire",
+    "Croatie",
+    "Cuba",
+    "Danemark",
+    "Djibouti",
+    "Dominique",
+    "Égypte",
     "Émirats Arabes Unis",
-    "Qatar",
+    "Équateur",
+    "Érythrée",
+    "Espagne",
+    "Estonie",
+    "Eswatini",
+    "Éthiopie",
+    "Fidji",
+    "Finlande",
+    "France",
+    "Gabon",
+    "Gambie",
+    "Géorgie",
+    "Ghana",
+    "Grèce",
+    "Grenade",
+    "Guatemala",
+    "Guinée",
+    "Guinée-Bissau",
+    "Guinée équatoriale",
+    "Guyana",
+    "Haïti",
+    "Honduras",
+    "Hongrie",
+    "Inde",
+    "Indonésie",
+    "Irak",
+    "Iran",
+    "Irlande",
+    "Islande",
+    "Israël",
+    "Italie",
+    "Jamaïque",
+    "Japon",
+    "Jordanie",
+    "Kazakhstan",
+    "Kenya",
+    "Kirghizistan",
     "Koweït",
+    "Laos",
+    "Lettonie",
+    "Liban",
+    "Lesotho",
+    "Liberia",
+    "Libye",
+    "Liechtenstein",
+    "Lituanie",
+    "Luxembourg",
+    "Macédoine du Nord",
+    "Madagascar",
+    "Malaisie",
+    "Malawi",
+    "Maldives",
+    "Mali",
+    "Malte",
+    "Maroc",
+    "Maurice",
+    "Mauritanie",
+    "Mexique",
+    "Moldavie",
+    "Monaco",
+    "Mongolie",
+    "Monténégro",
+    "Mozambique",
+    "Myanmar",
+    "Namibie",
+    "Népal",
+    "Nicaragua",
+    "Niger",
+    "Nigeria",
+    "Norvège",
+    "Nouvelle-Zélande",
+    "Oman",
+    "Ouganda",
+    "Ouzbékistan",
+    "Pakistan",
+    "Panama",
+    "Papouasie-Nouvelle-Guinée",
+    "Paraguay",
+    "Pays-Bas",
+    "Pérou",
+    "Philippines",
+    "Pologne",
+    "Portugal",
+    "Qatar",
+    "République démocratique du Congo",
+    "République dominicaine",
+    "République tchèque",
+    "Roumanie",
+    "Royaume-Uni",
+    "Russie",
+    "Rwanda",
+    "Saint-Kitts-et-Nevis",
+    "Sainte-Lucie",
+    "Saint-Marin",
+    "Saint-Vincent-et-les-Grenadines",
+    "Salvador",
+    "Samoa",
+    "Sénégal",
+    "Serbie",
+    "Seychelles",
+    "Sierra Leone",
+    "Singapour",
+    "Slovaquie",
+    "Slovénie",
+    "Somalie",
+    "Soudan",
+    "Soudan du Sud",
+    "Sri Lanka",
+    "Suède",
+    "Suisse",
+    "Suriname",
+    "Tadjikistan",
+    "Tanzanie",
+    "Thaïlande",
+    "Timor oriental",
+    "Togo",
+    "Tonga",
+    "Trinité-et-Tobago",
+    "Tunisie",
+    "Turkménistan",
+    "Turquie",
+    "Ukraine",
+    "Uruguay",
+    "Vanuatu",
+    "Vatican",
+    "Venezuela",
+    "Viêt Nam",
+    "Yémen",
+    "Zambie",
+    "Zimbabwe",
+    "États-Unis",
     "Autre",
   ];
 
@@ -158,36 +343,368 @@ export default function HomeScreen() {
   const handlePaysChange = (value) => {
     setOrigine(value);
 
-    if (value === "Tunisie") {
-      setIndicatif("+216");
+    if (value === "Afghanistan") {
+      setIndicatif("+93");
+    } else if (value === "Afrique du Sud") {
+      setIndicatif("+27");
+    } else if (value === "Albanie") {
+      setIndicatif("+355");
     } else if (value === "Algérie") {
       setIndicatif("+213");
-    } else if (value === "Maroc") {
-      setIndicatif("+212");
-    } else if (value === "France") {
-      setIndicatif("+33");
-    } else if (value === "Italie") {
-      setIndicatif("+39");
-    } else if (value === "Espagne") {
-      setIndicatif("+34");
     } else if (value === "Allemagne") {
       setIndicatif("+49");
-    } else if (value === "Belgique") {
-      setIndicatif("+32");
-    } else if (value === "Suisse") {
-      setIndicatif("+41");
-    } else if (value === "Canada") {
-      setIndicatif("+1");
-    } else if (value === "États-Unis") {
+    } else if (value === "Andorre") {
+      setIndicatif("+376");
+    } else if (value === "Angola") {
+      setIndicatif("+244");
+    } else if (value === "Antigua-et-Barbuda") {
       setIndicatif("+1");
     } else if (value === "Arabie Saoudite") {
       setIndicatif("+966");
+    } else if (value === "Argentine") {
+      setIndicatif("+54");
+    } else if (value === "Arménie") {
+      setIndicatif("+374");
+    } else if (value === "Australie") {
+      setIndicatif("+61");
+    } else if (value === "Autriche") {
+      setIndicatif("+43");
+    } else if (value === "Azerbaïdjan") {
+      setIndicatif("+994");
+    } else if (value === "Bahamas") {
+      setIndicatif("+1");
+    } else if (value === "Bahreïn") {
+      setIndicatif("+973");
+    } else if (value === "Bangladesh") {
+      setIndicatif("+880");
+    } else if (value === "Barbade") {
+      setIndicatif("+1");
+    } else if (value === "Belgique") {
+      setIndicatif("+32");
+    } else if (value === "Belize") {
+      setIndicatif("+501");
+    } else if (value === "Bénin") {
+      setIndicatif("+229");
+    } else if (value === "Bhoutan") {
+      setIndicatif("+975");
+    } else if (value === "Biélorussie") {
+      setIndicatif("+375");
+    } else if (value === "Bolivie") {
+      setIndicatif("+591");
+    } else if (value === "Bosnie-Herzégovine") {
+      setIndicatif("+387");
+    } else if (value === "Botswana") {
+      setIndicatif("+267");
+    } else if (value === "Brésil") {
+      setIndicatif("+55");
+    } else if (value === "Brunei") {
+      setIndicatif("+673");
+    } else if (value === "Bulgarie") {
+      setIndicatif("+359");
+    } else if (value === "Burkina Faso") {
+      setIndicatif("+226");
+    } else if (value === "Burundi") {
+      setIndicatif("+257");
+    } else if (value === "Cambodge") {
+      setIndicatif("+855");
+    } else if (value === "Cameroun") {
+      setIndicatif("+237");
+    } else if (value === "Canada") {
+      setIndicatif("+1");
+    } else if (value === "Cap-Vert") {
+      setIndicatif("+238");
+    } else if (value === "Chili") {
+      setIndicatif("+56");
+    } else if (value === "Chine") {
+      setIndicatif("+86");
+    } else if (value === "Chypre") {
+      setIndicatif("+357");
+    } else if (value === "Colombie") {
+      setIndicatif("+57");
+    } else if (value === "Comores") {
+      setIndicatif("+269");
+    } else if (value === "Congo") {
+      setIndicatif("+242");
+    } else if (value === "Costa Rica") {
+      setIndicatif("+506");
+    } else if (value === "Côte d'Ivoire") {
+      setIndicatif("+225");
+    } else if (value === "Croatie") {
+      setIndicatif("+385");
+    } else if (value === "Cuba") {
+      setIndicatif("+53");
+    } else if (value === "Danemark") {
+      setIndicatif("+45");
+    } else if (value === "Djibouti") {
+      setIndicatif("+253");
+    } else if (value === "Dominique") {
+      setIndicatif("+1");
+    } else if (value === "Égypte") {
+      setIndicatif("+20");
     } else if (value === "Émirats Arabes Unis") {
       setIndicatif("+971");
-    } else if (value === "Qatar") {
-      setIndicatif("+974");
+    } else if (value === "Équateur") {
+      setIndicatif("+593");
+    } else if (value === "Érythrée") {
+      setIndicatif("+291");
+    } else if (value === "Espagne") {
+      setIndicatif("+34");
+    } else if (value === "Estonie") {
+      setIndicatif("+372");
+    } else if (value === "Eswatini") {
+      setIndicatif("+268");
+    } else if (value === "Éthiopie") {
+      setIndicatif("+251");
+    } else if (value === "Fidji") {
+      setIndicatif("+679");
+    } else if (value === "Finlande") {
+      setIndicatif("+358");
+    } else if (value === "France") {
+      setIndicatif("+33");
+    } else if (value === "Gabon") {
+      setIndicatif("+241");
+    } else if (value === "Gambie") {
+      setIndicatif("+220");
+    } else if (value === "Géorgie") {
+      setIndicatif("+995");
+    } else if (value === "Ghana") {
+      setIndicatif("+233");
+    } else if (value === "Grèce") {
+      setIndicatif("+30");
+    } else if (value === "Grenade") {
+      setIndicatif("+1");
+    } else if (value === "Guatemala") {
+      setIndicatif("+502");
+    } else if (value === "Guinée") {
+      setIndicatif("+224");
+    } else if (value === "Guinée-Bissau") {
+      setIndicatif("+245");
+    } else if (value === "Guinée équatoriale") {
+      setIndicatif("+240");
+    } else if (value === "Guyana") {
+      setIndicatif("+592");
+    } else if (value === "Haïti") {
+      setIndicatif("+509");
+    } else if (value === "Honduras") {
+      setIndicatif("+504");
+    } else if (value === "Hongrie") {
+      setIndicatif("+36");
+    } else if (value === "Inde") {
+      setIndicatif("+91");
+    } else if (value === "Indonésie") {
+      setIndicatif("+62");
+    } else if (value === "Irak") {
+      setIndicatif("+964");
+    } else if (value === "Iran") {
+      setIndicatif("+98");
+    } else if (value === "Irlande") {
+      setIndicatif("+353");
+    } else if (value === "Islande") {
+      setIndicatif("+354");
+    } else if (value === "Israël") {
+      setIndicatif("+972");
+    } else if (value === "Italie") {
+      setIndicatif("+39");
+    } else if (value === "Jamaïque") {
+      setIndicatif("+1");
+    } else if (value === "Japon") {
+      setIndicatif("+81");
+    } else if (value === "Jordanie") {
+      setIndicatif("+962");
+    } else if (value === "Kazakhstan") {
+      setIndicatif("+7");
+    } else if (value === "Kenya") {
+      setIndicatif("+254");
+    } else if (value === "Kirghizistan") {
+      setIndicatif("+996");
     } else if (value === "Koweït") {
       setIndicatif("+965");
+    } else if (value === "Laos") {
+      setIndicatif("+856");
+    } else if (value === "Lettonie") {
+      setIndicatif("+371");
+    } else if (value === "Liban") {
+      setIndicatif("+961");
+    } else if (value === "Lesotho") {
+      setIndicatif("+266");
+    } else if (value === "Liberia") {
+      setIndicatif("+231");
+    } else if (value === "Libye") {
+      setIndicatif("+218");
+    } else if (value === "Liechtenstein") {
+      setIndicatif("+423");
+    } else if (value === "Lituanie") {
+      setIndicatif("+370");
+    } else if (value === "Luxembourg") {
+      setIndicatif("+352");
+    } else if (value === "Macédoine du Nord") {
+      setIndicatif("+389");
+    } else if (value === "Madagascar") {
+      setIndicatif("+261");
+    } else if (value === "Malaisie") {
+      setIndicatif("+60");
+    } else if (value === "Malawi") {
+      setIndicatif("+265");
+    } else if (value === "Maldives") {
+      setIndicatif("+960");
+    } else if (value === "Mali") {
+      setIndicatif("+223");
+    } else if (value === "Malte") {
+      setIndicatif("+356");
+    } else if (value === "Maroc") {
+      setIndicatif("+212");
+    } else if (value === "Maurice") {
+      setIndicatif("+230");
+    } else if (value === "Mauritanie") {
+      setIndicatif("+222");
+    } else if (value === "Mexique") {
+      setIndicatif("+52");
+    } else if (value === "Moldavie") {
+      setIndicatif("+373");
+    } else if (value === "Monaco") {
+      setIndicatif("+377");
+    } else if (value === "Mongolie") {
+      setIndicatif("+976");
+    } else if (value === "Monténégro") {
+      setIndicatif("+382");
+    } else if (value === "Mozambique") {
+      setIndicatif("+258");
+    } else if (value === "Myanmar") {
+      setIndicatif("+95");
+    } else if (value === "Namibie") {
+      setIndicatif("+264");
+    } else if (value === "Népal") {
+      setIndicatif("+977");
+    } else if (value === "Nicaragua") {
+      setIndicatif("+505");
+    } else if (value === "Niger") {
+      setIndicatif("+227");
+    } else if (value === "Nigeria") {
+      setIndicatif("+234");
+    } else if (value === "Norvège") {
+      setIndicatif("+47");
+    } else if (value === "Nouvelle-Zélande") {
+      setIndicatif("+64");
+    } else if (value === "Oman") {
+      setIndicatif("+968");
+    } else if (value === "Ouganda") {
+      setIndicatif("+256");
+    } else if (value === "Ouzbékistan") {
+      setIndicatif("+998");
+    } else if (value === "Pakistan") {
+      setIndicatif("+92");
+    } else if (value === "Panama") {
+      setIndicatif("+507");
+    } else if (value === "Papouasie-Nouvelle-Guinée") {
+      setIndicatif("+675");
+    } else if (value === "Paraguay") {
+      setIndicatif("+595");
+    } else if (value === "Pays-Bas") {
+      setIndicatif("+31");
+    } else if (value === "Pérou") {
+      setIndicatif("+51");
+    } else if (value === "Philippines") {
+      setIndicatif("+63");
+    } else if (value === "Pologne") {
+      setIndicatif("+48");
+    } else if (value === "Portugal") {
+      setIndicatif("+351");
+    } else if (value === "Qatar") {
+      setIndicatif("+974");
+    } else if (value === "République démocratique du Congo") {
+      setIndicatif("+243");
+    } else if (value === "République dominicaine") {
+      setIndicatif("+1");
+    } else if (value === "République tchèque") {
+      setIndicatif("+420");
+    } else if (value === "Roumanie") {
+      setIndicatif("+40");
+    } else if (value === "Royaume-Uni") {
+      setIndicatif("+44");
+    } else if (value === "Russie") {
+      setIndicatif("+7");
+    } else if (value === "Rwanda") {
+      setIndicatif("+250");
+    } else if (value === "Saint-Kitts-et-Nevis") {
+      setIndicatif("+1");
+    } else if (value === "Sainte-Lucie") {
+      setIndicatif("+1");
+    } else if (value === "Saint-Marin") {
+      setIndicatif("+378");
+    } else if (value === "Saint-Vincent-et-les-Grenadines") {
+      setIndicatif("+1");
+    } else if (value === "Salvador") {
+      setIndicatif("+503");
+    } else if (value === "Samoa") {
+      setIndicatif("+685");
+    } else if (value === "Sénégal") {
+      setIndicatif("+221");
+    } else if (value === "Serbie") {
+      setIndicatif("+381");
+    } else if (value === "Seychelles") {
+      setIndicatif("+248");
+    } else if (value === "Sierra Leone") {
+      setIndicatif("+232");
+    } else if (value === "Singapour") {
+      setIndicatif("+65");
+    } else if (value === "Slovaquie") {
+      setIndicatif("+421");
+    } else if (value === "Slovénie") {
+      setIndicatif("+386");
+    } else if (value === "Somalie") {
+      setIndicatif("+252");
+    } else if (value === "Soudan") {
+      setIndicatif("+249");
+    } else if (value === "Soudan du Sud") {
+      setIndicatif("+211");
+    } else if (value === "Sri Lanka") {
+      setIndicatif("+94");
+    } else if (value === "Suède") {
+      setIndicatif("+46");
+    } else if (value === "Suisse") {
+      setIndicatif("+41");
+    } else if (value === "Suriname") {
+      setIndicatif("+597");
+    } else if (value === "Tadjikistan") {
+      setIndicatif("+992");
+    } else if (value === "Tanzanie") {
+      setIndicatif("+255");
+    } else if (value === "Thaïlande") {
+      setIndicatif("+66");
+    } else if (value === "Timor oriental") {
+      setIndicatif("+670");
+    } else if (value === "Togo") {
+      setIndicatif("+228");
+    } else if (value === "Tonga") {
+      setIndicatif("+676");
+    } else if (value === "Trinité-et-Tobago") {
+      setIndicatif("+1");
+    } else if (value === "Tunisie") {
+      setIndicatif("+216");
+    } else if (value === "Turkménistan") {
+      setIndicatif("+993");
+    } else if (value === "Turquie") {
+      setIndicatif("+90");
+    } else if (value === "Ukraine") {
+      setIndicatif("+380");
+    } else if (value === "Uruguay") {
+      setIndicatif("+598");
+    } else if (value === "Vanuatu") {
+      setIndicatif("+678");
+    } else if (value === "Vatican") {
+      setIndicatif("+39");
+    } else if (value === "Venezuela") {
+      setIndicatif("+58");
+    } else if (value === "Viêt Nam") {
+      setIndicatif("+84");
+    } else if (value === "Yémen") {
+      setIndicatif("+967");
+    } else if (value === "Zambie") {
+      setIndicatif("+260");
+    } else if (value === "Zimbabwe") {
+      setIndicatif("+263");
+    } else if (value === "États-Unis") {
+      setIndicatif("+1");
     } else {
       setIndicatif("");
     }
@@ -204,6 +721,7 @@ export default function HomeScreen() {
       setTypeCommande("");
 
       // VRAC
+      setCategorie("");
       setQualiteGrade("");
       setVolumeEstime("");
       setDestination("");
@@ -222,6 +740,20 @@ export default function HomeScreen() {
       setEmballagesSelectionnes([]);
       setFormatsEmballage({});
       setAutreEmballage("");
+
+      // AUTRES PAR TYPE
+      setAutresSelectionnes({
+        Tin: false,
+        PET: false,
+        Glass: false,
+      });
+
+      setAutresEmballages({
+        Tin: "",
+        PET: "",
+        Glass: "",
+      });
+
       setTypeMarque("");
       setCertificationsRequises([]);
       setNomEntreprise("");
@@ -257,6 +789,19 @@ export default function HomeScreen() {
       setEmballagesSelectionnes([]);
       setFormatsEmballage({});
       setAutreEmballage("");
+
+      setAutresSelectionnes({
+        Tin: false,
+        PET: false,
+        Glass: false,
+      });
+
+      setAutresEmballages({
+        Tin: "",
+        PET: "",
+        Glass: "",
+      });
+
       setTypeMarque("");
       setCertificationsRequises([]);
       setNomEntreprise("");
@@ -274,6 +819,7 @@ export default function HomeScreen() {
     }
 
     if (value !== "vrac") {
+      setCategorie("");
       setQualiteGrade("");
       setVolumeEstime("");
       setDestination("");
@@ -300,6 +846,44 @@ export default function HomeScreen() {
         delete updated[type];
         return updated;
       });
+
+      // Si on désactive Tin/PET/Glass,
+      // on supprime également son Autre
+      if (type === "Tin") {
+        setAutresSelectionnes((prev) => ({
+          ...prev,
+          Tin: false,
+        }));
+
+        setAutresEmballages((prev) => ({
+          ...prev,
+          Tin: "",
+        }));
+      }
+
+      if (type === "PET") {
+        setAutresSelectionnes((prev) => ({
+          ...prev,
+          PET: false,
+        }));
+
+        setAutresEmballages((prev) => ({
+          ...prev,
+          PET: "",
+        }));
+      }
+
+      if (type === "Glass") {
+        setAutresSelectionnes((prev) => ({
+          ...prev,
+          Glass: false,
+        }));
+
+        setAutresEmballages((prev) => ({
+          ...prev,
+          Glass: "",
+        }));
+      }
 
       if (type === "Autre") {
         setAutreEmballage("");
@@ -403,20 +987,77 @@ export default function HomeScreen() {
     }
 
     // ===================================================
-    // FORMAT EMBALLAGES CONDITIONNÉ
+    // TYPE EMBALLAGE CONDITIONNÉ
+    // ===================================================
+    //
+    // IMPORTANT :
+    // Tin / PET / Glass sont les types principaux.
+    //
+    // Les "Autre" sont maintenant enregistrés
+    // indépendamment pour chaque type.
+    //
     // ===================================================
 
-    let emballagesConditionneData = null;
+    let typeEmballageData = null;
 
     if (
       typeCommande === "conditionné" &&
       emballagesSelectionnes.length > 0
     ) {
-      emballagesConditionneData = {
-        emballages: emballagesSelectionnes,
-        formats: formatsEmballage,
-        autre: autreEmballage || null,
+      const emballagesPrincipaux =
+        emballagesSelectionnes.filter(
+          (item) =>
+            item === "Tin" ||
+            item === "PET" ||
+            item === "Glass"
+        );
+
+      typeEmballageData = {
+        emballages: emballagesPrincipaux,
+
+        autres: {
+          Tin: autresSelectionnes.Tin
+            ? autresEmballages.Tin.trim() || ""
+            : "",
+
+          PET: autresSelectionnes.PET
+            ? autresEmballages.PET.trim() || ""
+            : "",
+
+          Glass: autresSelectionnes.Glass
+            ? autresEmballages.Glass.trim() || ""
+            : "",
+        },
       };
+    }
+
+    // ===================================================
+    // PACKAGING
+    // ===================================================
+    //
+    // IMPORTANT :
+    // packaging est maintenant séparé de type_emballage.
+    //
+    // Exemple :
+    //
+    // {
+    //   Tin: ["500 ml", "1 L"],
+    //   PET: ["1 L"],
+    //   Glass: {
+    //     MARASCA: ["750 ml"],
+    //     DORICA: ["500 ml"]
+    //   }
+    // }
+    //
+    // ===================================================
+
+    let packagingData = null;
+
+    if (
+      typeCommande === "conditionné" &&
+      Object.keys(formatsEmballage).length > 0
+    ) {
+      packagingData = formatsEmballage;
     }
 
     // ===================================================
@@ -433,10 +1074,12 @@ export default function HomeScreen() {
       nouvelleMarqueFormatsData = {
         emballages:
           nouvelleMarqueEmballagesSelectionnes,
+
         formats:
           nouvelleMarqueFormatsEmballage,
+
         autre:
-          nouvelleMarqueAutreEmballage || null,
+          nouvelleMarqueAutreEmballage.trim() || null,
       };
     }
 
@@ -450,22 +1093,29 @@ export default function HomeScreen() {
       // INFORMATIONS GÉNÉRALES
       // =================================================
 
-      nom: nom.trim() || null,
+      nom:
+        nom.trim() || null,
 
-      prenom: prenom.trim() || null,
+      prenom:
+        prenom.trim() || null,
 
-      email: email.trim() || null,
+      email:
+        email.trim() || null,
 
       age:
-        age.trim() && !isNaN(Number(age))
+        age.trim() &&
+        !isNaN(Number(age))
           ? Number(age)
           : null,
 
-      origine: origine || null,
+      origine:
+        origine || null,
 
-      indicatif: indicatif || null,
+      indicatif:
+        indicatif || null,
 
-      telephone: telephone.trim() || null,
+      telephone:
+        telephone.trim() || null,
 
       societe:
         societe.trim() || null,
@@ -509,6 +1159,11 @@ export default function HomeScreen() {
       // VRAC
       // =================================================
 
+      categorie:
+        typeCommande === "vrac"
+          ? categorie.trim() || null
+          : null,
+
       qualite_grade:
         typeCommande === "vrac"
           ? qualiteGrade.trim() || null
@@ -544,7 +1199,9 @@ export default function HomeScreen() {
       exigences_specifiques:
         typeCommande === "vrac" &&
         exigencesSpecifiques.length > 0
-          ? JSON.stringify(exigencesSpecifiques)
+          ? JSON.stringify(
+              exigencesSpecifiques
+            )
           : null,
 
       informations_complementaires:
@@ -571,26 +1228,65 @@ export default function HomeScreen() {
           ? volumesEstimes.trim() || null
           : null,
 
-      // Type d'emballage de la commande conditionnée
+      // =================================================
+      // TYPE D'EMBALLAGE
+      // =================================================
+      //
+      // NOUVEAU FORMAT
+      //
+      // {
+      //   emballages: ["Tin","PET","Glass"],
+      //   autres: {
+      //      Tin: "400 ml",
+      //      PET: "500 ml",
+      //      Glass: "750 ml"
+      //   }
+      // }
+      //
+      // =================================================
+
       type_emballage:
-        typeCommande === "conditionné"
-          ? emballagesConditionneData
-            ? JSON.stringify(
-                emballagesConditionneData
-              )
-            : null
+        typeCommande === "conditionné" &&
+        typeEmballageData
+          ? typeEmballageData
           : null,
 
-      // Formats de la commande conditionnée
+      // =================================================
+      // PACKAGING
+      // =================================================
+      //
+      // IMPORTANT :
+      // ce champ n'est PLUS null.
+      //
+      // =================================================
+
+      packaging:
+        typeCommande === "conditionné" &&
+        packagingData
+          ? packagingData
+          : null,
+
+      // =================================================
+      // FORMATS SOUHAITÉS
+      // =================================================
+
       formats_souhaites:
         typeCommande === "conditionné"
           ? formatsSouhaites || null
           : null,
 
+      // =================================================
+      // TYPE MARQUE
+      // =================================================
+
       type_marque:
         typeCommande === "conditionné"
           ? typeMarque || null
           : null,
+
+      // =================================================
+      // CERTIFICATIONS
+      // =================================================
 
       certifications_requises:
         typeCommande === "conditionné" &&
@@ -599,6 +1295,10 @@ export default function HomeScreen() {
               certificationsRequises
             )
           : null,
+
+      // =================================================
+      // ENTREPRISE
+      // =================================================
 
       nom_entreprise:
         typeCommande === "conditionné"
@@ -654,7 +1354,7 @@ export default function HomeScreen() {
           : null,
 
       // =================================================
-      // CHAMPS SPÉCIFIQUES NOUVELLE MARQUE
+      // NOUVELLE MARQUE - FORMATS
       // =================================================
 
       nouvelle_marque_formats:
@@ -667,6 +1367,10 @@ export default function HomeScreen() {
             )
           : null,
 
+      // =================================================
+      // NOUVELLE MARQUE - DESIGN
+      // =================================================
+
       nouvelle_marque_design_conditionnement:
         typeCommande === "conditionné" &&
         typeMarque ===
@@ -675,16 +1379,12 @@ export default function HomeScreen() {
           ? JSON.stringify({
               emballages:
                 nouvelleMarqueEmballagesSelectionnes,
+
               autre:
-                nouvelleMarqueAutreEmballage || null,
+                nouvelleMarqueAutreEmballage.trim() ||
+                null,
             })
           : null,
-
-      // =================================================
-      // ANCIEN CHAMP
-      // =================================================
-
-      packaging: null,
     };
 
     // ===================================================
@@ -712,6 +1412,28 @@ export default function HomeScreen() {
     );
 
     // ===================================================
+    // LOG SPÉCIFIQUE EMBALLAGE
+    // ===================================================
+
+    console.log(
+      "TYPE EMBALLAGE :",
+      JSON.stringify(
+        typeEmballageData,
+        null,
+        2
+      )
+    );
+
+    console.log(
+      "PACKAGING :",
+      JSON.stringify(
+        packagingData,
+        null,
+        2
+      )
+    );
+
+    // ===================================================
     // ENVOI BACKEND
     // ===================================================
 
@@ -720,14 +1442,21 @@ export default function HomeScreen() {
         `${API_URL}/api/visiteurs`,
         {
           method: "POST",
+
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
-          body: JSON.stringify(visitorData),
+
+          body:
+            JSON.stringify(
+              visitorData
+            ),
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       console.log(
         "STATUS HTTP :",
@@ -739,7 +1468,10 @@ export default function HomeScreen() {
         data
       );
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
           data.message ||
             data.error ||
@@ -771,8 +1503,11 @@ export default function HomeScreen() {
 
       router.push({
         pathname: "/pdf",
+
         params: {
-          id: String(data.id),
+          id: String(
+            data.id
+          ),
         },
       });
 
@@ -790,6 +1525,7 @@ export default function HomeScreen() {
       setSociete("");
       setAdresseSociete("");
       setFonction("");
+      setLangueCommunication("");
 
       // =================================================
       // RESET PROFILE
@@ -802,6 +1538,7 @@ export default function HomeScreen() {
       // RESET VRAC
       // =================================================
 
+      setCategorie("");
       setQualiteGrade("");
       setVolumeEstime("");
       setDestination("");
@@ -825,6 +1562,19 @@ export default function HomeScreen() {
       setEmballagesSelectionnes([]);
       setFormatsEmballage({});
       setAutreEmballage("");
+
+      // RESET AUTRE PAR TYPE
+      setAutresSelectionnes({
+        Tin: false,
+        PET: false,
+        Glass: false,
+      });
+
+      setAutresEmballages({
+        Tin: "",
+        PET: "",
+        Glass: "",
+      });
 
       setTypeMarque("");
       setCertificationsRequises([]);
@@ -1012,6 +1762,7 @@ export default function HomeScreen() {
       </Text>
 
       <View style={styles.phoneContainer}>
+
         <TextInput
           style={styles.indicatif}
           value={indicatif}
@@ -1025,6 +1776,7 @@ export default function HomeScreen() {
           onChangeText={setTelephone}
           keyboardType="phone-pad"
         />
+
       </View>
 
       {/* =================================================
@@ -1073,11 +1825,20 @@ export default function HomeScreen() {
           selectedValue={
             langueCommunication
           }
-          onValueChange={() => {}}
+          onValueChange={(value) =>
+            setLangueCommunication(
+              value
+            )
+          }
         >
           <Picker.Item
             label="Sélectionner"
             value=""
+          />
+
+          <Picker.Item
+            label="Arabe"
+            value="Arabe"
           />
 
           <Picker.Item
@@ -1091,8 +1852,8 @@ export default function HomeScreen() {
           />
 
           <Picker.Item
-            label="Arabe"
-            value="Arabe"
+            label="Espagnol"
+            value="Espagnol"
           />
 
           <Picker.Item
@@ -1101,9 +1862,205 @@ export default function HomeScreen() {
           />
 
           <Picker.Item
-            label="Espagnol"
-            value="Espagnol"
+            label="Allemand"
+            value="Allemand"
           />
+
+          <Picker.Item
+            label="Portugais"
+            value="Portugais"
+          />
+
+          <Picker.Item
+            label="Néerlandais"
+            value="Néerlandais"
+          />
+
+          <Picker.Item
+            label="Russe"
+            value="Russe"
+          />
+
+          <Picker.Item
+            label="Chinois (Mandarin)"
+            value="Chinois (Mandarin)"
+          />
+
+          <Picker.Item
+            label="Japonais"
+            value="Japonais"
+          />
+
+          <Picker.Item
+            label="Coréen"
+            value="Coréen"
+          />
+
+          <Picker.Item
+            label="Turc"
+            value="Turc"
+          />
+
+          <Picker.Item
+            label="Grec"
+            value="Grec"
+          />
+
+          <Picker.Item
+            label="Polonais"
+            value="Polonais"
+          />
+
+          <Picker.Item
+            label="Roumain"
+            value="Roumain"
+          />
+
+          <Picker.Item
+            label="Tchèque"
+            value="Tchèque"
+          />
+
+          <Picker.Item
+            label="Hongrois"
+            value="Hongrois"
+          />
+
+          <Picker.Item
+            label="Suédois"
+            value="Suédois"
+          />
+
+          <Picker.Item
+            label="Norvégien"
+            value="Norvégien"
+          />
+
+          <Picker.Item
+            label="Danois"
+            value="Danois"
+          />
+
+          <Picker.Item
+            label="Finnois"
+            value="Finnois"
+          />
+
+          <Picker.Item
+            label="Hébreu"
+            value="Hébreu"
+          />
+
+          <Picker.Item
+            label="Persan"
+            value="Persan"
+          />
+
+          <Picker.Item
+            label="Hindi"
+            value="Hindi"
+          />
+
+          <Picker.Item
+            label="Indonésien"
+            value="Indonésien"
+          />
+
+          <Picker.Item
+            label="Malais"
+            value="Malais"
+          />
+
+          <Picker.Item
+            label="Vietnamien"
+            value="Vietnamien"
+          />
+
+          <Picker.Item
+            label="Thaï"
+            value="Thaï"
+          />
+
+          <Picker.Item
+            label="Ukrainien"
+            value="Ukrainien"
+          />
+
+          <Picker.Item
+            label="Bulgare"
+            value="Bulgare"
+          />
+
+          <Picker.Item
+            label="Croate"
+            value="Croate"
+          />
+
+          <Picker.Item
+            label="Serbe"
+            value="Serbe"
+          />
+
+          <Picker.Item
+            label="Slovaque"
+            value="Slovaque"
+          />
+
+          <Picker.Item
+            label="Slovène"
+            value="Slovène"
+          />
+
+          <Picker.Item
+            label="Lituanien"
+            value="Lituanien"
+          />
+
+          <Picker.Item
+            label="Letton"
+            value="Letton"
+          />
+
+          <Picker.Item
+            label="Estonien"
+            value="Estonien"
+          />
+
+          <Picker.Item
+            label="Swahili"
+            value="Swahili"
+          />
+
+          <Picker.Item
+            label="Afrikaans"
+            value="Afrikaans"
+          />
+
+          <Picker.Item
+            label="Bengali"
+            value="Bengali"
+          />
+
+          <Picker.Item
+            label="Ourdou"
+            value="Ourdou"
+          />
+
+          <Picker.Item
+            label="Tamoul"
+            value="Tamoul"
+          />
+
+          <Picker.Item
+            label="Persan (Farsi)"
+            value="Persan (Farsi)"
+          />
+
+          <Picker.Item
+            label="Autre"
+            value="Autre"
+          />
+
         </Picker>
       </View>
 
@@ -1116,12 +2073,14 @@ export default function HomeScreen() {
       </Text>
 
       <View style={styles.pickerContainer}>
+
         <Picker
           selectedValue={profile}
           onValueChange={
             handleProfileChange
           }
         >
+
           <Picker.Item
             label="Sélectionner un profil"
             value=""
@@ -1151,7 +2110,9 @@ export default function HomeScreen() {
             label="Autre"
             value="autre"
           />
+
         </Picker>
+
       </View>
 
       {/* =================================================
@@ -1161,11 +2122,13 @@ export default function HomeScreen() {
       {(profile === "intermediaire" ||
         profile === "acheteur") && (
         <>
+
           <Text style={styles.label}>
             Type de commande
           </Text>
 
           <View style={styles.pickerContainer}>
+
             <Picker
               selectedValue={
                 typeCommande
@@ -1174,6 +2137,7 @@ export default function HomeScreen() {
                 handleTypeCommandeChange
               }
             >
+
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1188,8 +2152,11 @@ export default function HomeScreen() {
                 label="Conditionné"
                 value="conditionné"
               />
+
             </Picker>
+
           </View>
+
         </>
       )}
 
@@ -1200,21 +2167,37 @@ export default function HomeScreen() {
       {typeCommande === "vrac" &&
         (profile === "intermediaire" ||
           profile === "acheteur") && (
+
           <View style={styles.section}>
 
             <Text style={styles.sectionTitle}>
               Informations commande en vrac
             </Text>
 
-            {/* QUALITÉ */}
+            {/* CATÉGORIE */}
 
             <Text style={styles.label}>
-              Qualité / Grade
+              Catégorie
             </Text>
 
             <TextInput
               style={styles.input}
-              placeholder="Qualité / Grade"
+              placeholder="Catégorie"
+              value={categorie}
+              onChangeText={
+                setCategorie
+              }
+            />
+
+            {/* QUALITÉ */}
+
+            <Text style={styles.label}>
+              Grade
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Grade"
               value={qualiteGrade}
               onChangeText={
                 setQualiteGrade
@@ -1259,12 +2242,14 @@ export default function HomeScreen() {
             </Text>
 
             <View style={styles.pickerContainer}>
+
               <Picker
                 selectedValue={incoterm}
                 onValueChange={
                   setIncoterm
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner"
                   value=""
@@ -1299,7 +2284,9 @@ export default function HomeScreen() {
                   label="DDP"
                   value="DDP"
                 />
+
               </Picker>
+
             </View>
 
             {/* FORMAT LIVRAISON */}
@@ -1309,6 +2296,7 @@ export default function HomeScreen() {
             </Text>
 
             <View style={styles.pickerContainer}>
+
               <Picker
                 selectedValue={
                   formatLivraison
@@ -1317,6 +2305,7 @@ export default function HomeScreen() {
                   setFormatLivraison
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner"
                   value=""
@@ -1346,7 +2335,9 @@ export default function HomeScreen() {
                   label="Autre"
                   value="Autre"
                 />
+
               </Picker>
+
             </View>
 
             {/* FREQUENCE */}
@@ -1356,6 +2347,7 @@ export default function HomeScreen() {
             </Text>
 
             <View style={styles.pickerContainer}>
+
               <Picker
                 selectedValue={
                   frequenceCommande
@@ -1364,6 +2356,7 @@ export default function HomeScreen() {
                   setFrequenceCommande
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner"
                   value=""
@@ -1378,7 +2371,9 @@ export default function HomeScreen() {
                   label="Commandes régulières"
                   value="régulières"
                 />
+
               </Picker>
+
             </View>
 
             {/* EXIGENCES */}
@@ -1437,6 +2432,7 @@ export default function HomeScreen() {
       {typeCommande === "conditionné" &&
         (profile === "intermediaire" ||
           profile === "acheteur") && (
+
           <View style={styles.section}>
 
             <Text style={styles.sectionTitle}>
@@ -1450,6 +2446,7 @@ export default function HomeScreen() {
             </Text>
 
             <View style={styles.pickerContainer}>
+
               <Picker
                 selectedValue={
                   paysConditionne
@@ -1458,6 +2455,7 @@ export default function HomeScreen() {
                   setPaysConditionne
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner un pays"
                   value=""
@@ -1470,7 +2468,9 @@ export default function HomeScreen() {
                     value={item}
                   />
                 ))}
+
               </Picker>
+
             </View>
 
             {/* CANAL */}
@@ -1480,6 +2480,7 @@ export default function HomeScreen() {
             </Text>
 
             <View style={styles.pickerContainer}>
+
               <Picker
                 selectedValue={
                   canalDistribution
@@ -1488,6 +2489,7 @@ export default function HomeScreen() {
                   setCanalDistribution
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner"
                   value=""
@@ -1512,7 +2514,9 @@ export default function HomeScreen() {
                   label="Grossiste"
                   value="Grossiste"
                 />
+
               </Picker>
+
             </View>
 
             {/* VOLUMES */}
@@ -1538,9 +2542,12 @@ export default function HomeScreen() {
               Type d'emballage
             </Text>
 
-            {/* TIN */}
+            {/* =================================================
+                TIN
+            ================================================= */}
 
             <View style={styles.packagingRow}>
+
               <TouchableOpacity
                 style={styles.typeContainer}
                 onPress={() =>
@@ -1549,6 +2556,7 @@ export default function HomeScreen() {
                   )
                 }
               >
+
                 <Text style={styles.checkbox}>
                   {emballagesSelectionnes.includes(
                     "Tin"
@@ -1560,12 +2568,15 @@ export default function HomeScreen() {
                 <Text style={styles.checkboxLabel}>
                   Tin
                 </Text>
+
               </TouchableOpacity>
 
               {emballagesSelectionnes.includes(
                 "Tin"
               ) && (
+
                 <View style={styles.formatsRow}>
+
                   {[
                     "250 ml",
                     "500 ml",
@@ -1577,6 +2588,7 @@ export default function HomeScreen() {
                     "16 L",
                     "20 L",
                   ].map((format) => {
+
                     const selected =
                       formatsEmballage.Tin?.includes(
                         format
@@ -1589,11 +2601,12 @@ export default function HomeScreen() {
                           styles.formatItem
                         }
                         onPress={() => {
+
                           setFormatsEmballage(
                             (prev) => {
+
                               const current =
-                                prev.Tin ||
-                                [];
+                                prev.Tin || [];
 
                               const updated =
                                 current.includes(
@@ -1615,8 +2628,10 @@ export default function HomeScreen() {
                               };
                             }
                           );
+
                         }}
                       >
+
                         <Text
                           style={
                             styles.checkbox
@@ -1634,16 +2649,113 @@ export default function HomeScreen() {
                         >
                           {format}
                         </Text>
+
                       </TouchableOpacity>
                     );
                   })}
+
+                  {/* AUTRE TIN */}
+
+                  <TouchableOpacity
+                    style={
+                      styles.formatItem
+                    }
+                    onPress={() => {
+
+                      setAutresSelectionnes(
+                        (prev) => ({
+                          ...prev,
+                          Tin:
+                            !prev.Tin,
+                        })
+                      );
+
+                      if (
+                        autresSelectionnes.Tin
+                      ) {
+
+                        setAutresEmballages(
+                          (prev) => ({
+                            ...prev,
+                            Tin: "",
+                          })
+                        );
+
+                      }
+
+                    }}
+                  >
+
+                    <Text
+                      style={
+                        styles.checkbox
+                      }
+                    >
+                      {autresSelectionnes.Tin
+                        ? "☑"
+                        : "☐"}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.checkboxLabel
+                      }
+                    >
+                      Autre
+                    </Text>
+
+                  </TouchableOpacity>
+
+                  {autresSelectionnes.Tin && (
+
+                    <View
+                      style={{
+                        width: "100%",
+                      }}
+                    >
+
+                      <Text
+                        style={
+                          styles.label
+                        }
+                      >
+                        Préciser l'emballage
+                      </Text>
+
+                      <TextInput
+                        style={
+                          styles.input
+                        }
+                        placeholder="Saisir le type d'emballage"
+                        value={
+                          autresEmballages.Tin
+                        }
+                        onChangeText={(text) =>
+                          setAutresEmballages(
+                            (prev) => ({
+                              ...prev,
+                              Tin: text,
+                            })
+                          )
+                        }
+                      />
+
+                    </View>
+
+                  )}
+
                 </View>
+
               )}
+
             </View>
 
-            {/* PET */}
+            {/* =================================================
+                PET
+            ================================================= */}
 
             <View style={styles.packagingRow}>
+
               <TouchableOpacity
                 style={styles.typeContainer}
                 onPress={() =>
@@ -1652,6 +2764,7 @@ export default function HomeScreen() {
                   )
                 }
               >
+
                 <Text style={styles.checkbox}>
                   {emballagesSelectionnes.includes(
                     "PET"
@@ -1663,12 +2776,15 @@ export default function HomeScreen() {
                 <Text style={styles.checkboxLabel}>
                   PET
                 </Text>
+
               </TouchableOpacity>
 
               {emballagesSelectionnes.includes(
                 "PET"
               ) && (
+
                 <View style={styles.formatsRow}>
+
                   {[
                     "250 ml",
                     "500 ml",
@@ -1676,6 +2792,7 @@ export default function HomeScreen() {
                     "3 L",
                     "5 L",
                   ].map((format) => {
+
                     const selected =
                       formatsEmballage.PET?.includes(
                         format
@@ -1688,11 +2805,12 @@ export default function HomeScreen() {
                           styles.formatItem
                         }
                         onPress={() => {
+
                           setFormatsEmballage(
                             (prev) => {
+
                               const current =
-                                prev.PET ||
-                                [];
+                                prev.PET || [];
 
                               const updated =
                                 current.includes(
@@ -1714,8 +2832,10 @@ export default function HomeScreen() {
                               };
                             }
                           );
+
                         }}
                       >
+
                         <Text
                           style={
                             styles.checkbox
@@ -1733,35 +2853,123 @@ export default function HomeScreen() {
                         >
                           {format}
                         </Text>
+
                       </TouchableOpacity>
                     );
                   })}
+
+                  {/* AUTRE PET */}
+
+                  <TouchableOpacity
+                    style={
+                      styles.formatItem
+                    }
+                    onPress={() => {
+
+                      setAutresSelectionnes(
+                        (prev) => ({
+                          ...prev,
+                          PET:
+                            !prev.PET,
+                        })
+                      );
+
+                      if (
+                        autresSelectionnes.PET
+                      ) {
+
+                        setAutresEmballages(
+                          (prev) => ({
+                            ...prev,
+                            PET: "",
+                          })
+                        );
+
+                      }
+
+                    }}
+                  >
+
+                    <Text
+                      style={
+                        styles.checkbox
+                      }
+                    >
+                      {autresSelectionnes.PET
+                        ? "☑"
+                        : "☐"}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.checkboxLabel
+                      }
+                    >
+                      Autre
+                    </Text>
+
+                  </TouchableOpacity>
+
+                  {autresSelectionnes.PET && (
+
+                    <View
+                      style={{
+                        width: "100%",
+                      }}
+                    >
+
+                      <Text
+                        style={
+                          styles.label
+                        }
+                      >
+                        Préciser l'emballage
+                      </Text>
+
+                      <TextInput
+                        style={
+                          styles.input
+                        }
+                        placeholder="Saisir le type d'emballage"
+                        value={
+                          autresEmballages.PET
+                        }
+                        onChangeText={(text) =>
+                          setAutresEmballages(
+                            (prev) => ({
+                              ...prev,
+                              PET: text,
+                            })
+                          )
+                        }
+                      />
+
+                    </View>
+
+                  )}
+
                 </View>
+
               )}
+
             </View>
 
-            {/* GLASS */}
+            {/* =================================================
+                GLASS
+            ================================================= */}
 
-            <View
-              style={
-                styles.packagingRowGlass
-              }
-            >
+            <View style={styles.packagingRowGlass}>
+
               <TouchableOpacity
-                style={
-                  styles.typeContainer
-                }
+                style={styles.typeContainer}
                 onPress={() =>
                   toggleEmballageConditionne(
                     "Glass"
                   )
                 }
               >
-                <Text
-                  style={
-                    styles.checkbox
-                  }
-                >
+
+                <Text style={styles.checkbox}>
                   {emballagesSelectionnes.includes(
                     "Glass"
                   )
@@ -1769,18 +2977,16 @@ export default function HomeScreen() {
                     : "☐"}
                 </Text>
 
-                <Text
-                  style={
-                    styles.checkboxLabel
-                  }
-                >
+                <Text style={styles.checkboxLabel}>
                   Glass
                 </Text>
+
               </TouchableOpacity>
 
               {emballagesSelectionnes.includes(
                 "Glass"
               ) && (
+
                 <View
                   style={
                     styles.glassFormatsContainer
@@ -1789,11 +2995,8 @@ export default function HomeScreen() {
 
                   {/* MARASCA */}
 
-                  <View
-                    style={
-                      styles.glassRow
-                    }
-                  >
+                  <View style={styles.glassRow}>
+
                     <Text
                       style={
                         styles.subTypeLabel
@@ -1807,17 +3010,20 @@ export default function HomeScreen() {
                         styles.formatsRow
                       }
                     >
+
                       {[
                         "250 ml",
                         "500 ml",
                         "750 ml",
                         "1 L",
                       ].map((format) => {
+
                         const selected =
-                          formatsEmballage.Glass?.MARASCA?.includes(
-                            format
-                          ) ||
-                          false;
+                          formatsEmballage.Glass
+                            ?.MARASCA
+                            ?.includes(
+                              format
+                            ) || false;
 
                         return (
                           <TouchableOpacity
@@ -1826,8 +3032,10 @@ export default function HomeScreen() {
                               styles.formatItem
                             }
                             onPress={() => {
+
                               setFormatsEmballage(
                                 (prev) => {
+
                                   const current =
                                     prev.Glass
                                       ?.MARASCA ||
@@ -1851,17 +3059,21 @@ export default function HomeScreen() {
 
                                   return {
                                     ...prev,
+
                                     Glass: {
                                       ...(prev.Glass ||
                                         {}),
+
                                       MARASCA:
                                         updated,
                                     },
                                   };
                                 }
                               );
+
                             }}
                           >
+
                             <Text
                               style={
                                 styles.checkbox
@@ -1879,19 +3091,19 @@ export default function HomeScreen() {
                             >
                               {format}
                             </Text>
+
                           </TouchableOpacity>
                         );
                       })}
+
                     </View>
+
                   </View>
 
                   {/* DORICA */}
 
-                  <View
-                    style={
-                      styles.glassRow
-                    }
-                  >
+                  <View style={styles.glassRow}>
+
                     <Text
                       style={
                         styles.subTypeLabel
@@ -1905,16 +3117,19 @@ export default function HomeScreen() {
                         styles.formatsRow
                       }
                     >
+
                       {[
                         "250 ml",
                         "500 ml",
                         "750 ml",
                       ].map((format) => {
+
                         const selected =
-                          formatsEmballage.Glass?.DORICA?.includes(
-                            format
-                          ) ||
-                          false;
+                          formatsEmballage.Glass
+                            ?.DORICA
+                            ?.includes(
+                              format
+                            ) || false;
 
                         return (
                           <TouchableOpacity
@@ -1923,8 +3138,10 @@ export default function HomeScreen() {
                               styles.formatItem
                             }
                             onPress={() => {
+
                               setFormatsEmballage(
                                 (prev) => {
+
                                   const current =
                                     prev.Glass
                                       ?.DORICA ||
@@ -1948,17 +3165,21 @@ export default function HomeScreen() {
 
                                   return {
                                     ...prev,
+
                                     Glass: {
                                       ...(prev.Glass ||
                                         {}),
+
                                       DORICA:
                                         updated,
                                     },
                                   };
                                 }
                               );
+
                             }}
                           >
+
                             <Text
                               style={
                                 styles.checkbox
@@ -1976,14 +3197,109 @@ export default function HomeScreen() {
                             >
                               {format}
                             </Text>
+
                           </TouchableOpacity>
                         );
                       })}
+
                     </View>
+
                   </View>
 
+                  {/* AUTRE GLASS */}
+
+                  <TouchableOpacity
+                    style={
+                      styles.formatItem
+                    }
+                    onPress={() => {
+
+                      setAutresSelectionnes(
+                        (prev) => ({
+                          ...prev,
+                          Glass:
+                            !prev.Glass,
+                        })
+                      );
+
+                      if (
+                        autresSelectionnes.Glass
+                      ) {
+
+                        setAutresEmballages(
+                          (prev) => ({
+                            ...prev,
+                            Glass: "",
+                          })
+                        );
+
+                      }
+
+                    }}
+                  >
+
+                    <Text
+                      style={
+                        styles.checkbox
+                      }
+                    >
+                      {autresSelectionnes.Glass
+                        ? "☑"
+                        : "☐"}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.checkboxLabel
+                      }
+                    >
+                      Autre
+                    </Text>
+
+                  </TouchableOpacity>
+
+                  {autresSelectionnes.Glass && (
+
+                    <View
+                      style={{
+                        width: "100%",
+                      }}
+                    >
+
+                      <Text
+                        style={
+                          styles.label
+                        }
+                      >
+                        Préciser l'emballage
+                      </Text>
+
+                      <TextInput
+                        style={
+                          styles.input
+                        }
+                        placeholder="Saisir le type d'emballage"
+                        value={
+                          autresEmballages.Glass
+                        }
+                        onChangeText={(text) =>
+                          setAutresEmballages(
+                            (prev) => ({
+                              ...prev,
+                              Glass: text,
+                            })
+                          )
+                        }
+                      />
+
+                    </View>
+
+                  )}
+
                 </View>
+
               )}
+
             </View>
 
             {/* AUTRE */}
@@ -2048,6 +3364,7 @@ export default function HomeScreen() {
               </>
             )}
 
+
             {/* =================================================
                 QUANTITÉ DE LA COMMANDE
             ================================================= */}
@@ -2061,6 +3378,7 @@ export default function HomeScreen() {
                 styles.pickerContainer
               }
             >
+
               <Picker
                 selectedValue={
                   quantiteCommande
@@ -2069,6 +3387,7 @@ export default function HomeScreen() {
                   setQuantiteCommande
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner"
                   value=""
@@ -2088,13 +3407,16 @@ export default function HomeScreen() {
                   label="Palettes"
                   value="palettes"
                 />
+
               </Picker>
+
             </View>
 
             {/* NOMBRE DE PALETTES */}
 
             {quantiteCommande ===
               "palettes" && (
+
               <>
                 <Text
                   style={
@@ -2118,6 +3440,7 @@ export default function HomeScreen() {
                   keyboardType="numeric"
                 />
               </>
+
             )}
 
             {/* CERTIFICATIONS */}
@@ -2169,7 +3492,9 @@ export default function HomeScreen() {
               style={styles.input}
               placeholder="https://..."
               value={siteWeb}
-              onChangeText={setSiteWeb}
+              onChangeText={
+                setSiteWeb
+              }
               autoCapitalize="none"
             />
 
@@ -2201,6 +3526,7 @@ export default function HomeScreen() {
                 styles.pickerContainer
               }
             >
+
               <Picker
                 selectedValue={
                   typeMarque
@@ -2209,6 +3535,7 @@ export default function HomeScreen() {
                   setTypeMarque
                 }
               >
+
                 <Picker.Item
                   label="Sélectionner"
                   value=""
@@ -2228,7 +3555,9 @@ export default function HomeScreen() {
                   label="Création de nouvelle marque"
                   value="Création de nouvelle marque"
                 />
+
               </Picker>
+
             </View>
 
             {/* =================================================
@@ -2237,6 +3566,7 @@ export default function HomeScreen() {
 
             {typeMarque ===
               "Création de nouvelle marque" && (
+
               <View
                 style={
                   styles.newBrandSection
@@ -2298,9 +3628,7 @@ export default function HomeScreen() {
                   keyboardType="numeric"
                 />
 
-                {/* =================================================
-                    EMBALLAGE NOUVELLE MARQUE
-                ================================================= */}
+                {/* EMBALLAGE NOUVELLE MARQUE */}
 
                 <Text
                   style={
@@ -2317,6 +3645,7 @@ export default function HomeScreen() {
                     styles.packagingRow
                   }
                 >
+
                   <TouchableOpacity
                     style={
                       styles.typeContainer
@@ -2327,6 +3656,7 @@ export default function HomeScreen() {
                       )
                     }
                   >
+
                     <Text
                       style={
                         styles.checkbox
@@ -2346,7 +3676,9 @@ export default function HomeScreen() {
                     >
                       Tin
                     </Text>
+
                   </TouchableOpacity>
+
                 </View>
 
                 {/* PET */}
@@ -2356,6 +3688,7 @@ export default function HomeScreen() {
                     styles.packagingRow
                   }
                 >
+
                   <TouchableOpacity
                     style={
                       styles.typeContainer
@@ -2366,6 +3699,7 @@ export default function HomeScreen() {
                       )
                     }
                   >
+
                     <Text
                       style={
                         styles.checkbox
@@ -2385,7 +3719,9 @@ export default function HomeScreen() {
                     >
                       PET
                     </Text>
+
                   </TouchableOpacity>
+
                 </View>
 
                 {/* GLASS */}
@@ -2395,6 +3731,7 @@ export default function HomeScreen() {
                     styles.packagingRow
                   }
                 >
+
                   <TouchableOpacity
                     style={
                       styles.typeContainer
@@ -2405,6 +3742,7 @@ export default function HomeScreen() {
                       )
                     }
                   >
+
                     <Text
                       style={
                         styles.checkbox
@@ -2424,7 +3762,9 @@ export default function HomeScreen() {
                     >
                       Glass
                     </Text>
+
                   </TouchableOpacity>
+
                 </View>
 
                 {/* AUTRE */}
@@ -2434,6 +3774,7 @@ export default function HomeScreen() {
                     styles.packagingRow
                   }
                 >
+
                   <TouchableOpacity
                     style={
                       styles.typeContainer
@@ -2444,6 +3785,7 @@ export default function HomeScreen() {
                       )
                     }
                   >
+
                     <Text
                       style={
                         styles.checkbox
@@ -2463,14 +3805,15 @@ export default function HomeScreen() {
                     >
                       Autre
                     </Text>
-                  </TouchableOpacity>
-                </View>
 
-                {/* AUTRE EMBALLAGE */}
+                  </TouchableOpacity>
+
+                </View>
 
                 {nouvelleMarqueEmballagesSelectionnes.includes(
                   "Autre"
                 ) && (
+
                   <>
                     <Text
                       style={
@@ -2493,11 +3836,10 @@ export default function HomeScreen() {
                       }
                     />
                   </>
+
                 )}
 
-                {/* =================================================
-                    FORMATS SOUHAITÉS
-                ================================================= */}
+                {/* FORMATS SOUHAITÉS */}
 
                 {nouvelleMarqueEmballagesSelectionnes
                   .filter(
@@ -2505,12 +3847,14 @@ export default function HomeScreen() {
                       type !== "Autre"
                   )
                   .map((type) => (
+
                     <View
                       key={`nouvelle-marque-${type}`}
                       style={{
                         marginTop: 15,
                       }}
                     >
+
                       <Text
                         style={
                           styles.label
@@ -2524,7 +3868,9 @@ export default function HomeScreen() {
 
                       {type ===
                       "Glass" ? (
+
                         <>
+
                           {/* MARASCA */}
 
                           <Text
@@ -2542,25 +3888,28 @@ export default function HomeScreen() {
                             "1 L",
                           ].map(
                             (format) => {
+
                               const selected =
                                 nouvelleMarqueFormatsEmballage
                                   .Glass
-                                  ?.MARASCA?.includes(
+                                  ?.MARASCA
+                                  ?.includes(
                                     format
                                   ) ||
                                 false;
 
                               return (
+
                                 <TouchableOpacity
                                   key={`NM-MARASCA-${format}`}
                                   style={
                                     styles.checkboxContainer
                                   }
                                   onPress={() => {
+
                                     setNouvelleMarqueFormatsEmballage(
-                                      (
-                                        prev
-                                      ) => {
+                                      (prev) => {
+
                                         const current =
                                           prev
                                             .Glass
@@ -2584,19 +3933,25 @@ export default function HomeScreen() {
                                               ];
 
                                         return {
+
                                           ...prev,
-                                          Glass:
-                                            {
-                                              ...(prev.Glass ||
-                                                {}),
-                                              MARASCA:
-                                                updated,
-                                            },
+
+                                          Glass: {
+                                            ...(prev.Glass ||
+                                              {}),
+
+                                            MARASCA:
+                                              updated,
+                                          },
+
                                         };
+
                                       }
                                     );
+
                                   }}
                                 >
+
                                   <Text
                                     style={
                                       styles.checkbox
@@ -2616,8 +3971,11 @@ export default function HomeScreen() {
                                       format
                                     }
                                   </Text>
+
                                 </TouchableOpacity>
+
                               );
+
                             }
                           )}
 
@@ -2640,25 +3998,28 @@ export default function HomeScreen() {
                             "750 ml",
                           ].map(
                             (format) => {
+
                               const selected =
                                 nouvelleMarqueFormatsEmballage
                                   .Glass
-                                  ?.DORICA?.includes(
+                                  ?.DORICA
+                                  ?.includes(
                                     format
                                   ) ||
                                 false;
 
                               return (
+
                                 <TouchableOpacity
                                   key={`NM-DORICA-${format}`}
                                   style={
                                     styles.checkboxContainer
                                   }
                                   onPress={() => {
+
                                     setNouvelleMarqueFormatsEmballage(
-                                      (
-                                        prev
-                                      ) => {
+                                      (prev) => {
+
                                         const current =
                                           prev
                                             .Glass
@@ -2682,19 +4043,25 @@ export default function HomeScreen() {
                                               ];
 
                                         return {
+
                                           ...prev,
-                                          Glass:
-                                            {
-                                              ...(prev.Glass ||
-                                                {}),
-                                              DORICA:
-                                                updated,
-                                            },
+
+                                          Glass: {
+                                            ...(prev.Glass ||
+                                              {}),
+
+                                            DORICA:
+                                              updated,
+                                          },
+
                                         };
+
                                       }
                                     );
+
                                   }}
                                 >
+
                                   <Text
                                     style={
                                       styles.checkbox
@@ -2714,13 +4081,20 @@ export default function HomeScreen() {
                                       format
                                     }
                                   </Text>
+
                                 </TouchableOpacity>
+
                               );
+
                             }
                           )}
+
                         </>
+
                       ) : (
+
                         <>
+
                           {(
                             type ===
                             "Tin"
@@ -2744,6 +4118,7 @@ export default function HomeScreen() {
                                 ]
                           ).map(
                             (format) => {
+
                               const selected =
                                 nouvelleMarqueFormatsEmballage[
                                   type
@@ -2753,16 +4128,17 @@ export default function HomeScreen() {
                                 false;
 
                               return (
+
                                 <TouchableOpacity
                                   key={`NM-${type}-${format}`}
                                   style={
                                     styles.checkboxContainer
                                   }
                                   onPress={() => {
+
                                     setNouvelleMarqueFormatsEmballage(
-                                      (
-                                        prev
-                                      ) => {
+                                      (prev) => {
+
                                         const current =
                                           prev[
                                             type
@@ -2786,14 +4162,20 @@ export default function HomeScreen() {
                                               ];
 
                                         return {
+
                                           ...prev,
+
                                           [type]:
                                             updated,
+
                                         };
+
                                       }
                                     );
+
                                   }}
                                 >
+
                                   <Text
                                     style={
                                       styles.checkbox
@@ -2813,35 +4195,57 @@ export default function HomeScreen() {
                                       format
                                     }
                                   </Text>
+
                                 </TouchableOpacity>
+
                               );
+
                             }
                           )}
+
                         </>
+
                       )}
+
                     </View>
+
                   ))}
+
               </View>
+
             )}
+
           </View>
+
         )}
 
       {/* =================================================
           QUALIFICATION DU VISITEUR
-          JUSTE AVANT LE BOUTON AJOUTER
       ================================================= */}
 
-      <View style={styles.ratingContainer}>
+      <View
+        style={
+          styles.ratingContainer
+        }
+      >
 
-        <Text style={styles.ratingTitle}>
+        <Text
+          style={
+            styles.ratingTitle
+          }
+        >
           Qualification du visiteur
         </Text>
 
-        {/* ÉTOILES */}
+        <View
+          style={
+            styles.starsContainer
+          }
+        >
 
-        <View style={styles.starsContainer}>
           {[1, 2, 3, 4, 5].map(
             (etoile) => (
+
               <TouchableOpacity
                 key={etoile}
                 onPress={() =>
@@ -2851,22 +4255,30 @@ export default function HomeScreen() {
                 }
                 activeOpacity={0.7}
               >
+
                 <Text
-                  style={styles.star}
+                  style={
+                    styles.star
+                  }
                 >
                   {etoile <=
                   qualification
                     ? "★"
                     : "☆"}
                 </Text>
+
               </TouchableOpacity>
+
             )
           )}
+
         </View>
 
-        {/* TEXTE NOTE */}
-
-        <Text style={styles.ratingText}>
+        <Text
+          style={
+            styles.ratingText
+          }
+        >
           {qualification === 0
             ? "Sélectionner une note"
             : `${qualification} / 5 étoiles`}
@@ -2882,11 +4294,15 @@ export default function HomeScreen() {
         style={styles.button}
         onPress={handleAjouter}
       >
+
         <Text
-          style={styles.buttonText}
+          style={
+            styles.buttonText
+          }
         >
           Ajouter le visiteur
         </Text>
+
       </TouchableOpacity>
 
     </ScrollView>
@@ -2898,6 +4314,7 @@ export default function HomeScreen() {
 // =====================================================
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
@@ -3069,7 +4486,7 @@ const styles = StyleSheet.create({
   formatsRow: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
     flex: 1,
   },
 
@@ -3077,6 +4494,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginRight: 12,
+    marginBottom: 8,
   },
 
   glassFormatsContainer: {
@@ -3128,4 +4546,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: "#555555",
   },
+
 });
