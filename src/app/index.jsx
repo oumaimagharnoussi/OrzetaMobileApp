@@ -40,6 +40,15 @@ export default function HomeScreen() {
   const [adresseSociete, setAdresseSociete] = useState("");
   const [fonction, setFonction] = useState("");
   const [langueCommunication, setLangueCommunication] = useState("");
+  const [genre, setGenre] = useState("");
+  const [autreExigence, setAutreExigence] = useState("");
+
+  const [profilAromatique, setProfilAromatique] = useState({
+    fruité: "",
+    amer: "",
+    piquant: "",
+    défaut: "",
+  });
 
   // =====================================================
   // AUTRE EMBALLAGE PAR TYPE
@@ -292,6 +301,7 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
   const [qualiteGrade, setQualiteGrade] = useState("");
   const [volumeEstime, setVolumeEstime] = useState("");
   const [destination, setDestination] = useState("");
+  const [destinationport, setDestinationport] = useState("");
   const [incoterm, setIncoterm] = useState("");
   const [formatLivraison, setFormatLivraison] = useState("");
   const [frequenceCommande, setFrequenceCommande] = useState("");
@@ -305,7 +315,10 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
 
   const [paysConditionne, setPaysConditionne] = useState("");
   const [canalDistribution, setCanalDistribution] = useState("");
-  const [volumesEstimes, setVolumesEstimes] = useState("");
+  const [autreCanalDistribution, setAutreCanalDistribution] = useState("");
+  const [typeVolumeEstime, setTypeVolumeEstime] = useState("");
+const [volumesEstimes, setVolumesEstimes] = useState("");
+const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
 
   // Type d'emballage CONDITIONNÉ
   const [typeEmballage, setTypeEmballage] = useState("");
@@ -1197,6 +1210,14 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
 
   const handleAjouter = async () => {
 
+    const exigencesSpecifiquesFinales = [
+      ...exigencesSpecifiques,
+      ...(exigencesSpecifiques.includes("Autre") &&
+      autreExigence.trim() !== ""
+        ? [autreExigence.trim()]
+        : [])
+    ];
+
     // ===================================================
     // VÉRIFICATION QUALIFICATION
     // ===================================================
@@ -1353,6 +1374,9 @@ console.log(
       fonction:
         fonction.trim() || null,
 
+        genre:
+        genre.trim() || null,
+
       langue_communication:
         langueCommunication || null,
 
@@ -1408,6 +1432,11 @@ console.log(
           ? destination.trim() || null
           : null,
 
+          destinationport:
+        typeCommande === "vrac"
+          ? destinationport.trim() || null
+          : null,
+
       incoterm:
         typeCommande === "vrac"
           ? incoterm || null
@@ -1423,13 +1452,13 @@ console.log(
           ? frequenceCommande || null
           : null,
 
-      exigences_specifiques:
-        typeCommande === "vrac" &&
-        exigencesSpecifiques.length > 0
-          ? JSON.stringify(
-              exigencesSpecifiques
-            )
-          : null,
+          exigences_specifiques:
+          typeCommande === "vrac" &&
+          exigencesSpecifiquesFinales.length > 0
+            ? JSON.stringify(exigencesSpecifiquesFinales)
+            : null,
+
+            
 
       informations_complementaires:
         typeCommande === "vrac"
@@ -1445,15 +1474,31 @@ console.log(
           ? paysConditionne || null
           : null,
 
-      canal_distribution:
-        typeCommande === "conditionné"
-          ? canalDistribution || null
-          : null,
+          canal:
+          typeCommande === "conditionné"
+            ? canalDistribution || null
+            : null,
+        
+        canal_distribution:
+          typeCommande === "conditionné"
+            ? (
+                canalDistribution === "Autre"
+                  ? autreCanalDistribution || null
+                  : canalDistribution || null
+              )
+            : null,
 
       volumes_estimes:
         typeCommande === "conditionné"
           ? volumesEstimes.trim() || null
           : null,
+
+          volumes_conditionne:
+  typeCommande === "conditionné"
+    ? volumesEstimes || null
+    : null,
+
+    periode_volume: typeVolumeEstime || null,
 
       // =================================================
       // TYPE D'EMBALLAGE
@@ -1941,7 +1986,7 @@ typeEmballageData
 
       {/* =================================================
           ADRESSE SITE EMAIL
-      ================================================= */}
+      ================================================= 
 
       <Text style={styles.label}>
         Adresse Site Email
@@ -1952,7 +1997,7 @@ typeEmballageData
         placeholder="Adresse Site Email"
         value={prenom}
         onChangeText={setPrenom}
-      />
+      />*/}
 
       {/* =================================================
           ORIGINE / PAYS
@@ -2037,7 +2082,7 @@ typeEmballageData
 
       <TextInput
         style={styles.input}
-        placeholder="http://..."
+        placeholder="www..."
         value={site}
         onChangeText={setSite}
         autoCapitalize="none"
@@ -2394,6 +2439,7 @@ typeEmballageData
       {/* =================================================
           SECTION VRAC
       ================================================= */}
+      
 
       {typeCommande === "vrac" &&
         (profile === "intermediaire" ||
@@ -2405,56 +2451,289 @@ typeEmballageData
               Informations commande en vrac
             </Text>
 
-            {/* CATÉGORIE */}
+                        {/* FREQUENCE */}
 
-            <Text style={styles.label}>
-              Catégorie
-            </Text>
+                        <Text style={styles.label}>
+                        Fréquence
+                      </Text>
+          
+                      <View style={styles.pickerContainer}>
+          
+                        <Picker
+                          selectedValue={
+                            frequenceCommande
+                          }
+                          onValueChange={
+                            setFrequenceCommande
+                          }
+                        >
+          
+                          <Picker.Item
+                            label="Sélectionner"
+                            value=""
+                          />
+          
+                          <Picker.Item
+                            label="Commande unique"
+                            value="unique"
+                          />
+          
+                          <Picker.Item
+                            label="Commandes contrat cadre"
+                            value="contrat-cadre"
+                          />
+          
+                        </Picker>
+          
+                      </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Catégorie"
-              value={categorie}
-              onChangeText={
-                setCategorie
-              }
-            />
+           {/* CATÉGORIE */}
 
-            {/* QUALITÉ */}
+<Text style={styles.label}>
+Catégorie
+</Text>
 
-            <Text style={styles.label}>
-              Grade
-            </Text>
+<View style={styles.pickerContainer}>
+<Picker
+  selectedValue={categorie}
+  onValueChange={setCategorie}
+>
+  <Picker.Item
+    label="Sélectionner une catégorie"
+    value=""
+  />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Grade"
-              value={qualiteGrade}
-              onChangeText={
-                setQualiteGrade
-              }
-            />
+  <Picker.Item
+    label="Extra Virgin Olive Oil – EVOO"
+    value="Extra Virgin Olive Oil – EVOO"
+  />
+
+  <Picker.Item
+    label="Virgin Olive Oil – VOO"
+    value="Virgin Olive Oil – VOO"
+  />
+
+  <Picker.Item
+    label="Lampante Olive Oil"
+    value="Lampante Olive Oil"
+  />
+</Picker>
+</View>
+
+            {/* ACIDITÉ */}
+
+<Text style={styles.label}>
+Acidité
+</Text>
+
+<View style={styles.pickerContainer}>
+<Picker
+  selectedValue={qualiteGrade}
+  onValueChange={setQualiteGrade}
+>
+  <Picker.Item
+    label="Sélectionner"
+    value=""
+  />
+
+  <Picker.Item label="< 0.3" value="<0.3" />
+  <Picker.Item label="< 0.5" value="<0.5" />
+  <Picker.Item label="< 0.8" value="<0.8" />
+  <Picker.Item label="< 2" value="<2" />
+  <Picker.Item label="K232" value="K232" />
+  <Picker.Item label="K270" value="K270" />
+</Picker>
+</View>
+
+{/* GENRE */}
+
+<Text style={styles.label}>
+  Genre
+</Text>
+
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={genre}
+    onValueChange={setGenre}
+  >
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="Conventionnelle"
+      value="Conventionnelle"
+    />
+
+    <Picker.Item
+      label="Biologique"
+      value="Biologique"
+    />
+  </Picker>
+</View>
+
+{/* =================================================
+    PROFIL AROMATIQUE
+================================================= */}
+
+<View style={styles.aromatiqueContainer}>
+
+  <Text style={styles.aromatiqueTitle}>
+    Profil aromatique
+  </Text>
+
+  {/* FRUITÉ */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Fruité
+    </Text>
+
+    {["0 – 3", "3 – 6"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            fruité:
+              profilAromatique.fruité === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.fruité === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+
+  {/* AMER */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Amer
+    </Text>
+
+    {["0 – 3", "3 – 6"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            amer:
+              profilAromatique.amer === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.amer === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+
+  {/* PIQUANT */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Piquant
+    </Text>
+
+    {["0 – 3", "3 – 6"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            piquant:
+              profilAromatique.piquant === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.piquant === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+
+  {/* DÉFAUT */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Défaut
+    </Text>
+
+    {["0", "≠ 0"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            défaut:
+              profilAromatique.défaut === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.défaut === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+</View>
 
             {/* VOLUME */}
 
             <Text style={styles.label}>
-              Volume estimé
-            </Text>
+  Volume estimé en tonne
+</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Volume estimé"
-              value={volumeEstime}
-              onChangeText={
-                setVolumeEstime
-              }
-              keyboardType="numeric"
-            />
+<View style={styles.inputWithUnit}>
+  <TextInput
+    style={styles.inputVolume}
+    placeholder="Volume estimé"
+    value={volumeEstime}
+    onChangeText={setVolumeEstime}
+    keyboardType="numeric"
+  />
+
+  <Text style={styles.unitText}>T</Text>
+</View>
 
             {/* DESTINATION */}
 
             <Text style={styles.label}>
-              Destination pays / port
+              Destination pays
             </Text>
 
             <TextInput
@@ -2463,6 +2742,20 @@ typeEmballageData
               value={destination}
               onChangeText={
                 setDestination
+              }
+            />
+            {/* DESTINATION */}
+
+            <Text style={styles.label}>
+              Destination port
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Destination"
+              value={destinationport}
+              onChangeText={
+                setDestinationport
               }
             />
 
@@ -2571,65 +2864,90 @@ typeEmballageData
 
             </View>
 
-            {/* FREQUENCE */}
 
-            <Text style={styles.label}>
-              Fréquence
-            </Text>
 
-            <View style={styles.pickerContainer}>
+            {/* =================================================
+    EXIGENCES SPÉCIFIQUES
+================================================= */}
 
-              <Picker
-                selectedValue={
-                  frequenceCommande
-                }
-                onValueChange={
-                  setFrequenceCommande
-                }
-              >
+<Text style={styles.label}>
+  Exigences spécifiques
+</Text>
 
-                <Picker.Item
-                  label="Sélectionner"
-                  value=""
-                />
+<View style={styles.exigencesContainer}>
 
-                <Picker.Item
-                  label="Commande unique"
-                  value="unique"
-                />
+  {[
+    "ISO 22000",
+    "HACCP",
+    "IFS Food",
+    "BRCGS",
+    "ISO 9001",
+    "BIO / Organic",
+    "Halal",
+    "Kosher",
+    "JAS",
+    "Analyses COI / IOC",
+    "Certificat d’analyse (COA)",
+    "Certificat d’analyse ONH",
+    "Autre",
+  ].map((item) => {
 
-                <Picker.Item
-                  label="Commandes régulières"
-                  value="régulières"
-                />
+    const selected =
+      exigencesSpecifiques.includes(item);
 
-              </Picker>
+    return (
+      <TouchableOpacity
+        key={item}
+        style={styles.exigenceOption}
+        onPress={() => {
 
-            </View>
+          if (selected) {
+            // Désélectionner
+            setExigencesSpecifiques(
+              exigencesSpecifiques.filter(
+                (exigence) => exigence !== item
+              )
+            );
 
-            {/* EXIGENCES */}
+            // Vider le champ si Autre est désélectionné
+            if (item === "Autre") {
+              setAutreExigence("");
+            }
 
-            <Text style={styles.label}>
-              Exigences spécifiques
-            </Text>
+          } else {
+            // Sélectionner
+            setExigencesSpecifiques([
+              ...exigencesSpecifiques,
+              item,
+            ]);
+          }
 
-            <TextInput
-              style={styles.input}
-              placeholder="Bio, certifications, analyses/COA, échantillons..."
-              value={exigencesSpecifiques.join(
-                ", "
-              )}
-              onChangeText={(text) =>
-                setExigencesSpecifiques(
-                  text
-                    .split(",")
-                    .map((item) =>
-                      item.trim()
-                    )
-                    .filter(Boolean)
-                )
-              }
-            />
+        }}
+      >
+
+        <Text style={styles.exigenceCheckbox}>
+          {selected ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.exigenceText}>
+          {item}
+        </Text>
+
+      </TouchableOpacity>
+    );
+  })}
+
+  {/* CHAMP AUTRE */}
+  {exigencesSpecifiques.includes("Autre") && (
+    <TextInput
+      style={styles.input}
+      placeholder="Préciser l'exigence"
+      value={autreExigence}
+      onChangeText={setAutreExigence}
+    />
+  )}
+
+</View>
 
             {/* INFORMATIONS */}
 
@@ -2704,66 +3022,138 @@ typeEmballageData
 
             </View>
 
-            {/* CANAL */}
+{/* CANAL */}
 
-            <Text style={styles.label}>
-              Canal de distribution
-            </Text>
+<Text style={styles.label}>
+  Canal de distribution
+</Text>
 
-            <View style={styles.pickerContainer}>
+<View style={styles.pickerContainer}>
 
-              <Picker
-                selectedValue={
-                  canalDistribution
-                }
-                onValueChange={
-                  setCanalDistribution
-                }
-              >
+  <Picker
+    selectedValue={canalDistribution}
+    onValueChange={setCanalDistribution}
+  >
 
-                <Picker.Item
-                  label="Sélectionner"
-                  value=""
-                />
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
 
-                <Picker.Item
-                  label="Retail"
-                  value="Retail"
-                />
+    <Picker.Item
+      label="Retail"
+      value="Retail"
+    />
 
-                <Picker.Item
-                  label="HoReCa"
-                  value="HoReCa"
-                />
+    <Picker.Item
+      label="HoReCa"
+      value="HoReCa"
+    />
 
-                <Picker.Item
-                  label="E-commerce"
-                  value="E-commerce"
-                />
+    <Picker.Item
+      label="E-commerce"
+      value="E-commerce"
+    />
 
-                <Picker.Item
-                  label="Grossiste"
-                  value="Grossiste"
-                />
+    <Picker.Item
+      label="Grossiste"
+      value="Grossiste"
+    />
 
-              </Picker>
+    {/* AUTRE */}
+    <Picker.Item
+      label="Autre"
+      value="Autre"
+    />
 
-            </View>
+  </Picker>
 
-            {/* VOLUMES */}
+</View>
 
-            <Text style={styles.label}>
-              Volumes estimés
-            </Text>
+{/* CHAMP AUTRE */}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Quantité par mois ou par an"
-              value={volumesEstimes}
-              onChangeText={
-                setVolumesEstimes
-              }
-            />
+{canalDistribution === "Autre" && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      Préciser le canal de distribution
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le canal de distribution"
+      value={autreCanalDistribution}
+      onChangeText={setAutreCanalDistribution}
+    />
+
+  </View>
+)}
+
+            {/* VOLUMES ESTIMÉS */}
+
+<Text style={styles.label}>
+  Volumes estimés
+</Text>
+
+{/* CHOIX DU TYPE DE VOLUME */}
+
+<View style={styles.pickerContainer}>
+<Picker
+  selectedValue={typeVolumeEstime}
+  onValueChange={(value) => {
+    setTypeVolumeEstime(value);
+    setVolumesEstimes("");
+    setAutreVolumeEstime("");
+  }}
+>
+  <Picker.Item label="Sélectionner" value="" />
+  <Picker.Item label="Volume par mois" value="Par mois" />
+  <Picker.Item label="Volume par an" value="Par an" />
+  <Picker.Item label="Autre" value="Autre" />
+</Picker>
+</View>
+
+{/* VOLUME PAR MOIS OU PAR AN */}
+
+{(typeVolumeEstime === "Par mois" ||
+  typeVolumeEstime === "Par an") && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      {typeVolumeEstime === "Par mois"
+        ? "Volume estimé par mois"
+        : "Volume estimé par an"}
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le volume"
+      value={volumesEstimes}
+      onChangeText={setVolumesEstimes}
+      keyboardType="numeric"
+    />
+
+  </View>
+)}
+
+{/* AUTRE */}
+
+{typeVolumeEstime === "Autre" && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      Préciser le volume estimé
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Préciser le volume"
+      value={autreVolumeEstime}
+      onChangeText={setAutreVolumeEstime}
+    />
+
+  </View>
+)}
 
             {/* =================================================
                 TYPE D'EMBALLAGE CONDITIONNÉ
@@ -3722,7 +4112,7 @@ typeEmballageData
 
             <TextInput
               style={styles.input}
-              placeholder="https://..."
+              placeholder="www..."
               value={siteWeb}
               onChangeText={
                 setSiteWeb
@@ -4485,6 +4875,91 @@ formatCheckbox: {
 },
 
 formatCheckboxLabel: {
+  fontSize: 14,
+  color: "#333",
+},
+inputWithUnit: {
+  flexDirection: "row",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 8,
+  height: 45,
+  paddingRight: 12,
+},
+
+inputVolume: {
+  flex: 1,
+  height: 45,
+  paddingHorizontal: 12,
+  borderWidth: 0,
+},
+
+unitText: {
+  fontSize: 16,
+  fontWeight: "bold",
+},
+
+aromatiqueContainer: {
+  marginTop: 10,
+  marginBottom: 15,
+},
+
+aromatiqueTitle: {
+  fontSize: 16,
+  fontWeight: "bold",
+  marginBottom: 10,
+  color: "#333",
+},
+
+aromatiqueRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 8,
+  minHeight: 35,
+},
+
+aromatiqueLabel: {
+  width: 90,
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#333",
+},
+
+aromatiqueOption: {
+  flexDirection: "row",
+  alignItems: "center",
+  width: 90,
+},
+
+aromatiqueCheckbox: {
+  fontSize: 20,
+  marginRight: 5,
+},
+
+aromatiqueOptionText: {
+  fontSize: 14,
+  color: "#333",
+},
+
+exigencesContainer: {
+  marginTop: 5,
+  marginBottom: 15,
+},
+
+exigenceOption: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 8,
+  paddingVertical: 4,
+},
+
+exigenceCheckbox: {
+  fontSize: 20,
+  marginRight: 8,
+},
+
+exigenceText: {
   fontSize: 14,
   color: "#333",
 },

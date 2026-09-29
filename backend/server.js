@@ -547,6 +547,8 @@ app.post(
           body.telephone
         );
 
+        const periode_volume = cleanString(body.periode_volume);
+
       // ------------------------------------------------------
       // SOCIETE
       // ------------------------------------------------------
@@ -574,6 +576,16 @@ app.post(
         cleanString(
           body.fonction
         );
+
+       // ------------------------------------------------------
+      // genre
+      // ------------------------------------------------------
+
+      const genre =
+        cleanString(
+          body.genre
+        );
+
 
         
 
@@ -674,6 +686,11 @@ app.post(
           body.destination
         );
 
+        const destinationport =
+        cleanString(
+          body.destinationport
+        );
+
       const incoterm =
         cleanString(
           body.incoterm
@@ -745,23 +762,26 @@ app.post(
       // Canal
       // ------------------------------------------------------
 
-      const canal =
-        cleanString(
-          body.canal ??
-          body.canal_distribution
-        );
+      const canal = cleanString(
+        body.canal
+      );
+      
+      const canal_distribution = cleanString(
+        body.canal_distribution
+      );
 
       // ------------------------------------------------------
       // Volumes conditionnés
       // ------------------------------------------------------
 
-      const volumes_conditionne =
-        cleanJson(
-          body.volumes_conditionne ??
-          body.volumes_estimes ??
-          body.volumes ??
-          body.volumes_souhaites
-        );
+      const volumes_conditionne = cleanString(
+        body.volumes_conditionne ??
+        body.volumes_estimes ??
+        body.volumes ??
+        body.volumes_souhaites
+      );
+
+
 
       // ======================================================
       // TYPE EMBALLAGE
@@ -958,68 +978,90 @@ console.log(
               body.nombre_palettes
             );
 
+
+            // ------------------------------------------------------
+// EXIGENCES SPÉCIFIQUES
+// ------------------------------------------------------
+
+const exigences_specifiques =
+cleanJson(
+  body.exigences_specifiques
+);
+
+console.log(
+"EXIGENCES SPÉCIFIQUES REÇUES :",
+body.exigences_specifiques
+);
+
+console.log(
+"EXIGENCES SPÉCIFIQUES SQL :",
+exigences_specifiques
+);
+
       // ======================================================
       // SQL
       // ======================================================
 
       const sql = `
-      INSERT INTO visiteurs (
-        nom,
-        prenom,
-        email,
-        origine,
-        indicatif,
-        telephone,
-        societe,
-        adresse_societe,
-        fonction,
-        site_web,
-        nom_entreprise,
-        langue_communication,
-        profile,
-        type_commande,
-        categorie,
-    
-        qualite_grade,
-        volume_estime,
-        destination,
-        incoterm,
-        format_livraison,
-        frequence,
-        exigences,
-        infos,
-        site,
-    
-        pays_conditionne,
-        canal,
-        volumes_conditionne,
-    
-        type_emballage,
-        packaging,
-        formats_souhaites,
-        contact_professionnel,
-        type_marque,
-        marche_cible,
-        quantite_prevue,
-        nouvelle_marque_formats,
-        nouvelle_marque_design_conditionnement,
-    
-        type_conteneur,
-        nombre_palettes,
-        certifications_requises,
-        qualification
-      )
-      VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,
-        ?, ?, ?, ?, ?, ?, ?, ?,
-        ?,
-        ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?, ?, ?,?,
-        ?, ?,?,
-        ?
-      )
-    `;
+  INSERT INTO visiteurs (
+    nom,
+    prenom,
+    email,
+    origine,
+    indicatif,
+    telephone,
+    societe,
+    adresse_societe,
+    fonction,
+    site_web,
+    nom_entreprise,
+    langue_communication,
+    profile,
+    type_commande,
+    categorie,
+
+    qualite_grade,
+    volume_estime,
+    destination,
+    destinationport,
+    incoterm,
+    format_livraison,
+    frequence,
+    exigences,
+    infos,
+    site,
+
+    pays_conditionne,
+    canal,
+    canal_distribution,
+    volumes_conditionne,
+
+    type_emballage,
+    packaging,
+    formats_souhaites,
+    contact_professionnel,
+    type_marque,
+    marche_cible,
+    quantite_prevue,
+    nouvelle_marque_formats,
+    nouvelle_marque_design_conditionnement,
+
+    type_conteneur,
+    nombre_palettes,
+    certifications_requises,
+    periode_volume,
+    genre,
+    exigences_specifiques,
+    qualification
+  )
+  VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?,?,?,?
+  )
+`;
 
       // ======================================================
       // VALEURS SQL
@@ -1044,6 +1086,7 @@ console.log(
         qualite_grade,
         volume_estime,
         destination,
+        destinationport,
         incoterm,
         format_livraison,
         frequence,
@@ -1053,13 +1096,13 @@ console.log(
       
         pays_conditionne,
         canal,
+        canal_distribution,
         volumes_conditionne,
       
         type_emballage,
         packaging,
         formats_souhaites,
         contactProfessionnel,
-      
         type_marque,
         marche_cible,
         quantite_prevue,
@@ -1069,18 +1112,20 @@ console.log(
         type_conteneur,
         nombre_palettes,
         certificationsRequises,
+        periode_volume,
+        genre,
+        exigences_specifiques,
         qualification
       ];
       // ======================================================
 // VÉRIFICATION DU NOMBRE DE VALEURS
 // ======================================================
 
-console.log("Nombre de colonnes SQL : 40");
-console.log("Nombre de valeurs SQL :", values.length);
+console.log("Nombre de valeurs :", values.length);
 
-if (values.length !== 40) {
+if (values.length !== 45) {
   throw new Error(
-    `Erreur interne : ${values.length} valeurs pour 40 colonnes SQL.`
+    `Erreur interne : ${values.length} valeurs pour 45 colonnes SQL.`
   );
 }
       // ======================================================
@@ -1463,6 +1508,8 @@ app.put(
         "qualite_grade",
         "volume_estime",
         "destination",
+        "destinationport",
+        "canal_distribution",
         "incoterm",
         "format_livraison",
         "frequence",
@@ -1482,10 +1529,11 @@ app.put(
         "quantite_prevue",
         "nouvelle_marque_formats",
         "nouvelle_marque_design_conditionnement",
-
+        "periode_volume",
         "type_conteneur",
         "nombre_palettes",
         "contact_professionnel",
+        "genre",
         "qualification",
       ];
 
