@@ -125,8 +125,10 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
 
   let selected = false;
 
+  // =================================================
+  // GLASS > MARASCA / DORICA
+  // =================================================
   if (sousType) {
-    // Glass > MARASCA / DORICA
     selected =
       formatsType &&
       typeof formatsType === "object" &&
@@ -134,57 +136,116 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
       Array.isArray(formatsType[sousType])
         ? formatsType[sousType].includes(format)
         : false;
-  } else {
-    // Tin / PET / Glass > Autre
-    selected =
-      Array.isArray(formatsType)
-        ? formatsType.includes(format)
-        : false;
   }
 
+  // =================================================
+  // GLASS > AUTRE
+  // =================================================
+  else if (type === "Glass") {
+    const formatsGeneraux =
+      formatsType &&
+      typeof formatsType === "object" &&
+      !Array.isArray(formatsType) &&
+      Array.isArray(formatsType.formats)
+        ? formatsType.formats
+        : [];
+
+    selected = formatsGeneraux.includes(format);
+  }
+
+  // =================================================
+  // TIN / PET
+  // =================================================
+  else {
+    const formatsGeneraux = Array.isArray(formatsType)
+      ? formatsType
+      : [];
+
+    selected = formatsGeneraux.includes(format);
+  }
+
+  // =================================================
+  // TOGGLE
+  // =================================================
   const toggleFormat = () => {
     setNouvelleMarqueFormatsEmballage((prev) => {
       const current = prev?.[type];
 
-      // ============================
+      // =================================================
       // MARASCA / DORICA
-      // ============================
+      // =================================================
       if (sousType) {
-        const currentSousType =
+        const currentObject =
           current &&
           typeof current === "object" &&
-          !Array.isArray(current) &&
-          Array.isArray(current[sousType])
-            ? current[sousType]
-            : [];
+          !Array.isArray(current)
+            ? current
+            : {};
+
+        const currentSousType = Array.isArray(
+          currentObject[sousType]
+        )
+          ? currentObject[sousType]
+          : [];
 
         const updatedSousType = currentSousType.includes(format)
-          ? currentSousType.filter((item) => item !== format)
+          ? currentSousType.filter(
+              (item) => item !== format
+            )
           : [...currentSousType, format];
 
         return {
           ...prev,
           [type]: {
-            ...(current &&
-            typeof current === "object" &&
-            !Array.isArray(current)
-              ? current
-              : {}),
+            ...currentObject,
             [sousType]: updatedSousType,
           },
         };
       }
 
-      // ============================
-      // AUTRE / FORMAT NORMAL
-      // ============================
+      // =================================================
+      // GLASS > AUTRE
+      // =================================================
+      if (type === "Glass") {
+        const currentObject =
+          current &&
+          typeof current === "object" &&
+          !Array.isArray(current)
+            ? current
+            : {};
 
+        const currentFormats = Array.isArray(
+          currentObject.formats
+        )
+          ? currentObject.formats
+          : [];
+
+        const updatedFormats = currentFormats.includes(format)
+          ? currentFormats.filter(
+              (item) => item !== format
+            )
+          : [...currentFormats, format];
+
+        return {
+          ...prev,
+          [type]: {
+            ...currentObject,
+            formats: updatedFormats,
+          },
+        };
+      }
+
+      // =================================================
+      // TIN / PET
+      // =================================================
       const currentFormats = Array.isArray(current)
         ? current
         : [];
 
       const updatedFormats = currentFormats.includes(format)
-        ? currentFormats.filter((item) => item !== format)
+        ? currentFormats.filter(
+            (item) => item !== format
+          )
         : [...currentFormats, format];
 
       return {
@@ -294,6 +355,7 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
     Glass: {
       MARASCA: [],
       DORICA: [],
+      formats: [],
     },
     Autre: [],
   });
@@ -1240,14 +1302,13 @@ console.log(
       nouvelleMarqueEmballagesSelectionnes.length > 0
     ) {
       nouvelleMarqueFormatsData = {
-        emballages:
-          nouvelleMarqueEmballagesSelectionnes,
-
-        formats:
-          nouvelleMarqueFormatsEmballage,
-
-        autre:
-          nouvelleMarqueAutreEmballage.trim() || null,
+        emballages: nouvelleMarqueEmballagesSelectionnes,
+    
+        formats: nouvelleMarqueFormatsEmballage,
+    
+        autres_formats: nouvelleMarqueAutresFormats,
+    
+        autre: nouvelleMarqueAutreEmballage.trim() || null,
       };
     }
 
@@ -3947,50 +4008,48 @@ typeEmballageData
 </View>
 
 
-      {/* =================================================
-          AUTRE FORMAT GLASS
-      ================================================= */}
+{/* =================================================
+    AUTRE FORMAT GLASS
+================================================= */}
 
-      <View style={styles.packagingFormatsRow}>
+<View style={styles.packagingFormatsRow}>
 
-        {renderFormatCheckbox(
-          "Glass",
-          "Autre"
-        )}
+  {renderFormatCheckbox(
+    "Glass",
+    "Autre"
+  )}
 
-      </View>
+</View>
 
 
-      {/* =================================================
-          CHAMP AUTRE
-      ================================================= */}
+{/* =================================================
+    CHAMP PRÉCISER AUTRE GLASS
+================================================= */}
 
-      {Array.isArray(nouvelleMarqueFormatsEmballage?.Glass) &&
-        nouvelleMarqueFormatsEmballage.Glass.includes("Autre") && (
+{nouvelleMarqueFormatsEmballage?.Glass?.formats?.includes(
+  "Autre"
+) && (
 
-          <View style={{ width: "100%" }}>
+  <View style={{ width: "100%", marginTop: 10 }}>
 
-            <Text style={styles.label}>
-              Préciser l'emballage
-            </Text>
+    <Text style={styles.label}>
+      Préciser l'emballage
+    </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Saisir le type d'emballage"
-              value={
-                nouvelleMarqueAutresFormats?.Glass || ""
-              }
-              onChangeText={(value) =>
-                setNouvelleMarqueAutresFormats((prev) => ({
-                  ...prev,
-                  Glass: value,
-                }))
-              }
-            />
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le type d'emballage"
+      value={nouvelleMarqueAutresFormats?.Glass || ""}
+      onChangeText={(value) =>
+        setNouvelleMarqueAutresFormats((prev) => ({
+          ...prev,
+          Glass: value,
+        }))
+      }
+    />
 
-          </View>
-
-        )}
+  </View>
+)}
 
     </View>
 
