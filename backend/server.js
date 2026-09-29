@@ -785,40 +785,39 @@ app.post(
       //
       // ======================================================
 
-      let type_emballage =
-        null;
+      // ======================================================
+// TYPE EMBALLAGE
+// ======================================================
 
-      if (
-        body.type_emballage !==
-          undefined &&
-        body.type_emballage !==
-          null
-      ) {
-        type_emballage =
-          cleanJson(
-            body.type_emballage
-          );
+let type_emballage = null;
 
-      } else if (
-        body.emballagesSelectionnes !==
-          undefined
-      ) {
-        type_emballage =
-          cleanJson({
-            emballages:
-              body.emballagesSelectionnes,
-          });
+if (
+  body.type_emballage !== undefined &&
+  body.type_emballage !== null
+) {
+  // Le frontend peut envoyer un objet ou une chaîne JSON.
+  if (typeof body.type_emballage === "string") {
+    try {
+      type_emballage = JSON.stringify(
+        JSON.parse(body.type_emballage)
+      );
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: "Le champ type_emballage contient un JSON invalide.",
+      });
+    }
+  } else {
+    type_emballage = JSON.stringify(body.type_emballage);
+  }
+}
 
-      } else if (
-        body.emballages !==
-          undefined
-      ) {
-        type_emballage =
-          cleanJson({
-            emballages:
-              body.emballages,
-          });
-      }
+console.log("TYPE EMBALLAGE REÇU :", body.type_emballage);
+console.log("TYPE EMBALLAGE SQL :", type_emballage);
+console.log(
+  "LONGUEUR TYPE EMBALLAGE SQL :",
+  type_emballage?.length ?? 0
+);
 
       // ======================================================
       // PACKAGING
@@ -1780,6 +1779,17 @@ app.put(
       // ------------------------------------------------------
       // UPDATE
       // ------------------------------------------------------
+      const indexTypeEmballage = 27;
+
+console.log(
+  "TYPE EMBALLAGE AVANT INSERT :",
+  values[indexTypeEmballage]
+);
+
+console.log(
+  "LONGUEUR AVANT INSERT :",
+  values[indexTypeEmballage]?.length ?? 0
+); 
 
       const [result] =
         await pool.execute(

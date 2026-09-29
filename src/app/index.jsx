@@ -995,67 +995,68 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
   // AJOUT / SUPPRESSION EMBALLAGE CONDITIONNÉ
   // =====================================================
 
+
   const toggleEmballageConditionne = (type) => {
-    if (emballagesSelectionnes.includes(type)) {
-      setEmballagesSelectionnes(
-        emballagesSelectionnes.filter((item) => item !== type)
-      );
-
-      setFormatsEmballage((prev) => {
-        const updated = { ...prev };
-        delete updated[type];
-        return updated;
+    setEmballagesSelectionnes((prev) => {
+      const isSelected = prev.includes(type);
+  
+      if (isSelected) {
+        return prev.filter((item) => item !== type);
+      }
+  
+      return [...prev, type];
+    });
+  
+    setFormatsEmballage((prev) => {
+      const updated = { ...prev };
+      delete updated[type];
+      return updated;
+    });
+  
+    if (type === "Tin") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        Tin: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        Tin: "",
+      }));
+    }
+  
+    if (type === "PET") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        PET: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        PET: "",
+      }));
+    }
+  
+    if (type === "Glass") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        Glass: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        Glass: "",
+      }));
+    }
+  
+    if (type === "Autre") {
+      setAutreEmballage((prev) => {
+        // On efface la valeur uniquement
+        // si le type Autre est décoché.
+        return prev;
       });
-
-      // Si on désactive Tin/PET/Glass,
-      // on supprime également son Autre
-      if (type === "Tin") {
-        setAutresSelectionnes((prev) => ({
-          ...prev,
-          Tin: false,
-        }));
-
-        setAutresEmballages((prev) => ({
-          ...prev,
-          Tin: "",
-        }));
-      }
-
-      if (type === "PET") {
-        setAutresSelectionnes((prev) => ({
-          ...prev,
-          PET: false,
-        }));
-
-        setAutresEmballages((prev) => ({
-          ...prev,
-          PET: "",
-        }));
-      }
-
-      if (type === "Glass") {
-        setAutresSelectionnes((prev) => ({
-          ...prev,
-          Glass: false,
-        }));
-
-        setAutresEmballages((prev) => ({
-          ...prev,
-          Glass: "",
-        }));
-      }
-
-      if (type === "Autre") {
-        setAutreEmballage("");
-      }
-    } else {
-      setEmballagesSelectionnes([
-        ...emballagesSelectionnes,
-        type,
-      ]);
     }
   };
-
   // =====================================================
   // AJOUT / SUPPRESSION EMBALLAGE NOUVELLE MARQUE
   // =====================================================
@@ -1157,40 +1158,47 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
     // indépendamment pour chaque type.
     //
     // ===================================================
-
     let typeEmballageData = null;
 
     if (
       typeCommande === "conditionné" &&
       emballagesSelectionnes.length > 0
     ) {
-      const emballagesPrincipaux =
-        emballagesSelectionnes.filter(
-          (item) =>
-            item === "Tin" ||
-            item === "PET" ||
-            item === "Glass"
-        );
-
       typeEmballageData = {
-        emballages: emballagesPrincipaux,
-
+        emballages: emballagesSelectionnes,
         autres: {
           Tin: autresSelectionnes.Tin
-            ? autresEmballages.Tin.trim() || ""
+            ? autresEmballages.Tin?.trim() || ""
             : "",
-
           PET: autresSelectionnes.PET
-            ? autresEmballages.PET.trim() || ""
+            ? autresEmballages.PET?.trim() || ""
             : "",
-
           Glass: autresSelectionnes.Glass
-            ? autresEmballages.Glass.trim() || ""
+            ? autresEmballages.Glass?.trim() || ""
+            : "",
+          Autre: emballagesSelectionnes.includes("Autre")
+            ? (autreEmballage ?? "").trim()
             : "",
         },
       };
     }
-
+    
+    console.log(
+      "TYPE EMBALLAGE FINAL :",
+      JSON.stringify(typeEmballageData)
+    );
+    
+    // Logs à placer après la création de typeEmballageData
+    console.log("AUTRE EMBALLAGE STATE :", JSON.stringify(autreEmballage));
+console.log(
+  "AUTRE EMBALLAGE INCLUS ?",
+  emballagesSelectionnes.includes("Autre")
+);
+    console.log("EMBALLAGES SELECTIONNES :", emballagesSelectionnes);
+    console.log(
+      "TYPE EMBALLAGE FINAL :",
+      JSON.stringify(typeEmballageData, null, 2)
+    );
     // ===================================================
     // PACKAGING
     // ===================================================
@@ -1403,11 +1411,12 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
       //
       // =================================================
 
-      type_emballage:
-        typeCommande === "conditionné" &&
-        typeEmballageData
-          ? typeEmballageData
-          : null,
+      
+type_emballage:
+typeCommande === "conditionné" &&
+typeEmballageData
+  ? JSON.stringify(typeEmballageData)
+  : null,
 
       // =================================================
       // PACKAGING
