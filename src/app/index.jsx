@@ -42,7 +42,8 @@ export default function HomeScreen() {
   const [langueCommunication, setLangueCommunication] = useState("");
   const [genre, setGenre] = useState("");
   const [autreExigence, setAutreExigence] = useState("");
-
+  const [nombreFCL, setNombreFCL] = useState("");
+  const [nomLabel, setNomLabel] = useState("");
   const [profilAromatique, setProfilAromatique] = useState({
     fruité: "",
     amer: "",
@@ -58,12 +59,14 @@ export default function HomeScreen() {
     Tin: false,
     PET: false,
     Glass: false,
+    BaginBox: false,
   });
 
   const [autresEmballages, setAutresEmballages] = useState({
     Tin: "",
     PET: "",
     Glass: "",
+    BaginBox: "",
   });
 
   const [nouvelleMarqueAutresFormats, setNouvelleMarqueAutresFormats] =
@@ -71,6 +74,7 @@ export default function HomeScreen() {
     Tin: "",
     PET: "",
     Glass: "",
+    BaginBox: "",
   });
 
   const toggleFormatEmballage = (type, format) => {
@@ -370,6 +374,7 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
       DORICA: [],
       formats: [],
     },
+    BaginBox: [],
     Autre: [],
   });
 
@@ -981,12 +986,14 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
         Tin: false,
         PET: false,
         Glass: false,
+        BaginBox: false,
       });
 
       setAutresEmballages({
         Tin: "",
         PET: "",
         Glass: "",
+        BaginBox: "",
       });
 
       setTypeMarque("");
@@ -1029,12 +1036,14 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
         Tin: false,
         PET: false,
         Glass: false,
+        BaginBox: false,
       });
 
       setAutresEmballages({
         Tin: "",
         PET: "",
         Glass: "",
+        BaginBox: "",
       });
 
       setTypeMarque("");
@@ -1121,6 +1130,18 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
       setAutresEmballages((prev) => ({
         ...prev,
         Glass: "",
+      }));
+    }
+
+    if (type === "BaginBox") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        BaginBox: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        BaginBox: "",
       }));
     }
   
@@ -1259,6 +1280,9 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
           Glass: autresSelectionnes.Glass
             ? autresEmballages.Glass?.trim() || ""
             : "",
+            BaginBox: autresSelectionnes.BaginBox
+            ? autresEmballages.BaginBox?.trim() || ""
+            : "",  
           Autre: emballagesSelectionnes.includes("Autre")
             ? (autreEmballage ?? "").trim()
             : "",
@@ -1557,6 +1581,12 @@ typeEmballageData
           ? typeMarque || null
           : null,
 
+          nom_label:
+  typeCommande === "conditionné" &&
+  typeMarque === "Private Label"
+    ? nomLabel.trim() || null
+    : null,
+
       // =================================================
       // CERTIFICATIONS
       // =================================================
@@ -1593,22 +1623,33 @@ typeEmballageData
       // =================================================
 
       type_conteneur:
-        typeCommande === "conditionné" &&
-        (
-          quantiteCommande === "conteneur_20" ||
-          quantiteCommande === "conteneur_40" ||
-          quantiteCommande === "palettes"
+  typeCommande === "conditionné" &&
+  (
+    quantiteCommande === "conteneur_20" ||
+    quantiteCommande === "conteneur_40" ||
+    quantiteCommande === "palettes"
+  )
+    ? quantiteCommande
+    : null,
 
-        )
-          ? quantiteCommande
-          : null,
+nombre_fcl:
+  typeCommande === "conditionné" &&
+  (
+    quantiteCommande === "conteneur_20" ||
+    quantiteCommande === "conteneur_40"
+  ) &&
+  nombreFCL.trim() &&
+  !isNaN(Number(nombreFCL))
+    ? Number(nombreFCL)
+    : null,
 
-      nombre_palettes:
-        typeCommande === "conditionné" &&
-        nombrePalettes.trim() &&
-        !isNaN(Number(nombrePalettes))
-          ? Number(nombrePalettes)
-          : null,
+nombre_palettes:
+  typeCommande === "conditionné" &&
+  quantiteCommande === "palettes" &&
+  nombrePalettes.trim() &&
+  !isNaN(Number(nombrePalettes))
+    ? Number(nombrePalettes)
+    : null,
 
       // =================================================
       // NOUVELLE MARQUE
@@ -1843,12 +1884,14 @@ typeEmballageData
         Tin: false,
         PET: false,
         Glass: false,
+        BaginBox: false,
       });
 
       setAutresEmballages({
         Tin: "",
         PET: "",
         Glass: "",
+        BaginBox: "",
       });
 
       setTypeMarque("");
@@ -3925,6 +3968,207 @@ Acidité
 
             </View>
 
+            <View style={styles.packagingRow}>
+
+<TouchableOpacity
+  style={styles.typeContainer}
+  onPress={() =>
+    toggleEmballageConditionne(
+      "BaginBox"
+    )
+  }
+>
+
+  <Text style={styles.checkbox}>
+    {emballagesSelectionnes.includes(
+      "BaginBox"
+    )
+      ? "☑"
+      : "☐"}
+  </Text>
+
+  <Text style={styles.checkboxLabel}>
+  Bag in Box
+  </Text>
+
+</TouchableOpacity>
+
+{emballagesSelectionnes.includes(
+  "BaginBox"
+) && (
+
+  <View style={styles.formatsRow}>
+
+    {[
+      
+      "3 L",
+      "5 L",
+      "10 L",
+      "20 L",
+    ].map((format) => {
+
+      const selected =
+        formatsEmballage.BaginBox?.includes(
+          format
+        ) || false;
+
+      return (
+        <TouchableOpacity
+          key={`BaginBox-${format}`}
+          style={
+            styles.formatItem
+          }
+          onPress={() => {
+
+            setFormatsEmballage(
+              (prev) => {
+
+                const current =
+                  prev.BaginBox || [];
+
+                const updated =
+                  current.includes(
+                    format
+                  )
+                    ? current.filter(
+                        (item) =>
+                          item !==
+                          format
+                      )
+                    : [
+                        ...current,
+                        format,
+                      ];
+
+                return {
+                  ...prev,
+                  BaginBox: updated,
+                };
+              }
+            );
+
+          }}
+        >
+
+          <Text
+            style={
+              styles.checkbox
+            }
+          >
+            {selected
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text
+            style={
+              styles.checkboxLabel
+            }
+          >
+            {format}
+          </Text>
+
+        </TouchableOpacity>
+      );
+    })}
+
+    {/* AUTRE BaginBox */}
+
+    <TouchableOpacity
+      style={
+        styles.formatItem
+      }
+      onPress={() => {
+
+        setAutresSelectionnes(
+          (prev) => ({
+            ...prev,
+            BaginBox:
+              !prev.BaginBox,
+          })
+        );
+
+        if (
+          autresSelectionnes.BaginBox
+        ) {
+
+          setAutresEmballages(
+            (prev) => ({
+              ...prev,
+              BaginBox: "",
+            })
+          );
+
+        }
+
+      }}
+    >
+
+      <Text
+        style={
+          styles.checkbox
+        }
+      >
+        {autresSelectionnes.BaginBox
+          ? "☑"
+          : "☐"}
+      </Text>
+
+      <Text
+        style={
+          styles.checkboxLabel
+        }
+      >
+        Autre
+      </Text>
+
+    </TouchableOpacity>
+
+    {autresSelectionnes.BaginBox && (
+
+      <View
+        style={{
+          width: "100%",
+        }}
+      >
+
+        <Text
+          style={
+            styles.label
+          }
+        >
+          Préciser l'emballage
+        </Text>
+
+        <TextInput
+          style={
+            styles.input
+          }
+          placeholder="Saisir le type d'emballage"
+          value={
+            autresEmballages.BaginBox
+          }
+          onChangeText={(text) =>
+            setAutresEmballages(
+              (prev) => ({
+                ...prev,
+                BaginBox: text,
+              })
+            )
+          }
+        />
+
+      </View>
+
+    )}
+
+  </View>
+
+)}
+
+</View>
+
+
                         {/* AUTRE */}
 
             <View
@@ -3988,82 +4232,92 @@ Acidité
             )}
 
             {/* =================================================
-                QUANTITÉ DE LA COMMANDE
-            ================================================= */}
+    QUANTITÉ DE LA COMMANDE
+================================================= */}
 
-            <Text style={styles.label}>
-              Quantité de la commande
-            </Text>
+<Text style={styles.label}>
+  Quantité de la commande
+</Text>
 
-            <View
-              style={
-                styles.pickerContainer
-              }
-            >
+<View style={styles.pickerContainer}>
 
-              <Picker
-                selectedValue={
-                  quantiteCommande
-                }
-                onValueChange={
-                  setQuantiteCommande
-                }
-              >
+  <Picker
+    selectedValue={quantiteCommande}
+    onValueChange={setQuantiteCommande}
+  >
 
-                <Picker.Item
-                  label="Sélectionner"
-                  value=""
-                />
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
 
-                <Picker.Item
-                  label="FCL 20 pieds"
-                  value="conteneur_20"
-                />
+    <Picker.Item
+      label="FCL 20 pieds"
+      value="conteneur_20"
+    />
 
-                <Picker.Item
-                  label="FCL 40 pieds"
-                  value="conteneur_40"
-                />
+    <Picker.Item
+      label="FCL 40 pieds"
+      value="conteneur_40"
+    />
 
-                <Picker.Item
-                  label="Palettes"
-                  value="palettes"
-                />
+    <Picker.Item
+      label="Palettes"
+      value="palettes"
+    />
 
-              </Picker>
+  </Picker>
 
-            </View>
+</View>
 
-            {/* NOMBRE DE PALETTES */}
 
-            {quantiteCommande ===
-              "palettes" && (
+{/* =================================================
+    NOMBRE DE FCL
+================================================= */}
 
-              <>
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Nombre de palettes
-                </Text>
+{(
+  quantiteCommande === "conteneur_20" ||
+  quantiteCommande === "conteneur_40"
+) && (
 
-                <TextInput
-                  style={
-                    styles.input
-                  }
-                  placeholder="Nombre de palettes"
-                  value={
-                    nombrePalettes
-                  }
-                  onChangeText={
-                    setNombrePalettes
-                  }
-                  keyboardType="numeric"
-                />
-              </>
+  <>
+    <Text style={styles.label}>
+      Nombre de FCL
+    </Text>
 
-            )}
+    <TextInput
+      style={styles.input}
+      placeholder="Nombre de FCL"
+      value={nombreFCL}
+      onChangeText={setNombreFCL}
+      keyboardType="numeric"
+    />
+  </>
+
+)}
+
+
+{/* =================================================
+    NOMBRE DE PALETTES
+================================================= */}
+
+{quantiteCommande === "palettes" && (
+
+  <>
+    <Text style={styles.label}>
+      Nombre de palettes
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nombre de palettes"
+      value={nombrePalettes}
+      onChangeText={setNombrePalettes}
+      keyboardType="numeric"
+    />
+  </>
+
+)}
 
             {/* CERTIFICATIONS */}
 
@@ -4122,65 +4376,115 @@ Acidité
 
             {/* CONTACT */}
 
-            <Text style={styles.label}>
-              Contact professionnel
-            </Text>
+<Text style={styles.label}>
+  Canal de communication préféré
+</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Email / téléphone"
-              value={
-                contactProfessionnel
-              }
-              onChangeText={
-                setContactProfessionnel
-              }
-            />
+<View style={styles.pickerContainer}>
+
+  <Picker
+    selectedValue={contactProfessionnel}
+    onValueChange={setContactProfessionnel}
+  >
+
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="📧 Email"
+      value="Email"
+    />
+
+    <Picker.Item
+      label="📞 Téléphone"
+      value="Téléphone"
+    />
+
+    <Picker.Item
+      label="💬 WhatsApp"
+      value="WhatsApp"
+    />
+
+    <Picker.Item
+      label="💬 BOTIM"
+      value="BOTIM"
+    />
+
+    <Picker.Item
+      label="💬 Telegram"
+      value="Telegram"
+    />
+
+    <Picker.Item
+      label="💬 Viber"
+      value="Viber"
+    />
+
+<Picker.Item
+      label="🟢 WeChat"
+      value="WeChatWeChat"
+    />
+
+  </Picker>
+
+</View>
 
             {/* TYPE DE MARQUE */}
 
-            <Text style={styles.label}>
-              Type de marque
-            </Text>
+<Text style={styles.label}>
+  Type de marque
+</Text>
 
-            <View
-              style={
-                styles.pickerContainer
-              }
-            >
+<View style={styles.pickerContainer}>
 
-              <Picker
-                selectedValue={
-                  typeMarque
-                }
-                onValueChange={
-                  setTypeMarque
-                }
-              >
+  <Picker
+    selectedValue={typeMarque}
+    onValueChange={setTypeMarque}
+  >
 
-                <Picker.Item
-                  label="Sélectionner"
-                  value=""
-                />
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
 
-                <Picker.Item
-                  label="Marque ORZETA"
-                  value="Marque ORZETA"
-                />
+    <Picker.Item
+      label="Marque ORZETA"
+      value="Marque ORZETA"
+    />
 
-                <Picker.Item
-                  label="Private Label"
-                  value="Private Label"
-                />
+    <Picker.Item
+      label="Private Label"
+      value="Private Label"
+    />
 
-                <Picker.Item
-                  label="Création de nouvelle marque"
-                  value="Création de nouvelle marque"
-                />
+    <Picker.Item
+      label="Création de nouvelle marque"
+      value="Création de nouvelle marque"
+    />
 
-              </Picker>
+  </Picker>
 
-            </View>
+</View>
+
+
+{/* NOM DU LABEL */}
+
+{typeMarque === "Private Label" && (
+  <>
+    <Text style={styles.label}>
+      Nom de label
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nom de label"
+      value={nomLabel}
+      onChangeText={setNomLabel}
+    />
+  </>
+)}
 
 {/* =================================================
     INFORMATIONS NOUVELLE MARQUE
@@ -4446,6 +4750,61 @@ Acidité
   )}
 
 </View>
+
+
+{/* ================= BaginBox ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("BaginBox")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("BaginBox")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>Bag in Box</Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("BaginBox") && (
+          <View style={styles.packagingDetails}>
+            <View style={styles.packagingFormatsRow}>
+              {[
+                
+                "3 L",
+                
+                "5 L",
+                "10 L",
+                "20 L",
+                "Autre",
+              ].map((format) =>
+                renderFormatCheckbox("BaginBox", format)
+              )}
+            </View>
+
+            {nouvelleMarqueFormatsEmballage.BaginBox?.includes("Autre") && (
+              <>
+                <Text style={styles.label}>
+                  Préciser l'emballage
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={nouvelleMarqueAutresFormats.BaginBox}
+                  onChangeText={(value) =>
+                    setNouvelleMarqueAutresFormats((prev) => ({
+                      ...prev,
+                      BaginBox: value,
+                    }))
+                  }
+                />
+              </>
+            )}
+          </View>
+        )}
+      </View>
       {/* ================= AUTRE TYPE ================= */}
       <View style={styles.packagingSection}>
         <TouchableOpacity
@@ -4730,6 +5089,7 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 16,
     color: "#333",
+    flexShrink: 0,
   },
 
   packagingRow: {
@@ -4962,6 +5322,26 @@ exigenceCheckbox: {
 exigenceText: {
   fontSize: 14,
   color: "#333",
+},
+
+contactContainer: {
+  marginTop: 5,
+  marginBottom: 15,
+},
+
+contactItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingVertical: 8,
+},
+
+checkbox: {
+  fontSize: 22,
+  marginRight: 10,
+},
+
+contactText: {
+  fontSize: 16,
 },
 
 });

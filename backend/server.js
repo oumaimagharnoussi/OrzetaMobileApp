@@ -934,49 +934,60 @@ console.log(
       // ======================================================
 
       const type_marque =
-        cleanString(
-          body.type_marque
-        );
+  cleanString(
+    body.type_marque
+  );
 
-      const marche_cible =
-        cleanString(
-          body.marche_cible
-        );
+const nom_label =
+  cleanString(
+    body.nom_label
+  );
 
-      const quantite_prevue =
-        cleanString(
-          body.quantite_prevue
-        );
+const marche_cible =
+  cleanString(
+    body.marche_cible
+  );
 
-      const nouvelle_marque_formats =
-        cleanJson(
-          body.nouvelle_marque_formats
-        );
+const quantite_prevue =
+  cleanString(
+    body.quantite_prevue
+  );
 
-      const nouvelle_marque_design_conditionnement =
-        cleanString(
-          body.nouvelle_marque_design_conditionnement
-        );
+const nouvelle_marque_formats =
+  cleanJson(
+    body.nouvelle_marque_formats
+  );
 
+const nouvelle_marque_design_conditionnement =
+  cleanString(
+    body.nouvelle_marque_design_conditionnement
+  );
       // ======================================================
       // CONTENEUR
       // ======================================================
 
       const type_conteneur =
-        cleanString(
-          body.type_conteneur
-        );
+  cleanString(
+    body.type_conteneur
+  );
 
-      const nombre_palettes =
-        body.nombre_palettes ===
-            undefined ||
-        body.nombre_palettes ===
-            null ||
-        body.nombre_palettes === ""
-          ? null
-          : Number(
-              body.nombre_palettes
-            );
+const nombre_fcl =
+  body.nombre_fcl === undefined ||
+  body.nombre_fcl === null ||
+  body.nombre_fcl === ""
+    ? null
+    : Number(
+        body.nombre_fcl
+      );
+
+const nombre_palettes =
+  body.nombre_palettes === undefined ||
+  body.nombre_palettes === null ||
+  body.nombre_palettes === ""
+    ? null
+    : Number(
+        body.nombre_palettes
+      );
 
 
             // ------------------------------------------------------
@@ -999,133 +1010,138 @@ exigences_specifiques
 );
 
       // ======================================================
-      // SQL
-      // ======================================================
+// SQL
+// ======================================================
 
-      const sql = `
-  INSERT INTO visiteurs (
-    nom,
-    prenom,
-    email,
-    origine,
-    indicatif,
-    telephone,
-    societe,
-    adresse_societe,
-    fonction,
-    site_web,
-    nom_entreprise,
-    langue_communication,
-    profile,
-    type_commande,
-    categorie,
+const sql = `
+INSERT INTO visiteurs (
+  nom,
+  prenom,
+  email,
+  origine,
+  indicatif,
+  telephone,
+  societe,
+  adresse_societe,
+  fonction,
+  site_web,
+  nom_entreprise,
+  langue_communication,
+  profile,
+  type_commande,
+  categorie,
 
-    qualite_grade,
-    volume_estime,
-    destination,
-    destinationport,
-    incoterm,
-    format_livraison,
-    frequence,
-    exigences,
-    infos,
-    site,
+  qualite_grade,
+  volume_estime,
+  destination,
+  destinationport,
+  incoterm,
+  format_livraison,
+  frequence,
+  exigences,
+  infos,
+  site,
 
-    pays_conditionne,
-    canal,
-    canal_distribution,
-    volumes_conditionne,
+  pays_conditionne,
+  canal,
+  canal_distribution,
+  volumes_conditionne,
 
-    type_emballage,
-    packaging,
-    formats_souhaites,
-    contact_professionnel,
-    type_marque,
-    marche_cible,
-    quantite_prevue,
-    nouvelle_marque_formats,
-    nouvelle_marque_design_conditionnement,
+  type_emballage,
+  packaging,
+  formats_souhaites,
+  contact_professionnel,
+  type_marque,
+  nom_label,
+  marche_cible,
+  quantite_prevue,
+  nouvelle_marque_formats,
+  nouvelle_marque_design_conditionnement,
 
-    type_conteneur,
-    nombre_palettes,
-    certifications_requises,
-    periode_volume,
-    genre,
-    exigences_specifiques,
-    qualification
-  )
-  VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?,?,?,?
-  )
+  type_conteneur,
+  nombre_fcl,
+  nombre_palettes,
+  certifications_requises,
+  periode_volume,
+  genre,
+  exigences_specifiques,
+  qualification
+)
+VALUES (
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?, ?, ?
+)
 `;
 
       // ======================================================
-      // VALEURS SQL
-      // ======================================================
-      const values = [
-        nom,
-        prenom,
-        email,
-        origine,
-        indicatif,
-        telephone,
-        societe,
-        adresse_societe,
-        fonction,
-        siteWeb,
-        nomEntreprise,
-        langue_communication,
-        profile,
-        type_commande,
-        categorie,
-      
-        qualite_grade,
-        volume_estime,
-        destination,
-        destinationport,
-        incoterm,
-        format_livraison,
-        frequence,
-        exigences,
-        infos,
-        site,
-      
-        pays_conditionne,
-        canal,
-        canal_distribution,
-        volumes_conditionne,
-      
-        type_emballage,
-        packaging,
-        formats_souhaites,
-        contactProfessionnel,
-        type_marque,
-        marche_cible,
-        quantite_prevue,
-        nouvelle_marque_formats,
-        nouvelle_marque_design_conditionnement,
-      
-        type_conteneur,
-        nombre_palettes,
-        certificationsRequises,
-        periode_volume,
-        genre,
-        exigences_specifiques,
-        qualification
-      ];
-      // ======================================================
+// VALEURS SQL
+// ======================================================
+
+
+const values = [
+  nom,
+  prenom,
+  email,
+  origine,
+  indicatif,
+  telephone,
+  societe,
+  adresse_societe,
+  fonction,
+  siteWeb,
+  nomEntreprise,
+  langue_communication,
+  profile,
+  type_commande,
+  categorie,
+
+  qualite_grade,
+  volume_estime,
+  destination,
+  destinationport,
+  incoterm,
+  format_livraison,
+  frequence,
+  exigences,
+  infos,
+  site,
+
+  pays_conditionne,
+  canal,
+  canal_distribution,
+  volumes_conditionne,
+
+  type_emballage,
+  packaging,
+  formats_souhaites,
+  contactProfessionnel,
+  type_marque,
+  nom_label,
+  marche_cible,
+  quantite_prevue,
+  nouvelle_marque_formats,
+  nouvelle_marque_design_conditionnement,
+
+  type_conteneur,
+  nombre_fcl,
+  nombre_palettes,
+  certificationsRequises,
+  periode_volume,
+  genre,
+  exigences_specifiques,
+  qualification
+];// ======================================================
 // VÉRIFICATION DU NOMBRE DE VALEURS
 // ======================================================
 
 console.log("Nombre de valeurs :", values.length);
 
-if (values.length !== 45) {
+if (values.length !== 47) {
   throw new Error(
-    `Erreur interne : ${values.length} valeurs pour 45 colonnes SQL.`
+    `Erreur interne : ${values.length} valeurs pour 47 colonnes SQL.`
   );
 }
       // ======================================================
@@ -1504,7 +1520,7 @@ app.put(
         "type_commande",
         "categorie",
         "certifications_requises",
-
+      
         "qualite_grade",
         "volume_estime",
         "destination",
@@ -1515,28 +1531,31 @@ app.put(
         "frequence",
         "exigences",
         "infos",
-
+      
         "pays_conditionne",
         "canal",
         "volumes_conditionne",
-
+      
         "type_emballage",
         "packaging",
         "formats_souhaites",
-
+      
         "type_marque",
+        "nom_label",
         "marche_cible",
         "quantite_prevue",
         "nouvelle_marque_formats",
         "nouvelle_marque_design_conditionnement",
+      
         "periode_volume",
         "type_conteneur",
+        "nombre_fcl",
         "nombre_palettes",
         "contact_professionnel",
         "genre",
         "qualification",
       ];
-
+      
       for (
         const field of allowedFields
       ) {
