@@ -297,6 +297,10 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
 
   const [typeCommande, setTypeCommande] = useState("");
 
+  // Commandes déjà enregistrées dans la fiche du visiteur.
+  // Toutes les commandes gardent le même type (vrac OU conditionné).
+  const [commandes, setCommandes] = useState([]);
+
   // =====================================================
   // VRAC
   // =====================================================
@@ -381,6 +385,265 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
 
   const [nouvelleMarqueAutreEmballage, setNouvelleMarqueAutreEmballage] =
     useState("");
+
+  // =====================================================
+  // GESTION DE PLUSIEURS COMMANDES
+  // =====================================================
+
+  const resetCommandeFields = () => {
+    // VRAC
+    setCategorie("");
+    setQualiteGrade("");
+    setVolumeEstime("");
+    setDestination("");
+    setDestinationport("");
+    setIncoterm("");
+    setFormatLivraison("");
+    setFrequenceCommande("");
+    setExigencesSpecifiques([]);
+    setInformationsComplementaires("");
+    setAutreExigence("");
+    setProfilAromatique({
+      fruité: "",
+      amer: "",
+      piquant: "",
+      défaut: "",
+    });
+
+    // CONDITIONNÉ
+    setPaysConditionne("");
+    setCanalDistribution("");
+    setAutreCanalDistribution("");
+    setTypeVolumeEstime("");
+    setVolumesEstimes("");
+    setAutreVolumeEstime("");
+    setTypeEmballage("");
+    setFormatsSouhaites("");
+    setEmballagesSelectionnes([]);
+    setFormatsEmballage({});
+    setAutreEmballage("");
+    setAutresSelectionnes({
+      Tin: false,
+      PET: false,
+      Glass: false,
+      BaginBox: false,
+    });
+    setAutresEmballages({
+      Tin: "",
+      PET: "",
+      Glass: "",
+      BaginBox: "",
+    });
+
+    setTypeMarque("");
+    setNomLabel("");
+    setCertificationsRequises([]);
+    setAutreCertification("");
+    setNomEntreprise("");
+    setSiteWeb("");
+    setContactProfessionnel("");
+
+    // QUANTITÉ
+    setQuantiteCommande("");
+    setNombreFCL("");
+    setNombrePalettes("");
+
+    // NOUVELLE MARQUE
+    setMarcheCible("");
+    setQuantitePrevue("");
+    setNouvelleMarqueEmballagesSelectionnes([]);
+    setNouvelleMarqueFormatsEmballage({
+      Tin: [],
+      PET: [],
+      Glass: {
+        MARASCA: [],
+        DORICA: [],
+        formats: [],
+      },
+      BaginBox: [],
+      Autre: [],
+    });
+    setNouvelleMarqueAutresFormats({
+      Tin: "",
+      PET: "",
+      Glass: "",
+      BaginBox: "",
+    });
+    setNouvelleMarqueAutreEmballage("");
+  };
+
+  const getCommandeCourante = () => {
+    if (!typeCommande) return null;
+
+    return {
+      type: typeCommande,
+
+      // VRAC
+      categorie: categorie.trim() || null,
+      qualite_grade: qualiteGrade.trim() || null,
+      volume_estime:
+        volumeEstime.trim() && !isNaN(Number(volumeEstime))
+          ? Number(volumeEstime)
+          : null,
+      destination: destination.trim() || null,
+      destinationport: destinationport.trim() || null,
+      incoterm: incoterm || null,
+      format_livraison: formatLivraison || null,
+      frequence_commande: frequenceCommande || null,
+      exigences_specifiques: [
+        ...exigencesSpecifiques,
+        ...(exigencesSpecifiques.includes("Autre") &&
+        autreExigence.trim()
+          ? [autreExigence.trim()]
+          : []),
+      ],
+      informations_complementaires:
+        informationsComplementaires.trim() || null,
+      profil_aromatique: profilAromatique,
+
+      // CONDITIONNÉ
+      pays_conditionne: paysConditionne || null,
+      canal:
+        canalDistribution === "Autre"
+          ? autreCanalDistribution || null
+          : canalDistribution || null,
+      canal_distribution:
+        canalDistribution === "Autre"
+          ? autreCanalDistribution || null
+          : canalDistribution || null,
+      volumes_estimes: volumesEstimes.trim() || null,
+      volumes_conditionne: volumesEstimes || null,
+      periode_volume: typeVolumeEstime || null,
+
+      type_emballage:
+        emballagesSelectionnes.length > 0
+          ? {
+              emballages: emballagesSelectionnes,
+              autres: {
+                Tin: autresSelectionnes.Tin
+                  ? autresEmballages.Tin?.trim() || ""
+                  : "",
+                PET: autresSelectionnes.PET
+                  ? autresEmballages.PET?.trim() || ""
+                  : "",
+                Glass: autresSelectionnes.Glass
+                  ? autresEmballages.Glass?.trim() || ""
+                  : "",
+                BaginBox: autresSelectionnes.BaginBox
+                  ? autresEmballages.BaginBox?.trim() || ""
+                  : "",
+                Autre: emballagesSelectionnes.includes("Autre")
+                  ? autreEmballage.trim()
+                  : "",
+              },
+            }
+          : null,
+
+      packaging:
+        Object.keys(formatsEmballage).length > 0
+          ? formatsEmballage
+          : null,
+
+      formats_souhaites: formatsSouhaites || null,
+      type_marque: typeMarque || null,
+      nom_label:
+        typeMarque === "Private Label"
+          ? nomLabel.trim() || null
+          : null,
+
+      certifications_requises: [
+        ...certificationsRequises.filter((item) => item !== "Autre"),
+        ...(certificationsRequises.includes("Autre") &&
+        autreCertification.trim()
+          ? [autreCertification.trim()]
+          : []),
+      ],
+
+      nom_entreprise: nomEntreprise.trim() || null,
+      site_web: siteWeb.trim() || null,
+      contact_professionnel: contactProfessionnel.trim() || null,
+
+      type_conteneur:
+        quantiteCommande === "conteneur_20" ||
+        quantiteCommande === "conteneur_40" ||
+        quantiteCommande === "palettes"
+          ? quantiteCommande
+          : null,
+
+      nombre_fcl:
+        (quantiteCommande === "conteneur_20" ||
+          quantiteCommande === "conteneur_40") &&
+        nombreFCL.trim() &&
+        !isNaN(Number(nombreFCL))
+          ? Number(nombreFCL)
+          : null,
+
+      nombre_palettes:
+        quantiteCommande === "palettes" &&
+        nombrePalettes.trim() &&
+        !isNaN(Number(nombrePalettes))
+          ? Number(nombrePalettes)
+          : null,
+
+      marche_cible:
+        typeMarque === "Création de nouvelle marque"
+          ? marcheCible.trim() || null
+          : null,
+
+      quantite_prevue:
+        typeMarque === "Création de nouvelle marque"
+          ? quantitePrevue.trim() || null
+          : null,
+
+      nouvelle_marque_formats:
+        typeMarque === "Création de nouvelle marque" &&
+        nouvelleMarqueEmballagesSelectionnes.length > 0
+          ? {
+              emballages: nouvelleMarqueEmballagesSelectionnes,
+              formats: nouvelleMarqueFormatsEmballage,
+              autres_formats: nouvelleMarqueAutresFormats,
+              autre: nouvelleMarqueAutreEmballage.trim() || null,
+            }
+          : null,
+
+      nouvelle_marque_design_conditionnement:
+        typeMarque === "Création de nouvelle marque" &&
+        nouvelleMarqueEmballagesSelectionnes.length > 0
+          ? {
+              emballages: nouvelleMarqueEmballagesSelectionnes,
+              autre: nouvelleMarqueAutreEmballage.trim() || null,
+            }
+          : null,
+    };
+  };
+
+  const handleAjouterCommande = () => {
+    if (!typeCommande) {
+      Alert.alert(
+        "Type de commande",
+        "Veuillez sélectionner Vrac ou Conditionné avant d'ajouter une commande."
+      );
+      return;
+    }
+
+    const commande = getCommandeCourante();
+
+    if (!commande) return;
+
+    setCommandes((prev) => [...prev, commande]);
+
+    // On garde le type choisi et on vide uniquement
+    // les informations de la commande actuelle.
+    resetCommandeFields();
+
+    Alert.alert(
+      "Commande ajoutée",
+      `Commande ${commandes.length + 1} enregistrée. Vous pouvez maintenant saisir la commande ${
+        commandes.length + 2
+      } (${typeCommande === "vrac" ? "Vrac" : "Conditionné"}).`
+    );
+  };
+
 
   // =====================================================
   // QUALIFICATION DU VISITEUR
@@ -960,6 +1223,7 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
 
     if (value !== "intermediaire" && value !== "acheteur") {
       setTypeCommande("");
+      setCommandes([]);
 
       // VRAC
       setCategorie("");
@@ -1022,48 +1286,16 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
 
   const handleTypeCommandeChange = (value) => {
     setTypeCommande(value);
-
-    if (value !== "conditionné") {
-      setPaysConditionne("");
-      setCanalDistribution("");
-      setVolumesEstimes("");
-      setTypeEmballage("");
-      setFormatsSouhaites("");
-      setEmballagesSelectionnes([]);
-      setFormatsEmballage({});
-      setAutreEmballage("");
-
-      setAutresSelectionnes({
-        Tin: false,
-        PET: false,
-        Glass: false,
-        BaginBox: false,
-      });
-
-      setAutresEmballages({
-        Tin: "",
-        PET: "",
-        Glass: "",
-        BaginBox: "",
-      });
-
-      setTypeMarque("");
-      setCertificationsRequises([]);
-      setNomEntreprise("");
-      setSiteWeb("");
-      setContactProfessionnel("");
-
-      setQuantiteCommande("");
-      setNombrePalettes("");
-
-      setMarcheCible("");
-      setQuantitePrevue("");
-      setNouvelleMarqueEmballagesSelectionnes([]);
-      setNouvelleMarqueFormatsEmballage({});
-      setNouvelleMarqueAutreEmballage("");
-    }
-
-    if (value !== "vrac") {
+    // Un changement de type démarre une nouvelle série de commandes.
+    // Il est donc impossible de mélanger Vrac et Conditionné.
+    setCommandes([]);
+    resetCommandeFields();
+  
+    // ======================================================
+    // Si on choisit CONDITIONNÉ
+    // → on nettoie tous les champs VRAC
+    // ======================================================
+    if (value === "conditionné") {
       setCategorie("");
       setQualiteGrade("");
       setVolumeEstime("");
@@ -1073,6 +1305,52 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
       setFrequenceCommande("");
       setExigencesSpecifiques([]);
       setInformationsComplementaires("");
+    }
+  
+    // ======================================================
+    // Si on choisit VRAC
+    // → on nettoie tous les champs CONDITIONNÉ
+    // ======================================================
+    if (value === "vrac") {
+      setPaysConditionne("");
+      setCanalDistribution("");
+      setVolumesEstimes("");
+      setTypeEmballage("");
+      setFormatsSouhaites("");
+  
+      setEmballagesSelectionnes([]);
+      setFormatsEmballage({});
+      setAutreEmballage("");
+  
+      setAutresSelectionnes({
+        Tin: false,
+        PET: false,
+        Glass: false,
+        BaginBox: false,
+      });
+  
+      setAutresEmballages({
+        Tin: "",
+        PET: "",
+        Glass: "",
+        BaginBox: "",
+      });
+  
+      setTypeMarque("");
+      setCertificationsRequises([]);
+      setNomEntreprise("");
+      setSiteWeb("");
+      setContactProfessionnel("");
+  
+      setQuantiteCommande("");
+      setNombrePalettes("");
+  
+      setMarcheCible("");
+      setQuantitePrevue("");
+  
+      setNouvelleMarqueEmballagesSelectionnes([]);
+      setNouvelleMarqueFormatsEmballage({});
+      setNouvelleMarqueAutreEmballage("");
     }
   };
 
@@ -1369,6 +1647,17 @@ console.log(
     }
 
     // ===================================================
+    // TOUTES LES COMMANDES
+    // ===================================================
+
+    const commandeCouranteFinale = getCommandeCourante();
+
+    const commandesFinales = [
+      ...commandes,
+      ...(commandeCouranteFinale ? [commandeCouranteFinale] : []),
+    ];
+
+    // ===================================================
     // DONNÉES VISITEUR
     // ===================================================
 
@@ -1431,6 +1720,15 @@ console.log(
         profile === "acheteur"
           ? typeCommande || null
           : null,
+
+      // =================================================
+      // PLUSIEURS COMMANDES
+      // =================================================
+      // Le backend doit stocker ce champ dans une colonne JSON
+      // nommée "commandes".
+      commandes: commandesFinales,
+
+      nombre_commandes: commandesFinales.length,
 
       // =================================================
       // QUALIFICATION
@@ -2505,6 +2803,35 @@ nombre_palettes:
               Informations commande en vrac
             </Text>
 
+            {commandes.length > 0 && (
+              <View style={styles.savedCommandsContainer}>
+                <Text style={styles.savedCommandsTitle}>
+                  Commandes déjà ajoutées : {commandes.length}
+                </Text>
+
+                {commandes.map((commande, index) => (
+                  <View key={`saved-vrac-${index}`} style={styles.savedCommandCard}>
+                    <Text style={styles.savedCommandTitle}>
+                      Commande {index + 1} → Vrac
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Catégorie : {commande.categorie || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Volume : {commande.volume_estime ?? "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Destination : {commande.destination || "—"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={styles.currentCommandTitle}>
+              Commande {commandes.length + 1} → Vrac
+            </Text>
+
                         {/* FREQUENCE */}
 
                         <Text style={styles.label}>
@@ -3025,6 +3352,15 @@ Acidité
               multiline
               numberOfLines={4}
             />
+<TouchableOpacity
+  style={styles.addCommandButton}
+  onPress={handleAjouterCommande}
+  activeOpacity={0.8}
+>
+  <Text style={styles.addCommandButtonText}>
+    + Ajouter une commande Vrac
+  </Text>
+</TouchableOpacity>
 
           </View>
         )}
@@ -3041,6 +3377,35 @@ Acidité
 
             <Text style={styles.sectionTitle}>
               Informations commande conditionnée
+            </Text>
+
+            {commandes.length > 0 && (
+              <View style={styles.savedCommandsContainer}>
+                <Text style={styles.savedCommandsTitle}>
+                  Commandes déjà ajoutées : {commandes.length}
+                </Text>
+
+                {commandes.map((commande, index) => (
+                  <View key={`saved-conditionne-${index}`} style={styles.savedCommandCard}>
+                    <Text style={styles.savedCommandTitle}>
+                      Commande {index + 1} → Conditionné
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Pays : {commande.pays_conditionne || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Canal : {commande.canal_distribution || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Volume : {commande.volumes_conditionne || "—"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={styles.currentCommandTitle}>
+              Commande {commandes.length + 1} → Conditionné
             </Text>
 
             {/* PAYS */}
@@ -4919,6 +5284,16 @@ Acidité
   /* Fin newBrandSection */
 )}
 
+<TouchableOpacity
+  style={styles.addCommandButton}
+  onPress={handleAjouterCommande}
+  activeOpacity={0.8}
+>
+  <Text style={styles.addCommandButtonText}>
+    + Ajouter une commande Conditionnée
+  </Text>
+</TouchableOpacity>
+
 {/* FERMETURE SECTION CONDITIONNÉ */}
 </View>
 )}
@@ -5004,7 +5379,7 @@ Acidité
             styles.buttonText
           }
         >
-          Ajouter le visiteur
+          Traitement de commande
         </Text>
 
       </TouchableOpacity>
@@ -5419,5 +5794,64 @@ checkbox: {
 contactText: {
   fontSize: 16,
 },
+
+  // =====================================================
+  // STYLES COMMANDES MULTIPLES
+  // =====================================================
+
+  savedCommandsContainer: {
+    marginBottom: 15,
+  },
+
+  savedCommandsTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#5C681F",
+    marginBottom: 8,
+  },
+
+  savedCommandCard: {
+    backgroundColor: "#f4f4f4",
+    borderWidth: 1,
+    borderColor: "#d8d8d8",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+
+  savedCommandTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 5,
+  },
+
+  savedCommandText: {
+    fontSize: 14,
+    color: "#555",
+    marginTop: 2,
+  },
+
+  currentCommandTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 8,
+    marginBottom: 12,
+    color: "#333",
+  },
+
+  addCommandButton: {
+    backgroundColor: "#5c681F",
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginTop: 20,
+    alignItems: "center",
+  },
+
+  addCommandButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
 
 });

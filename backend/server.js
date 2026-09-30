@@ -1,41 +1,55 @@
 // ============================================================
-// OLIVED - SERVER.JS
-// Backend Node.js + Express + MySQL
+// ENV
+// ============================================================
+
+require("dotenv").config();
+
+
+// ============================================================
+// IMPORTS
 // ============================================================
 
 const express = require("express");
-const cors = require("cors");
 const mysql = require("mysql2/promise");
+const cors = require("cors");
 const axios = require("axios");
 const FormData = require("form-data");
 const { Readable } = require("stream");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
 
-require("dotenv").config();
+
+// ============================================================
+// APP
+// ============================================================
 
 const app = express();
 
 const PORT = Number(process.env.PORT || 5000);
 
+
 // ============================================================
 // MIDDLEWARE
 // ============================================================
 
+// CORS
 app.use(cors());
 
+// JSON
 app.use(
   express.json({
     limit: "15mb",
   })
 );
 
+// Form data
 app.use(
   express.urlencoded({
     extended: true,
     limit: "15mb",
   })
 );
+
 
 // ============================================================
 // MYSQL
@@ -55,6 +69,121 @@ const pool = mysql.createPool({
   charset: "utf8mb4",
 });
 
+
+// ============================================================
+// TEST MYSQL
+// ============================================================
+
+pool
+  .getConnection()
+  .then((connection) => {
+    console.log("=================================");
+    console.log("✅ MYSQL CONNECTÉ");
+    console.log("=================================");
+
+    connection.release();
+  })
+  .catch((error) => {
+    console.error("❌ ERREUR MYSQL :", error.message);
+  });
+
+
+// ============================================================
+// RENDRE MYSQL DISPONIBLE DANS LES ROUTES
+// ============================================================
+
+app.locals.db = pool;
+
+
+// ============================================================
+// ROUTES AUTHENTIFICATION
+// ============================================================
+
+const authRoutes = require("./routes/auth");
+
+app.use("/api/auth", authRoutes);
+
+
+// ============================================================
+// ROUTES ADMIN
+// ============================================================
+
+const adminRoutes = require("./routes/admin");
+
+app.use("/api/admin", adminRoutes);
+
+
+// ============================================================
+// MIDDLEWARE AUTHENTIFICATION
+// ============================================================
+
+const {
+  authenticateToken,
+  requireAdmin,
+  requireCommercial,
+  requireUser,
+} = require("./middleware/auth");
+
+
+// ============================================================
+// TEST SERVEUR
+// ============================================================
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "API OLIVED fonctionne",
+  });
+});
+
+
+// ============================================================
+// TEST AUTH
+// ============================================================
+
+// Cette route permet de vérifier que /api/auth est bien chargé.
+// Tu peux ensuite la supprimer si tu veux.
+
+app.get("/api/test-auth", (req, res) => {
+  res.json({
+    success: true,
+    message: "Serveur et routes principales fonctionnent",
+  });
+});
+
+
+// ============================================================
+// TES AUTRES ROUTES EXISTANTES
+// ============================================================
+//
+// ⚠️ IMPORTANT :
+// À partir d'ici, garde tout ton code actuel.
+//
+// Exemple :
+//
+// app.post("/api/visiteurs", ...);
+// app.get("/api/visiteurs", ...);
+// app.get("/api/visiteurs/:id", ...);
+// app.put(...);
+// app.post("/api/email/send", ...);
+// etc.
+//
+// NE REMPLACE PAS tes routes existantes par des exemples.
+//
+
+
+// ============================================================
+// DEMARRAGE SERVEUR
+// ============================================================
+
+app.listen(PORT, () => {
+  console.log("=================================");
+  console.log("🚀 SERVEUR DÉMARRÉ");
+  console.log(`📡 http://localhost:${PORT}`);
+  console.log(`🔐 Auth : http://localhost:${PORT}/api/auth`);
+  console.log(`👑 Admin : http://localhost:${PORT}/api/admin`);
+  console.log("=================================");
+});
 // ============================================================
 // HELPERS
 // ============================================================
@@ -69,9 +198,9 @@ function cleanString(value) {
   return str === "" ? null : str;
 }
 
-// ------------------------------------------------------------
-// Nettoyage JSON
-// ------------------------------------------------------------
+// ============================================================
+// CLEAN JSON
+// ============================================================
 
 function cleanJson(value) {
   if (
@@ -83,21 +212,14 @@ function cleanJson(value) {
     return null;
   }
 
-  // Objet ou tableau envoyé directement
   if (typeof value === "object") {
     try {
       return JSON.stringify(value);
     } catch (error) {
-      console.error(
-        "❌ Erreur conversion JSON objet :",
-        error.message
-      );
-
       return null;
     }
   }
 
-  // Chaîne JSON
   if (typeof value === "string") {
     const valueClean = value.trim();
 
@@ -113,13 +235,35 @@ function cleanJson(value) {
 
       return JSON.stringify(parsed);
     } catch (error) {
-      // Ce n'est pas forcément un JSON.
-      // On conserve la valeur comme chaîne JSON.
       return JSON.stringify(valueClean);
     }
   }
 
   return JSON.stringify(value);
+}
+
+// ============================================================
+// PARSE JSON
+// ============================================================
+
+function parseJson(value, fallback = null) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return fallback;
+  }
 }
 
 // ============================================================
@@ -133,17 +277,16 @@ function normalizeTypeCommande(value) {
     return null;
   }
 
-  const valueLower = valueClean.toLowerCase();
+  const lower = valueClean.toLowerCase();
 
-  if (valueLower === "vrac") {
+  if (lower === "vrac") {
     return "vrac";
   }
 
-  if (valueLower === "conditionné") {
-    return "conditionné";
-  }
-
-  if (valueLower === "conditionne") {
+  if (
+    lower === "conditionné" ||
+    lower === "conditionne"
+  ) {
     return "conditionné";
   }
 
@@ -151,33 +294,151 @@ function normalizeTypeCommande(value) {
 }
 
 // ============================================================
-// GENERATION REFERENCE
+// COMMANDES MULTIPLES
+// ============================================================
+//
+// Exemple :
+//
+// commandes: [
+//   {
+//     type_commande: "vrac",
+//     categorie: "...",
+//     volume_estime: "..."
+//   },
+//   {
+//     type_commande: "vrac",
+//     categorie: "...",
+//     volume_estime: "..."
+//   }
+// ]
+//
+// Impossible de mélanger :
+//
+// Vrac + Conditionné
+//
 // ============================================================
 
-function generateReference(id, typeCommande) {
-  const numero = Number(id) + 1;
+function normalizeCommandes(
+  value,
+  typeCommandePrincipal
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
+  }
 
-  const type = normalizeTypeCommande(
-    typeCommande
-  );
+  let commandes;
+
+  try {
+    commandes =
+      typeof value === "string"
+        ? JSON.parse(value)
+        : value;
+  } catch (error) {
+    throw new Error(
+      "Le champ commandes contient un JSON invalide."
+    );
+  }
+
+  if (!Array.isArray(commandes)) {
+    throw new Error(
+      "Le champ commandes doit être un tableau."
+    );
+  }
+
+  if (commandes.length === 0) {
+    return [];
+  }
+
+  const typePrincipal =
+    normalizeTypeCommande(
+      typeCommandePrincipal
+    );
+
+  for (
+    let i = 0;
+    i < commandes.length;
+    i++
+  ) {
+    const commande =
+      commandes[i] || {};
+
+    const typeCommande =
+      normalizeTypeCommande(
+        commande.type_commande ??
+          commande.typeCommande ??
+          typePrincipal
+      );
+
+    if (!typeCommande) {
+      throw new Error(
+        `Le type de la commande ${i + 1} est manquant.`
+      );
+    }
+
+    if (
+      typePrincipal &&
+      typeCommande !== typePrincipal
+    ) {
+      throw new Error(
+        `Les commandes ne peuvent pas mélanger Vrac et Conditionné. ` +
+        `La commande ${i + 1} est de type "${typeCommande}" ` +
+        `alors que le visiteur est de type "${typePrincipal}".`
+      );
+    }
+
+    commande.type_commande =
+      typeCommande;
+
+    commandes[i] =
+      commande;
+  }
+
+  return commandes;
+}
+
+// ============================================================
+// REFERENCE
+// ============================================================
+//
+// ID 85 + 1 + V + 2026
+// => 86V2026
+//
+// ID 85 + 1 + B + 2026
+// => 86B2026
+//
+// ============================================================
+
+function generateReference(
+  id,
+  typeCommande
+) {
+  const numero =
+    Number(id) + 1;
+
+  const type =
+    normalizeTypeCommande(
+      typeCommande
+    );
 
   const lettre =
     type === "vrac"
       ? "V"
       : "B";
 
-  const annee =
-    new Date().getFullYear();
-
-  return `${numero}${lettre}${annee}`;
+  return `${numero}${lettre}2026`;
 }
 
 // ============================================================
-// GET VISITOR BY ID
+// GET VISITEUR
 // ============================================================
 
 async function getVisitorById(id) {
-  const visitorId = Number(id);
+  const visitorId =
+    Number(id);
 
   if (
     !Number.isInteger(visitorId) ||
@@ -209,7 +470,7 @@ async function getVisitorById(id) {
 }
 
 // ============================================================
-// PDF GENERATION
+// PDF - PUPPETEER
 // ============================================================
 
 async function generatePdfFromHtml(
@@ -226,32 +487,6 @@ async function generatePdfFromHtml(
         "Contenu HTML du PDF manquant."
       );
     }
-
-    if (
-      htmlContent.trim().length < 100
-    ) {
-      throw new Error(
-        "Contenu HTML du PDF trop court ou invalide."
-      );
-    }
-
-    console.log(
-      "======================================="
-    );
-
-    console.log(
-      "GÉNÉRATION PDF AVEC PUPPETEER"
-    );
-
-    console.log(
-      "HTML reçu :",
-      htmlContent.length,
-      "caractères"
-    );
-
-    console.log(
-      "======================================="
-    );
 
     browser =
       await puppeteer.launch({
@@ -283,21 +518,6 @@ async function generatePdfFromHtml(
       }
     );
 
-    const documentExists =
-      await page.evaluate(() => {
-        return Boolean(
-          document.querySelector(
-            ".document"
-          )
-        );
-      });
-
-    if (!documentExists) {
-      console.warn(
-        "⚠️ L'élément .document n'a pas été trouvé dans le HTML."
-      );
-    }
-
     await page.emulateMediaType(
       "screen"
     );
@@ -319,12 +539,6 @@ async function generatePdfFromHtml(
     const pdfBuffer =
       Buffer.from(pdfData);
 
-    console.log(
-      "✅ PDF généré :",
-      pdfBuffer.length,
-      "bytes"
-    );
-
     await browser.close();
 
     browser = null;
@@ -332,17 +546,11 @@ async function generatePdfFromHtml(
     return pdfBuffer;
 
   } catch (error) {
-    console.error(
-      "❌ ERREUR GÉNÉRATION PDF :",
-      error
-    );
-
     if (browser) {
       try {
         await browser.close();
       } catch (closeError) {
         console.error(
-          "Erreur fermeture Puppeteer :",
           closeError.message
         );
       }
@@ -353,7 +561,7 @@ async function generatePdfFromHtml(
 }
 
 // ============================================================
-// EMAIL TRANSPORTER
+// EMAIL
 // ============================================================
 
 function createEmailTransporter() {
@@ -409,7 +617,7 @@ function createEmailTransporter() {
 }
 
 // ============================================================
-// ROUTE TEST
+// ROOT
 // ============================================================
 
 app.get(
@@ -425,7 +633,7 @@ app.get(
 );
 
 // ============================================================
-// TEST DATABASE
+// TEST DB
 // ============================================================
 
 app.get(
@@ -465,14 +673,62 @@ app.get(
   }
 );
 
+app.post(
+  "/api/visiteurs",
+  authenticateToken,
+  requireUser,
+  async (req, res) => {
+
+    try {
+
+      const {
+        nom,
+        prenom,
+        email
+      } = req.body;
+
+      // Le commercial connecté
+      const commercialId = req.user.id;
+
+      console.log("Utilisateur connecté :", req.user);
+
+      console.log(
+        "Visiteur créé par commercial ID :",
+        commercialId
+      );
+
+      // Ton INSERT ici
+      // ...
+
+      res.json({
+        success: true,
+        message: "Visiteur ajouté",
+        commercial_id: commercialId
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
 // ============================================================
-// POST - AJOUT VISITEUR
+// POST VISITEUR
 // ============================================================
 
 app.post(
   "/api/visiteurs",
   async (req, res) => {
     try {
+      const body =
+        req.body || {};
+
       console.log("");
       console.log(
         "======================================="
@@ -484,11 +740,8 @@ app.post(
         "======================================="
       );
 
-      const body =
-        req.body || {};
-
       // ======================================================
-      // INFORMATIONS GÉNÉRALES
+      // INFORMATIONS GENERALES
       // ======================================================
 
       const nom =
@@ -506,32 +759,6 @@ app.post(
           body.email
         );
 
-        const site =
-        cleanString(
-          body.site
-        );
-
-        const certifications_requises =
-        cleanString(
-          body.certificationsRequises
-        );
-      
-      const siteWeb =
-        cleanString(
-          body.site_web ??
-          body.siteWeb
-        );
-
-        const contactProfessionnel = cleanString(
-          body.contact_professionnel
-        );
-
-        const nomEntreprise = cleanString(body.nom_entreprise);
-
-        const certificationsRequises = cleanJson(
-          body.certifications_requises
-        );
-
       const origine =
         cleanString(
           body.origine
@@ -547,70 +774,67 @@ app.post(
           body.telephone
         );
 
-        const periode_volume = cleanString(body.periode_volume);
-
-      // ------------------------------------------------------
-      // SOCIETE
-      // ------------------------------------------------------
-
       const societe =
         cleanString(
-          body.societe ||
+          body.societe ??
           body.company
         );
-
-      // ------------------------------------------------------
-      // ADRESSE
-      // ------------------------------------------------------
 
       const adresse_societe =
         cleanString(
           body.adresse_societe
         );
 
-      // ------------------------------------------------------
-      // FONCTION
-      // ------------------------------------------------------
-
       const fonction =
         cleanString(
           body.fonction
         );
-
-       // ------------------------------------------------------
-      // genre
-      // ------------------------------------------------------
 
       const genre =
         cleanString(
           body.genre
         );
 
-
-        
-
-      // ------------------------------------------------------
-      // LANGUE
-      // ------------------------------------------------------
-
       const langue_communication =
         cleanString(
           body.langue_communication
         );
 
-      // ------------------------------------------------------
-      // PROFILE
-      // ------------------------------------------------------
-
       const profile =
         cleanString(
-          body.profile ||
+          body.profile ??
           body.profil
         );
 
-      // ------------------------------------------------------
+      const site =
+        cleanString(
+          body.site
+        );
+
+      const site_web =
+        cleanString(
+          body.site_web ??
+          body.siteWeb
+        );
+
+      const nom_entreprise =
+        cleanString(
+          body.nom_entreprise
+        );
+
+      const contact_professionnel =
+        cleanString(
+          body.contact_professionnel
+        );
+
+      const periode_volume =
+        cleanString(
+          body.periode_volume
+        );
+
+      // ======================================================
       // TYPE COMMANDE
-      // ------------------------------------------------------
+      // ======================================================
 
       const type_commande =
         normalizeTypeCommande(
@@ -618,7 +842,7 @@ app.post(
         );
 
       // ======================================================
-      // ⭐ QUALIFICATION
+      // QUALIFICATION
       // ======================================================
 
       let qualification = null;
@@ -651,11 +875,6 @@ app.post(
         qualification = q;
       }
 
-      console.log(
-        "⭐ Qualification reçue :",
-        qualification
-      );
-
       // ======================================================
       // VRAC
       // ======================================================
@@ -670,23 +889,27 @@ app.post(
           body.qualite_grade
         );
 
-      const volume_estime =
-        body.volume_estime ===
-            undefined ||
-        body.volume_estime ===
-            null ||
-        body.volume_estime === ""
-          ? null
-          : Number(
-              body.volume_estime
-            );
+      let volume_estime = null;
+
+      if (
+        body.volume_estime !==
+          undefined &&
+        body.volume_estime !==
+          null &&
+        body.volume_estime !== ""
+      ) {
+        volume_estime =
+          Number(
+            body.volume_estime
+          );
+      }
 
       const destination =
         cleanString(
           body.destination
         );
 
-        const destinationport =
+      const destinationport =
         cleanString(
           body.destinationport
         );
@@ -701,47 +924,17 @@ app.post(
           body.format_livraison
         );
 
-      // ------------------------------------------------------
-      // Compatibilité frontend
-      //
-      // index.jsx envoie :
-      // frequence_commande
-      //
-      // DB utilise :
-      // frequence
-      // ------------------------------------------------------
-
       const frequence =
         cleanString(
           body.frequence ??
           body.frequence_commande
         );
 
-      // ------------------------------------------------------
-      // Compatibilité frontend
-      //
-      // index.jsx envoie :
-      // exigences_specifiques
-      //
-      // DB utilise :
-      // exigences
-      // ------------------------------------------------------
-
       const exigences =
         cleanJson(
           body.exigences ??
           body.exigences_specifiques
         );
-
-      // ------------------------------------------------------
-      // Compatibilité frontend
-      //
-      // index.jsx envoie :
-      // informations_complementaires
-      //
-      // DB utilise :
-      // infos
-      // ------------------------------------------------------
 
       const infos =
         cleanString(
@@ -750,7 +943,7 @@ app.post(
         );
 
       // ======================================================
-      // CONDITIONNÉ
+      // CONDITIONNE
       // ======================================================
 
       const pays_conditionne =
@@ -758,107 +951,60 @@ app.post(
           body.pays_conditionne
         );
 
-      // ------------------------------------------------------
-      // Canal
-      // ------------------------------------------------------
+      const canal =
+        cleanString(
+          body.canal
+        );
 
-      const canal = cleanString(
-        body.canal
-      );
-      
-      const canal_distribution = cleanString(
-        body.canal_distribution
-      );
+      const canal_distribution =
+        cleanString(
+          body.canal_distribution
+        );
 
-      // ------------------------------------------------------
-      // Volumes conditionnés
-      // ------------------------------------------------------
-
-      const volumes_conditionne = cleanString(
-        body.volumes_conditionne ??
-        body.volumes_estimes ??
-        body.volumes ??
-        body.volumes_souhaites
-      );
-
-
+      const volumes_conditionne =
+        cleanString(
+          body.volumes_conditionne ??
+          body.volumes_estimes ??
+          body.volumes ??
+          body.volumes_souhaites
+        );
 
       // ======================================================
       // TYPE EMBALLAGE
       // ======================================================
-      //
-      // NOUVEAU FORMAT ATTENDU
-      //
-      // {
-      //   "emballages": [
-      //     "Tin",
-      //     "PET",
-      //     "Glass"
-      //   ],
-      //
-      //   "autres": {
-      //     "Tin": "400 ml",
-      //     "PET": "500 ml",
-      //     "Glass": "750 ml"
-      //   }
-      // }
-      //
-      // ======================================================
 
-      // ======================================================
-// TYPE EMBALLAGE
-// ======================================================
+      let type_emballage = null;
 
-let type_emballage = null;
+      if (
+        body.type_emballage !==
+          undefined &&
+        body.type_emballage !==
+          null
+      ) {
+        try {
+          type_emballage =
+            typeof body.type_emballage ===
+            "string"
+              ? JSON.stringify(
+                  JSON.parse(
+                    body.type_emballage
+                  )
+                )
+              : JSON.stringify(
+                  body.type_emballage
+                );
+        } catch (error) {
+          return res.status(400).json({
+            success: false,
 
-if (
-  body.type_emballage !== undefined &&
-  body.type_emballage !== null
-) {
-  // Le frontend peut envoyer un objet ou une chaîne JSON.
-  if (typeof body.type_emballage === "string") {
-    try {
-      type_emballage = JSON.stringify(
-        JSON.parse(body.type_emballage)
-      );
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Le champ type_emballage contient un JSON invalide.",
-      });
-    }
-  } else {
-    type_emballage = JSON.stringify(body.type_emballage);
-  }
-}
-
-console.log("TYPE EMBALLAGE REÇU :", body.type_emballage);
-console.log("TYPE EMBALLAGE SQL :", type_emballage);
-console.log(
-  "LONGUEUR TYPE EMBALLAGE SQL :",
-  type_emballage?.length ?? 0
-);
+            message:
+              "Le champ type_emballage contient un JSON invalide.",
+          });
+        }
+      }
 
       // ======================================================
       // PACKAGING
-      // ======================================================
-      //
-      // IMPORTANT :
-      // Ce champ est séparé de type_emballage.
-      //
-      // Exemple :
-      //
-      // {
-      //   "Tin": ["500 ml", "1 L"],
-      //
-      //   "PET": ["1 L"],
-      //
-      //   "Glass": {
-      //     "MARASCA": ["750 ml"],
-      //     "DORICA": ["500 ml"]
-      //   }
-      // }
-      //
       // ======================================================
 
       const packaging =
@@ -868,7 +1014,7 @@ console.log(
         );
 
       // ======================================================
-      // FORMATS SOUHAITÉS
+      // FORMATS
       // ======================================================
 
       const formats_souhaites =
@@ -878,274 +1024,275 @@ console.log(
         );
 
       // ======================================================
-      // DEBUG EMBALLAGE
-      // ======================================================
-
-      console.log(
-        "======================================="
-      );
-
-      console.log(
-        "TYPE EMBALLAGE REÇU :"
-      );
-
-      console.log(
-        body.type_emballage
-      );
-
-      console.log(
-        "TYPE EMBALLAGE SQL :"
-      );
-
-      console.log(
-        type_emballage
-      );
-
-      console.log(
-        "PACKAGING REÇU :"
-      );
-
-      console.log(
-        body.packaging
-      );
-
-      console.log(
-        "PACKAGING SQL :"
-      );
-
-      console.log(
-        packaging
-      );
-
-      console.log(
-        "FORMATS SOUHAITÉS SQL :"
-      );
-
-      console.log(
-        formats_souhaites
-      );
-
-      console.log(
-        "======================================="
-      );
-
-      // ======================================================
       // MARQUE
       // ======================================================
 
       const type_marque =
-  cleanString(
-    body.type_marque
-  );
+        cleanString(
+          body.type_marque
+        );
 
-const nom_label =
-  cleanString(
-    body.nom_label
-  );
+      const nom_label =
+        cleanString(
+          body.nom_label
+        );
 
-const marche_cible =
-  cleanString(
-    body.marche_cible
-  );
+      const marche_cible =
+        cleanString(
+          body.marche_cible
+        );
 
-const quantite_prevue =
-  cleanString(
-    body.quantite_prevue
-  );
+      const quantite_prevue =
+        cleanString(
+          body.quantite_prevue
+        );
 
-const nouvelle_marque_formats =
-  cleanJson(
-    body.nouvelle_marque_formats
-  );
+      const nouvelle_marque_formats =
+        cleanJson(
+          body.nouvelle_marque_formats
+        );
 
-const nouvelle_marque_design_conditionnement =
-  cleanString(
-    body.nouvelle_marque_design_conditionnement
-  );
+      const nouvelle_marque_design_conditionnement =
+        cleanString(
+          body.nouvelle_marque_design_conditionnement
+        );
+
       // ======================================================
       // CONTENEUR
       // ======================================================
 
       const type_conteneur =
-  cleanString(
-    body.type_conteneur
-  );
+        cleanString(
+          body.type_conteneur
+        );
 
-const nombre_fcl =
-  body.nombre_fcl === undefined ||
-  body.nombre_fcl === null ||
-  body.nombre_fcl === ""
-    ? null
-    : Number(
-        body.nombre_fcl
-      );
+      const nombre_fcl =
+        body.nombre_fcl ===
+          undefined ||
+        body.nombre_fcl ===
+          null ||
+        body.nombre_fcl === ""
+          ? null
+          : Number(
+              body.nombre_fcl
+            );
 
-const nombre_palettes =
-  body.nombre_palettes === undefined ||
-  body.nombre_palettes === null ||
-  body.nombre_palettes === ""
-    ? null
-    : Number(
-        body.nombre_palettes
-      );
-
-
-            // ------------------------------------------------------
-// EXIGENCES SPÉCIFIQUES
-// ------------------------------------------------------
-
-const exigences_specifiques =
-cleanJson(
-  body.exigences_specifiques
-);
-
-console.log(
-"EXIGENCES SPÉCIFIQUES REÇUES :",
-body.exigences_specifiques
-);
-
-console.log(
-"EXIGENCES SPÉCIFIQUES SQL :",
-exigences_specifiques
-);
+      const nombre_palettes =
+        body.nombre_palettes ===
+          undefined ||
+        body.nombre_palettes ===
+          null ||
+        body.nombre_palettes === ""
+          ? null
+          : Number(
+              body.nombre_palettes
+            );
 
       // ======================================================
-// SQL
-// ======================================================
+      // CERTIFICATIONS
+      // ======================================================
 
-const sql = `
-INSERT INTO visiteurs (
-  nom,
-  prenom,
-  email,
-  origine,
-  indicatif,
-  telephone,
-  societe,
-  adresse_societe,
-  fonction,
-  site_web,
-  nom_entreprise,
-  langue_communication,
-  profile,
-  type_commande,
-  categorie,
+      const certifications_requises =
+        cleanJson(
+          body.certifications_requises
+        );
 
-  qualite_grade,
-  volume_estime,
-  destination,
-  destinationport,
-  incoterm,
-  format_livraison,
-  frequence,
-  exigences,
-  infos,
-  site,
+      // ======================================================
+      // EXIGENCES SPECIFIQUES
+      // ======================================================
 
-  pays_conditionne,
-  canal,
-  canal_distribution,
-  volumes_conditionne,
+      const exigences_specifiques =
+        cleanJson(
+          body.exigences_specifiques
+        );
 
-  type_emballage,
-  packaging,
-  formats_souhaites,
-  contact_professionnel,
-  type_marque,
-  nom_label,
-  marche_cible,
-  quantite_prevue,
-  nouvelle_marque_formats,
-  nouvelle_marque_design_conditionnement,
+      // ======================================================
+      // COMMANDES MULTIPLES
+      // ======================================================
 
-  type_conteneur,
-  nombre_fcl,
-  nombre_palettes,
-  certifications_requises,
-  periode_volume,
-  genre,
-  exigences_specifiques,
-  qualification
-)
-VALUES (
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-  ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?, ?
-)
+      let commandes = null;
+
+      try {
+        commandes =
+          normalizeCommandes(
+            body.commandes,
+            type_commande
+          );
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            error.message,
+        });
+      }
+
+      const commandesSql =
+        commandes === null
+          ? null
+          : JSON.stringify(
+              commandes
+            );
+
+      console.log(
+        "TYPE COMMANDE :",
+        type_commande
+      );
+
+      console.log(
+        "NOMBRE COMMANDES :",
+        commandes
+          ? commandes.length
+          : 0
+      );
+
+      // ======================================================
+      // SQL
+      // ======================================================
+
+      const sql = `
+  INSERT INTO visiteurs (
+    nom,
+    prenom,
+    email,
+    origine,
+    indicatif,
+    telephone,
+    societe,
+    adresse_societe,
+    fonction,
+    site_web,
+    nom_entreprise,
+    langue_communication,
+    profile,
+    type_commande,
+    categorie,
+    qualite_grade,
+    volume_estime,
+    destination,
+    destinationport,
+    incoterm,
+    format_livraison,
+    frequence,
+    exigences,
+    infos,
+    site,
+    pays_conditionne,
+    canal,
+    canal_distribution,
+    volumes_conditionne,
+    type_emballage,
+    packaging,
+    formats_souhaites,
+    contact_professionnel,
+    type_marque,
+    nom_label,
+    marche_cible,
+    quantite_prevue,
+    nouvelle_marque_formats,
+    nouvelle_marque_design_conditionnement,
+    type_conteneur,
+    nombre_fcl,
+    nombre_palettes,
+    certifications_requises,
+    periode_volume,
+    genre,
+    exigences_specifiques,
+    qualification,
+    commandes,
+
+    nom,
+    prenom,
+    email,
+    commercial_id
+  )
+  VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?
+  )
 `;
+      const values = [
+        nom,
+        prenom,
+        email,
+        origine,
+        indicatif,
+        telephone,
+        societe,
+        adresse_societe,
+        fonction,
+        site_web,
+        nom_entreprise,
+        langue_communication,
+        profile,
+        type_commande,
+        categorie,
+        qualite_grade,
+        volume_estime,
+        destination,
+        destinationport,
+        incoterm,
+        format_livraison,
+        frequence,
+        exigences,
+        infos,
+        site,
+        pays_conditionne,
+        canal,
+        canal_distribution,
+        volumes_conditionne,
+        type_emballage,
+        packaging,
+        formats_souhaites,
+        contact_professionnel,
+        type_marque,
+        nom_label,
+        marche_cible,
+        quantite_prevue,
+        nouvelle_marque_formats,
+        nouvelle_marque_design_conditionnement,
+        type_conteneur,
+        nombre_fcl,
+        nombre_palettes,
+        certifications_requises,
+        periode_volume,
+        genre,
+        exigences_specifiques,
+        qualification,
+        commandesSql,
+        nom,
+    prenom,
+    email,
+    commercialId,
+      ];
 
-      // ======================================================
-// VALEURS SQL
-// ======================================================
-
-
-const values = [
-  nom,
-  prenom,
-  email,
-  origine,
-  indicatif,
-  telephone,
-  societe,
-  adresse_societe,
-  fonction,
-  siteWeb,
-  nomEntreprise,
-  langue_communication,
-  profile,
-  type_commande,
-  categorie,
-
-  qualite_grade,
-  volume_estime,
-  destination,
-  destinationport,
-  incoterm,
-  format_livraison,
-  frequence,
-  exigences,
-  infos,
-  site,
-
-  pays_conditionne,
-  canal,
-  canal_distribution,
-  volumes_conditionne,
-
-  type_emballage,
-  packaging,
-  formats_souhaites,
-  contactProfessionnel,
-  type_marque,
-  nom_label,
-  marche_cible,
-  quantite_prevue,
-  nouvelle_marque_formats,
-  nouvelle_marque_design_conditionnement,
-
-  type_conteneur,
-  nombre_fcl,
-  nombre_palettes,
-  certificationsRequises,
-  periode_volume,
-  genre,
-  exigences_specifiques,
-  qualification
-];
-
-// ======================================================
-// VÉRIFICATION DU NOMBRE DE VALEURS
-// ======================================================
-
-console.log("Nombre de valeurs :", values.length);
-
-if (values.length !== 47) {
-  throw new Error(
-    `Erreur interne : ${values.length} valeurs pour 47 colonnes SQL.`
-  );
-}
+      console.log("=======================================");
+      console.log("DEBUG SQL INSERT");
+      console.log("Nombre de valeurs :", values.length);
+      
+      const nombrePlaceholders = (sql.match(/\?/g) || []).length;
+      
+      console.log("Nombre de ? :", nombrePlaceholders);
+      
+      if (nombrePlaceholders !== values.length) {
+        console.error("❌ ERREUR : nombre de colonnes/valeurs différent !");
+        console.error("Placeholders :", nombrePlaceholders);
+        console.error("Values :", values.length);
+        console.error("Valeurs :", values);
+      
+        return res.status(500).json({
+          success: false,
+          error: "Nombre de colonnes SQL différent du nombre de valeurs",
+          placeholders: nombrePlaceholders,
+          values: values.length
+        });
+      }
+      
+      console.log("✅ Nombre de placeholders :", nombrePlaceholders);
+      console.log("✅ Nombre de valeurs :", values.length);
       // ======================================================
       // INSERT
       // ======================================================
@@ -1182,71 +1329,6 @@ if (values.length !== 47) {
       );
 
       // ======================================================
-      // VÉRIFICATION VISITEUR
-      // ======================================================
-
-      const [
-        verificationRows,
-      ] =
-        await pool.execute(
-          `
-            SELECT
-              id,
-              type_emballage,
-              packaging,
-              qualification,
-              reference
-            FROM visiteurs
-            WHERE id = ?
-          `,
-          [insertedId]
-        );
-
-      // ======================================================
-      // LOG FINAL
-      // ======================================================
-
-      console.log(
-        "======================================="
-      );
-
-      console.log(
-        "✅ VISITEUR ENREGISTRÉ"
-      );
-
-      console.log(
-        "ID :",
-        insertedId
-      );
-
-      console.log(
-        "REFERENCE :",
-        reference
-      );
-
-      console.log(
-        "TYPE EMBALLAGE DB :",
-        verificationRows[0]
-          ?.type_emballage
-      );
-
-      console.log(
-        "PACKAGING DB :",
-        verificationRows[0]
-          ?.packaging
-      );
-
-      console.log(
-        "⭐ QUALIFICATION DB :",
-        verificationRows[0]
-          ?.qualification
-      );
-
-      console.log(
-        "======================================="
-      );
-
-      // ======================================================
       // RESPONSE
       // ======================================================
 
@@ -1256,26 +1338,17 @@ if (values.length !== 47) {
         message:
           "Visiteur enregistré avec succès.",
 
-        id: insertedId,
+        id:
+          insertedId,
 
         reference,
 
         type_commande,
 
-        qualification:
-          verificationRows[0]
-            ?.qualification ??
-          null,
+        qualification,
 
-        type_emballage:
-          verificationRows[0]
-            ?.type_emballage ??
-          null,
-
-        packaging:
-          verificationRows[0]
-            ?.packaging ??
-          null,
+        commandes:
+          commandes || [],
       });
 
     } catch (error) {
@@ -1314,8 +1387,372 @@ if (values.length !== 47) {
   }
 );
 
+app.get(
+  "/api/visiteurs",
+  authenticateToken,
+  requireUser,
+  async (req, res) => {
+
+    try {
+
+      const [visiteurs] = await pool.query(
+        `
+        SELECT *
+        FROM visiteurs
+        ORDER BY id DESC
+        `
+      );
+
+      res.json({
+        success: true,
+        visiteurs
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+app.get(
+  "/api/visiteurs",
+  authenticateToken,
+  requireUser,
+  async (req, res) => {
+
+    try {
+
+      let visiteurs;
+
+      // ADMIN
+      if (req.user.role === "admin") {
+
+        [visiteurs] = await pool.query(
+          `
+          SELECT *
+          FROM visiteurs
+          ORDER BY id DESC
+          `
+        );
+
+      }
+
+      // COMMERCIAL
+      else {
+
+        [visiteurs] = await pool.query(
+          `
+          SELECT *
+          FROM visiteurs
+          WHERE commercial_id = ?
+          ORDER BY id DESC
+          `,
+          [req.user.id]
+        );
+
+      }
+
+      res.json({
+        success: true,
+        visiteurs
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+app.get(
+  "/api/admin/commerciaux",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const [commerciaux] = await pool.query(
+        `
+        SELECT
+          id,
+          nom,
+          prenom,
+          email,
+          role,
+          actif,
+          created_at
+        FROM users
+        WHERE role = 'commercial'
+        ORDER BY id DESC
+        `
+      );
+
+      res.json({
+        success: true,
+        commerciaux
+      });
+
+    } catch (error) {
+
+      console.error(
+        "GET COMMERCIAUX ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+const bcrypt = require("bcryptjs");
+
+app.post(
+  "/api/admin/commerciaux",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const {
+        nom,
+        prenom,
+        email,
+        password
+      } = req.body;
+
+      if (
+        !nom ||
+        !prenom ||
+        !email ||
+        !password
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Tous les champs sont obligatoires"
+        });
+      }
+
+      // Vérifier si l'email existe
+      const [existing] = await pool.query(
+        `
+        SELECT id
+        FROM users
+        WHERE email = ?
+        `,
+        [email]
+      );
+
+      if (existing.length > 0) {
+
+        return res.status(409).json({
+          success: false,
+          message: "Cet email existe déjà"
+        });
+
+      }
+
+      // Hasher le mot de passe
+      const hashedPassword =
+        await bcrypt.hash(password, 10);
+
+      // Créer le commercial
+      const [result] = await pool.query(
+        `
+        INSERT INTO users
+        (
+          nom,
+          prenom,
+          email,
+          password,
+          role,
+          actif
+        )
+        VALUES (?, ?, ?, ?, 'commercial', TRUE)
+        `,
+        [
+          nom,
+          prenom,
+          email,
+          hashedPassword
+        ]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Commercial créé avec succès",
+        commercialId: result.insertId
+      });
+
+    } catch (error) {
+
+      console.error(
+        "CREATE COMMERCIAL ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
+app.put(
+  "/api/admin/commerciaux/:id/desactiver",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const { id } = req.params;
+
+      const [result] = await pool.query(
+        `
+        UPDATE users
+        SET actif = FALSE
+        WHERE id = ?
+        AND role = 'commercial'
+        `,
+        [id]
+      );
+
+      if (result.affectedRows === 0) {
+
+        return res.status(404).json({
+          success: false,
+          message: "Commercial introuvable"
+        });
+
+      }
+
+      res.json({
+        success: true,
+        message: "Commercial désactivé"
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
+app.put(
+  "/api/admin/commerciaux/:id/activer",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const { id } = req.params;
+
+      const [result] = await pool.query(
+        `
+        UPDATE users
+        SET actif = TRUE
+        WHERE id = ?
+        AND role = 'commercial'
+        `,
+        [id]
+      );
+
+      if (result.affectedRows === 0) {
+
+        return res.status(404).json({
+          success: false,
+          message: "Commercial introuvable"
+        });
+
+      }
+
+      res.json({
+        success: true,
+        message: "Commercial activé"
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+app.get(
+  "/api/auth/me",
+  authenticateToken,
+  async (req, res) => {
+
+    try {
+
+      const [users] = await pool.query(
+        `
+        SELECT
+          id,
+          nom,
+          prenom,
+          email,
+          role,
+          actif,
+          created_at
+        FROM users
+        WHERE id = ?
+        `,
+        [req.user.id]
+      );
+
+      if (users.length === 0) {
+
+        return res.status(404).json({
+          success: false,
+          message: "Utilisateur introuvable"
+        });
+
+      }
+
+      res.json({
+        success: true,
+        user: users[0]
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
 // ============================================================
-// GET - TOUS LES VISITEURS
+// GET TOUS LES VISITEURS
 // ============================================================
 
 app.get(
@@ -1331,14 +1768,26 @@ app.get(
           `
         );
 
+      const data =
+        rows.map(
+          (visitor) => ({
+            ...visitor,
+
+            commandes:
+              parseJson(
+                visitor.commandes,
+                []
+              ),
+          })
+        );
+
       res.json({
         success: true,
 
         count:
-          rows.length,
+          data.length,
 
-        data:
-          rows,
+        data,
       });
 
     } catch (error) {
@@ -1361,7 +1810,7 @@ app.get(
 );
 
 // ============================================================
-// GET - VISITEUR PAR ID
+// GET VISITEUR PAR ID
 // ============================================================
 
 app.get(
@@ -1401,34 +1850,31 @@ app.get(
             visitor.type_commande
           );
 
-        try {
-          await pool.execute(
-            `
-              UPDATE visiteurs
-              SET reference = ?
-              WHERE id = ?
-            `,
-            [
-              reference,
-              visitor.id,
-            ]
-          );
+        await pool.execute(
+          `
+            UPDATE visiteurs
+            SET reference = ?
+            WHERE id = ?
+          `,
+          [
+            reference,
+            visitor.id,
+          ]
+        );
 
-          visitor.reference =
-            reference;
-
-        } catch (
-          referenceError
-        ) {
-          console.error(
-            "⚠️ Impossible de sauvegarder la référence :",
-            referenceError.message
-          );
-
-          visitor.reference =
-            reference;
-        }
+        visitor.reference =
+          reference;
       }
+
+      // ======================================================
+      // COMMANDES
+      // ======================================================
+
+      visitor.commandes =
+        parseJson(
+          visitor.commandes,
+          []
+        );
 
       res.json({
         success: true,
@@ -1472,7 +1918,7 @@ app.get(
 );
 
 // ============================================================
-// PUT - MODIFIER VISITEUR
+// PUT VISITEUR
 // ============================================================
 
 app.put(
@@ -1496,13 +1942,11 @@ app.put(
         });
       }
 
-      await getVisitorById(id);
+      const currentVisitor =
+        await getVisitorById(id);
 
       const body =
         req.body || {};
-
-      const fields = [];
-      const values = [];
 
       const allowedFields = [
         "nom",
@@ -1521,8 +1965,6 @@ app.put(
         "nom_entreprise",
         "type_commande",
         "categorie",
-        "certifications_requises",
-      
         "qualite_grade",
         "volume_estime",
         "destination",
@@ -1533,100 +1975,223 @@ app.put(
         "frequence",
         "exigences",
         "infos",
-      
         "pays_conditionne",
         "canal",
         "volumes_conditionne",
-      
         "type_emballage",
         "packaging",
         "formats_souhaites",
-      
         "type_marque",
         "nom_label",
         "marche_cible",
         "quantite_prevue",
         "nouvelle_marque_formats",
         "nouvelle_marque_design_conditionnement",
-      
         "periode_volume",
         "type_conteneur",
         "nombre_fcl",
         "nombre_palettes",
         "contact_professionnel",
         "genre",
+        "certifications_requises",
+        "exigences_specifiques",
         "qualification",
+        "commandes",
       ];
+
+      const jsonFields = [
+        "exigences",
+        "volumes_conditionne",
+        "type_emballage",
+        "packaging",
+        "formats_souhaites",
+        "nouvelle_marque_formats",
+        "certifications_requises",
+        "exigences_specifiques",
+      ];
+
+      const fields = [];
+      const values = [];
 
       for (
         const field of allowedFields
       ) {
         if (
-          body[field] !==
+          body[field] ===
           undefined
+        ) {
+          continue;
+        }
+
+        // ====================================================
+        // COMMANDES
+        // ====================================================
+
+        if (
+          field === "commandes"
+        ) {
+          const newType =
+            normalizeTypeCommande(
+              body.type_commande ??
+              currentVisitor.type_commande
+            );
+
+          let normalized;
+
+          try {
+            normalized =
+              normalizeCommandes(
+                body.commandes,
+                newType
+              );
+          } catch (error) {
+            return res.status(400).json({
+              success: false,
+
+              message:
+                error.message,
+            });
+          }
+
+          fields.push(
+            "commandes = ?"
+          );
+
+          values.push(
+            normalized === null
+              ? null
+              : JSON.stringify(
+                  normalized
+                )
+          );
+
+          continue;
+        }
+
+        // ====================================================
+        // QUALIFICATION
+        // ====================================================
+
+        if (
+          field ===
+          "qualification"
+        ) {
+          const q =
+            Number(
+              body[field]
+            );
+
+          if (
+            !Number.isInteger(q) ||
+            q < 1 ||
+            q > 5
+          ) {
+            return res.status(400).json({
+              success: false,
+
+              message:
+                "La qualification doit être comprise entre 1 et 5.",
+            });
+          }
+
+          fields.push(
+            "qualification = ?"
+          );
+
+          values.push(q);
+
+          continue;
+        }
+
+        // ====================================================
+        // JSON
+        // ====================================================
+
+        if (
+          jsonFields.includes(
+            field
+          )
         ) {
           fields.push(
             `${field} = ?`
           );
 
-          // --------------------------------------------------
-          // JSON
-          // --------------------------------------------------
+          values.push(
+            cleanJson(
+              body[field]
+            )
+          );
 
-          if (
-            [
-              "exigences",
-              "volumes_conditionne",
-              "type_emballage",
-              "packaging",
-              "formats_souhaites",
-              "nouvelle_marque_formats",
-            ].includes(field)
-          ) {
-            values.push(
-              cleanJson(
-                body[field]
-              )
+          continue;
+        }
+
+        // ====================================================
+        // TYPE COMMANDE
+        // ====================================================
+
+        if (
+          field ===
+          "type_commande"
+        ) {
+          const type =
+            normalizeTypeCommande(
+              body[field]
             );
 
-          // --------------------------------------------------
-          // Qualification
-          // --------------------------------------------------
-
-          } else if (
-            field ===
-            "qualification"
+          // Si le type change, on vérifie
+          // les commandes existantes.
+          if (
+            currentVisitor.commandes &&
+            type
           ) {
-            const q =
-              Number(
-                body[field]
+            const oldCommandes =
+              parseJson(
+                currentVisitor.commandes,
+                []
               );
 
             if (
-              !Number.isInteger(q) ||
-              q < 1 ||
-              q > 5
+              oldCommandes.length
             ) {
-              return res.status(400).json({
-                success: false,
+              const oldType =
+                normalizeTypeCommande(
+                  currentVisitor.type_commande
+                );
 
-                message:
-                  "La qualification doit être comprise entre 1 et 5.",
-              });
+              if (
+                oldType &&
+                oldType !== type
+              ) {
+                return res.status(400).json({
+                  success: false,
+
+                  message:
+                    "Impossible de changer le type de commande après l'ajout de commandes.",
+                });
+              }
             }
-
-            values.push(q);
-
-          // --------------------------------------------------
-          // Autres champs
-          // --------------------------------------------------
-
-          } else {
-            values.push(
-              body[field]
-            );
           }
+
+          fields.push(
+            "type_commande = ?"
+          );
+
+          values.push(type);
+
+          continue;
         }
+
+        // ====================================================
+        // AUTRES
+        // ====================================================
+
+        fields.push(
+          `${field} = ?`
+        );
+
+        values.push(
+          body[field]
+        );
       }
 
       if (
@@ -1653,8 +2218,14 @@ app.put(
         values
       );
 
-      const visitor =
+      const updated =
         await getVisitorById(id);
+
+      updated.commandes =
+        parseJson(
+          updated.commandes,
+          []
+        );
 
       res.json({
         success: true,
@@ -1663,7 +2234,7 @@ app.put(
           "Visiteur modifié avec succès.",
 
         data:
-          visitor,
+          updated,
       });
 
     } catch (error) {
@@ -1689,7 +2260,7 @@ app.put(
 );
 
 // ============================================================
-// DELETE - SUPPRIMER VISITEUR
+// DELETE VISITEUR
 // ============================================================
 
 app.delete(
@@ -1752,24 +2323,13 @@ app.delete(
 );
 
 // ============================================================
-// ⭐ QUALIFICATION - PUT
+// QUALIFICATION
 // ============================================================
 
 app.put(
   "/api/visiteurs/:id/qualification",
   async (req, res) => {
     try {
-      console.log("");
-      console.log(
-        "================================="
-      );
-      console.log(
-        "REQUÊTE QUALIFICATION REÇUE"
-      );
-      console.log(
-        "================================="
-      );
-
       const id =
         Number(
           req.params.id
@@ -1779,25 +2339,6 @@ app.put(
         Number(
           req.body?.qualification
         );
-
-      console.log(
-        "ID :",
-        id
-      );
-
-      console.log(
-        "Qualification reçue :",
-        qualification
-      );
-
-      console.log(
-        "Body :",
-        req.body
-      );
-
-      // ------------------------------------------------------
-      // ID
-      // ------------------------------------------------------
 
       if (
         !Number.isInteger(id) ||
@@ -1810,10 +2351,6 @@ app.put(
             "ID visiteur invalide.",
         });
       }
-
-      // ------------------------------------------------------
-      // QUALIFICATION
-      // ------------------------------------------------------
 
       if (
         !Number.isInteger(
@@ -1830,57 +2367,19 @@ app.put(
         });
       }
 
-      // ------------------------------------------------------
-      // VISITEUR
-      // ------------------------------------------------------
+      await getVisitorById(id);
 
-      const visitor =
-        await getVisitorById(
-          id
-        );
-
-      console.log(
-        "Visiteur trouvé :",
-        visitor.nom,
-        visitor.prenom
+      await pool.execute(
+        `
+          UPDATE visiteurs
+          SET qualification = ?
+          WHERE id = ?
+        `,
+        [
+          qualification,
+          id,
+        ]
       );
-
-      // ------------------------------------------------------
-      // UPDATE
-      // ------------------------------------------------------
-      const indexTypeEmballage = 27;
-
-console.log(
-  "TYPE EMBALLAGE AVANT INSERT :",
-  values[indexTypeEmballage]
-);
-
-console.log(
-  "LONGUEUR AVANT INSERT :",
-  values[indexTypeEmballage]?.length ?? 0
-); 
-
-      const [result] =
-        await pool.execute(
-          `
-            UPDATE visiteurs
-            SET qualification = ?
-            WHERE id = ?
-          `,
-          [
-            qualification,
-            id,
-          ]
-        );
-
-      console.log(
-        "affectedRows :",
-        result.affectedRows
-      );
-
-      // ------------------------------------------------------
-      // VÉRIFICATION
-      // ------------------------------------------------------
 
       const [rows] =
         await pool.execute(
@@ -1897,34 +2396,7 @@ console.log(
           [id]
         );
 
-      if (!rows.length) {
-        return res.status(404).json({
-          success: false,
-
-          message:
-            `Aucun visiteur trouvé avec l'id ${id}.`,
-        });
-      }
-
-      console.log(
-        "Qualification enregistrée en DB :",
-        rows[0]
-          .qualification
-      );
-
-      console.log(
-        "================================="
-      );
-
-      console.log(
-        "✅ QUALIFICATION ENREGISTRÉE"
-      );
-
-      console.log(
-        "================================="
-      );
-
-      return res.json({
+      res.json({
         success: true,
 
         message:
@@ -1935,25 +2407,12 @@ console.log(
       });
 
     } catch (error) {
-      console.error("");
-
       console.error(
-        "================================="
-      );
-
-      console.error(
-        "❌ ERREUR QUALIFICATION"
-      );
-
-      console.error(
-        "================================="
-      );
-
-      console.error(
+        "❌ QUALIFICATION :",
         error
       );
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
 
         message:
@@ -1967,24 +2426,13 @@ console.log(
 );
 
 // ============================================================
-// EMAIL - ENVOYER LE PDF
+// EMAIL - ENVOYER PDF
 // ============================================================
 
 app.post(
   "/api/email/send",
   async (req, res) => {
     try {
-      console.log("");
-      console.log(
-        "======================================="
-      );
-      console.log(
-        "ENVOI EMAIL"
-      );
-      console.log(
-        "======================================="
-      );
-
       const {
         visitorId,
         visiteurId,
@@ -2002,23 +2450,6 @@ app.post(
           visiteurId
         );
 
-      console.log(
-        "Visitor ID :",
-        id
-      );
-
-      console.log(
-        "Reference reçue :",
-        reference
-      );
-
-      console.log(
-        "PDF HTML :",
-        pdfHtml
-          ? `${pdfHtml.length} caractères`
-          : "MANQUANT"
-      );
-
       if (
         !Number.isInteger(id) ||
         id <= 0
@@ -2035,8 +2466,8 @@ app.post(
         !pdfHtml ||
         typeof pdfHtml !==
           "string" ||
-        pdfHtml.trim()
-          .length < 100
+        pdfHtml.trim().length <
+          100
       ) {
         return res.status(400).json({
           success: false,
@@ -2050,12 +2481,16 @@ app.post(
         await getVisitorById(id);
 
       let finalReference =
-        cleanString(reference) ||
+        cleanString(
+          reference
+        ) ||
         cleanString(
           visitor.reference
         );
 
-      if (!finalReference) {
+      if (
+        !finalReference
+      ) {
         finalReference =
           generateReference(
             visitor.id,
@@ -2076,7 +2511,9 @@ app.post(
       }
 
       const recipient =
-        cleanString(toEmail) ||
+        cleanString(
+          toEmail
+        ) ||
         cleanString(
           visitor.email
         ) ||
@@ -2085,35 +2522,15 @@ app.post(
         ) ||
         "Contact@olived.tn";
 
-      console.log(
-        "Destinataire :",
-        recipient
-      );
-
-      console.log(
-        "Référence finale :",
-        finalReference
-      );
-
       const pdfBuffer =
         await generatePdfFromHtml(
           pdfHtml
         );
 
-      console.log(
-        "PDF prêt pour email :",
-        pdfBuffer.length,
-        "bytes"
-      );
-
       const transporter =
         createEmailTransporter();
 
       await transporter.verify();
-
-      console.log(
-        "✅ SMTP OK"
-      );
 
       const finalNomComplet =
         cleanString(
@@ -2139,7 +2556,9 @@ I hope you are doing well.
 
 Please find attached our quotation for the requested olive oil products.
 
-The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
+The offer includes the product specifications, packaging options, quantities, and corresponding prices.
+
+Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
 
 Please do not hesitate to contact us should you need any further information or clarification.
 
@@ -2170,7 +2589,11 @@ OLIVED`;
           </p>
 
           <p>
-            The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
+            The offer includes the product specifications, packaging options, quantities, and corresponding prices.
+          </p>
+
+          <p>
+            Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.
           </p>
 
           <p>
@@ -2224,33 +2647,6 @@ OLIVED`;
           ],
         });
 
-      console.log(
-        "======================================="
-      );
-
-      console.log(
-        "✅ EMAIL ENVOYÉ"
-      );
-
-      console.log(
-        "Message ID :",
-        info.messageId
-      );
-
-      console.log(
-        "Destinataire :",
-        recipient
-      );
-
-      console.log(
-        "Reference :",
-        finalReference
-      );
-
-      console.log(
-        "======================================="
-      );
-
       res.json({
         success: true,
 
@@ -2264,25 +2660,11 @@ OLIVED`;
           finalReference,
 
         recipient,
-
-        filename:
-          `Official_Price_Offer_${finalReference}.pdf`,
       });
 
     } catch (error) {
       console.error(
-        "======================================="
-      );
-
-      console.error(
-        "❌ ERREUR ENVOI EMAIL"
-      );
-
-      console.error(
-        "======================================="
-      );
-
-      console.error(
+        "❌ ERREUR EMAIL :",
         error
       );
 
@@ -2310,23 +2692,11 @@ app.post(
   "/api/whatsapp/send",
   async (req, res) => {
     try {
-      console.log("");
-      console.log(
-        "======================================="
-      );
-      console.log(
-        "ENVOI WHATSAPP"
-      );
-      console.log(
-        "======================================="
-      );
-
       const {
         visitorId,
         visiteurId,
         reference,
         telephone,
-        nomComplet,
         pdfHtml,
       } =
         req.body || {};
@@ -2337,23 +2707,6 @@ app.post(
           visiteurId
         );
 
-      console.log(
-        "Visitor ID :",
-        id
-      );
-
-      console.log(
-        "Reference :",
-        reference
-      );
-
-      console.log(
-        "PDF HTML :",
-        pdfHtml
-          ? `${pdfHtml.length} caractères`
-          : "MANQUANT"
-      );
-
       if (
         !Number.isInteger(id) ||
         id <= 0
@@ -2362,7 +2715,7 @@ app.post(
           success: false,
 
           message:
-            "Identifiant visiteur manquant ou invalide.",
+            "Identifiant visiteur invalide.",
         });
       }
 
@@ -2370,14 +2723,14 @@ app.post(
         !pdfHtml ||
         typeof pdfHtml !==
           "string" ||
-        pdfHtml.trim()
-          .length < 100
+        pdfHtml.trim().length <
+          100
       ) {
         return res.status(400).json({
           success: false,
 
           message:
-            "Le contenu HTML du PDF est manquant ou invalide.",
+            "Le contenu HTML du PDF est manquant.",
         });
       }
 
@@ -2385,12 +2738,16 @@ app.post(
         await getVisitorById(id);
 
       let finalReference =
-        cleanString(reference) ||
+        cleanString(
+          reference
+        ) ||
         cleanString(
           visitor.reference
         );
 
-      if (!finalReference) {
+      if (
+        !finalReference
+      ) {
         finalReference =
           generateReference(
             visitor.id,
@@ -2410,34 +2767,26 @@ app.post(
         );
       }
 
-      let indicatif =
-        cleanString(
-          visitor.indicatif
-        ) || "";
+      // ======================================================
+      // NUMERO WHATSAPP
+      // ======================================================
 
-      let phone =
+      let whatsappNumber =
         cleanString(
           telephone
         ) ||
         cleanString(
           visitor.telephone
-        ) ||
-        "";
-
-      indicatif =
-        indicatif.replace(
-          /[^\d+]/g,
-          ""
         );
 
-      phone =
-        phone.replace(
-          /\D/g,
-          ""
-        );
+      if (!whatsappNumber) {
+        return res.status(400).json({
+          success: false,
 
-      let whatsappNumber =
-        `${indicatif}${phone}`;
+          message:
+            "Numéro WhatsApp introuvable.",
+        });
+      }
 
       whatsappNumber =
         whatsappNumber.replace(
@@ -2456,42 +2805,9 @@ app.post(
           );
       }
 
-      if (
-        !whatsappNumber
-      ) {
-        return res.status(400).json({
-          success: false,
-
-          message:
-            "Numéro de téléphone WhatsApp introuvable.",
-        });
-      }
-
-      console.log(
-        "Numéro WhatsApp :",
-        whatsappNumber
-      );
-
-      const pdfBuffer =
-        await generatePdfFromHtml(
-          pdfHtml
-        );
-
-      console.log(
-        "PDF WhatsApp généré :",
-        pdfBuffer.length,
-        "bytes"
-      );
-
-      if (
-        !Buffer.isBuffer(
-          pdfBuffer
-        )
-      ) {
-        throw new Error(
-          "Le PDF généré n'est pas un Buffer Node.js."
-        );
-      }
+      // ======================================================
+      // ENV WHATSAPP
+      // ======================================================
 
       const accessToken =
         process.env
@@ -2524,6 +2840,19 @@ app.post(
         });
       }
 
+      // ======================================================
+      // GENERATION PDF
+      // ======================================================
+
+      const pdfBuffer =
+        await generatePdfFromHtml(
+          pdfHtml
+        );
+
+      // ======================================================
+      // UPLOAD MEDIA WHATSAPP
+      // ======================================================
+
       const uploadUrl =
         `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`;
 
@@ -2540,14 +2869,11 @@ app.post(
         "application/pdf"
       );
 
-      const pdfStream =
-        Readable.from(
-          pdfBuffer
-        );
-
       form.append(
         "file",
-        pdfStream,
+        Readable.from(
+          pdfBuffer
+        ),
         {
           filename:
             `Official_Price_Offer_${finalReference}.pdf`,
@@ -2560,27 +2886,17 @@ app.post(
         }
       );
 
-      const formHeaders =
-        form.getHeaders();
-
-      const uploadHeaders = {
-        ...formHeaders,
-
-        Authorization:
-          `Bearer ${accessToken}`,
-      };
-
-      console.log(
-        "Envoi PDF vers Meta..."
-      );
-
       const uploadResponse =
         await axios.post(
           uploadUrl,
           form,
           {
-            headers:
-              uploadHeaders,
+            headers: {
+              ...form.getHeaders(),
+
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
 
             maxContentLength:
               Infinity,
@@ -2593,15 +2909,6 @@ app.post(
           }
         );
 
-      console.log(
-        "Réponse upload Meta :",
-        JSON.stringify(
-          uploadResponse.data,
-          null,
-          2
-        )
-      );
-
       const mediaId =
         uploadResponse.data?.id;
 
@@ -2611,33 +2918,14 @@ app.post(
         );
       }
 
-      console.log(
-        "✅ Media ID WhatsApp :",
-        mediaId
-      );
-
-      const finalNomComplet =
-        cleanString(
-          nomComplet
-        ) ||
-        [
-          visitor.prenom,
-          visitor.nom,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .trim() ||
-        "Client";
-
-      console.log(
-        "Nom client :",
-        finalNomComplet
-      );
+      // ======================================================
+      // ENVOI DOCUMENT
+      // ======================================================
 
       const sendUrl =
         `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
 
-      const whatsappPayload = {
+      const payload = {
         messaging_product:
           "whatsapp",
 
@@ -2662,16 +2950,10 @@ app.post(
         },
       };
 
-      console.log(
-        "Envoi document WhatsApp..."
-      );
-
       const whatsappResponse =
         await axios.post(
           sendUrl,
-
-          whatsappPayload,
-
+          payload,
           {
             headers: {
               Authorization:
@@ -2689,33 +2971,6 @@ app.post(
       const messageId =
         whatsappResponse.data
           ?.messages?.[0]?.id;
-
-      console.log(
-        "======================================="
-      );
-
-      console.log(
-        "✅ WHATSAPP ENVOYÉ"
-      );
-
-      console.log(
-        "Message ID :",
-        messageId
-      );
-
-      console.log(
-        "Numéro :",
-        whatsappNumber
-      );
-
-      console.log(
-        "Reference :",
-        finalReference
-      );
-
-      console.log(
-        "======================================="
-      );
 
       res.json({
         success: true,
@@ -2736,43 +2991,17 @@ app.post(
 
     } catch (error) {
       console.error(
-        "======================================="
-      );
-
-      console.error(
-        "❌ ERREUR WHATSAPP"
-      );
-
-      console.error(
-        "======================================="
-      );
-
-      console.error(
-        "Message :",
-        error.message
+        "❌ ERREUR WHATSAPP :",
+        error
       );
 
       if (
         error.response
       ) {
         console.error(
-          "HTTP :",
-          error.response.status
-        );
-
-        console.error(
-          "DATA :",
+          "WhatsApp response:",
           JSON.stringify(
             error.response.data,
-            null,
-            2
-          )
-        );
-
-        console.error(
-          "HEADERS :",
-          JSON.stringify(
-            error.response.headers,
             null,
             2
           )
@@ -2794,7 +3023,7 @@ app.post(
 );
 
 // ============================================================
-// ROUTE - TUNISIE + VRAC
+// TUNISIE + VRAC
 // ============================================================
 
 app.get(
@@ -2812,14 +3041,26 @@ app.get(
           `
         );
 
+      const data =
+        rows.map(
+          (visitor) => ({
+            ...visitor,
+
+            commandes:
+              parseJson(
+                visitor.commandes,
+                []
+              ),
+          })
+        );
+
       res.json({
         success: true,
 
         count:
-          rows.length,
+          data.length,
 
-        data:
-          rows,
+        data,
       });
 
     } catch (error) {
@@ -2840,6 +3081,48 @@ app.get(
     }
   }
 );
+
+// ============================================================
+// MIGRATION COMMANDES
+// ============================================================
+
+async function ensureCommandesColumn() {
+  const [columns] =
+    await pool.query(
+      `
+        SELECT COUNT(*) AS count
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'visiteurs'
+          AND COLUMN_NAME = 'commandes'
+      `
+    );
+
+  if (
+    Number(
+      columns[0]?.count || 0
+    ) === 0
+  ) {
+    console.log(
+      "📦 Création de la colonne commandes..."
+    );
+
+    await pool.query(
+      `
+        ALTER TABLE visiteurs
+        ADD COLUMN commandes LONGTEXT NULL
+      `
+    );
+
+    console.log(
+      "✅ Colonne commandes créée."
+    );
+  } else {
+    console.log(
+      "✅ Colonne commandes déjà présente."
+    );
+  }
+}
 
 // ============================================================
 // START SERVER
@@ -2870,6 +3153,16 @@ async function startServer() {
 
     connection.release();
 
+    // ========================================================
+    // CREATION AUTOMATIQUE COMMANDES
+    // ========================================================
+
+    await ensureCommandesColumn();
+
+    // ========================================================
+    // START
+    // ========================================================
+
     app.listen(
       PORT,
       "0.0.0.0",
@@ -2899,7 +3192,7 @@ async function startServer() {
         console.log("");
 
         console.log(
-          "API test :"
+          "Test API :"
         );
 
         console.log(
