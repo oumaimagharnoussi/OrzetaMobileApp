@@ -337,6 +337,7 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
 
   const [typeMarque, setTypeMarque] = useState("");
   const [certificationsRequises, setCertificationsRequises] = useState([]);
+  const [autreCertification, setAutreCertification] = useState("");
   const [nomEntreprise, setNomEntreprise] = useState("");
   const [siteWeb, setSiteWeb] = useState("");
   const [contactProfessionnel, setContactProfessionnel] = useState("");
@@ -1239,6 +1240,16 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
         : [])
     ];
 
+    const certificationsRequisesFinales = [
+      ...certificationsRequises.filter(
+        (item) => item !== "Autre"
+      ),
+      ...(certificationsRequises.includes("Autre") &&
+      autreCertification.trim() !== ""
+        ? [autreCertification.trim()]
+        : [])
+    ];
+
     // ===================================================
     // VÉRIFICATION QUALIFICATION
     // ===================================================
@@ -1593,9 +1604,9 @@ typeEmballageData
 
       certifications_requises:
         typeCommande === "conditionné" &&
-        certificationsRequises.length > 0
+        certificationsRequisesFinales.length > 0
           ? JSON.stringify(
-              certificationsRequises
+            certificationsRequisesFinales
             )
           : null,
 
@@ -2909,12 +2920,12 @@ Acidité
 
 
 
-            {/* =================================================
-    EXIGENCES SPÉCIFIQUES
+{/* =================================================
+    CERTIFICATIONS REQUISES
 ================================================= */}
 
 <Text style={styles.label}>
-  Exigences spécifiques
+  Certifications requises
 </Text>
 
 <View style={styles.exigencesContainer}>
@@ -2936,7 +2947,7 @@ Acidité
   ].map((item) => {
 
     const selected =
-      exigencesSpecifiques.includes(item);
+      certificationsRequises.includes(item);
 
     return (
       <TouchableOpacity
@@ -2945,24 +2956,25 @@ Acidité
         onPress={() => {
 
           if (selected) {
-            // Désélectionner
-            setExigencesSpecifiques(
-              exigencesSpecifiques.filter(
-                (exigence) => exigence !== item
+
+            setCertificationsRequises(
+              certificationsRequises.filter(
+                (certification) =>
+                  certification !== item
               )
             );
 
-            // Vider le champ si Autre est désélectionné
             if (item === "Autre") {
-              setAutreExigence("");
+              setAutreCertification("");
             }
 
           } else {
-            // Sélectionner
-            setExigencesSpecifiques([
-              ...exigencesSpecifiques,
+
+            setCertificationsRequises([
+              ...certificationsRequises,
               item,
             ]);
+
           }
 
         }}
@@ -2980,13 +2992,13 @@ Acidité
     );
   })}
 
-  {/* CHAMP AUTRE */}
-  {exigencesSpecifiques.includes("Autre") && (
+  {/* CHAMP AUTRE CERTIFICATION */}
+  {certificationsRequises.includes("Autre") && (
     <TextInput
       style={styles.input}
-      placeholder="Préciser l'exigence"
-      value={autreExigence}
-      onChangeText={setAutreExigence}
+      placeholder="Préciser la certification"
+      value={autreCertification}
+      onChangeText={setAutreCertification}
     />
   )}
 
@@ -4321,27 +4333,91 @@ Acidité
 
             {/* CERTIFICATIONS */}
 
-            <Text style={styles.label}>
-              Certifications requises
-            </Text>
+<Text style={styles.label}>
+  Certifications requises
+</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Ex : BIO, ISO, IFS..."
-              value={certificationsRequises.join(
-                ", "
-              )}
-              onChangeText={(text) =>
-                setCertificationsRequises(
-                  text
-                    .split(",")
-                    .map((item) =>
-                      item.trim()
-                    )
-                    .filter(Boolean)
-                )
-              }
-            />
+<View style={styles.exigencesContainer}>
+
+  {[
+    "ISO 22000",
+    "HACCP",
+    "IFS Food",
+    "BRCGS",
+    "ISO 9001",
+    "BIO / Organic",
+    "Halal",
+    "Kosher",
+    "JAS",
+    "Analyses COI / IOC",
+    "Certificat d’analyse (COA)",
+    "Certificat d’analyse ONH",
+    "Autre",
+  ].map((item) => {
+
+    const selected =
+      certificationsRequises.includes(item);
+
+    return (
+      <TouchableOpacity
+        key={item}
+        style={styles.exigenceOption}
+        onPress={() => {
+
+          if (selected) {
+
+            // Désélectionner
+            setCertificationsRequises(
+              certificationsRequises.filter(
+                (certification) =>
+                  certification !== item
+              )
+            );
+
+            // Vider le champ si Autre est désélectionné
+            if (item === "Autre") {
+              setAutreCertification("");
+            }
+
+          } else {
+
+            // Sélectionner
+            setCertificationsRequises([
+              ...certificationsRequises,
+              item,
+            ]);
+
+          }
+
+        }}
+      >
+
+        <Text style={styles.exigenceCheckbox}>
+          {selected ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.exigenceText}>
+          {item}
+        </Text>
+
+      </TouchableOpacity>
+    );
+  })}
+
+  {/* CHAMP AUTRE */}
+  {certificationsRequises.includes("Autre") && (
+  <TextInput
+    style={styles.input}
+    placeholder="Préciser la certification"
+    value={autreCertification}
+    onChangeText={(text) => {
+      console.log("AUTRE CERTIFICATION :", text);
+      setAutreCertification(text);
+    }}
+  />
+)}
+
+</View>
 
             {/* NOM ENTREPRISE */}
 
@@ -5089,7 +5165,7 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 16,
     color: "#333",
-    flexShrink: 0,
+    //flexShrink: 0,
   },
 
   packagingRow: {

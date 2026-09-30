@@ -1133,7 +1133,9 @@ const values = [
   genre,
   exigences_specifiques,
   qualification
-];// ======================================================
+];
+
+// ======================================================
 // VÉRIFICATION DU NOMBRE DE VALEURS
 // ======================================================
 
@@ -1555,7 +1557,7 @@ app.put(
         "genre",
         "qualification",
       ];
-      
+
       for (
         const field of allowedFields
       ) {
