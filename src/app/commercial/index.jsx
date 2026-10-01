@@ -17,7 +17,7 @@ export default function CommercialHome() {
 
   async function handleLogout() {
     await logout();
-    router.replace("/");
+    router.replace("/auth/login");
   }
 
   return (

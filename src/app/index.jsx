@@ -11,6 +11,9 @@ import {
 
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
 
 // =====================================================
 // URL BACKEND
@@ -28,7 +31,7 @@ export default function HomeScreen() {
   // =====================================================
   // INFORMATIONS GÉNÉRALES
   // =====================================================
-
+  const { logout } = useAuth();
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [telephone, setTelephone] = useState("");
@@ -51,6 +54,11 @@ export default function HomeScreen() {
     défaut: "",
   });
 
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/auth/login");
+  };
   // =====================================================
   // AUTRE EMBALLAGE PAR TYPE
   // =====================================================
@@ -2255,26 +2263,42 @@ nombre_palettes:
   };
 
   // =====================================================
-  // INTERFACE
-  // =====================================================
+// INTERFACE
+// =====================================================
 
-  return (
-    <ScrollView
-    
-      style={styles.container}
-      contentContainerStyle={
-        styles.content
-      }
-      keyboardShouldPersistTaps="handled"
+return (
+  <ScrollView
+    style={styles.container}
+    contentContainerStyle={styles.content}
+    keyboardShouldPersistTaps="handled"
+  >
+
+    {/* =================================================
+        DÉCONNEXION
+    ================================================= */}
+
+    <TouchableOpacity
+      style={styles.logoutButton}
+      onPress={handleLogout}
     >
+      <Ionicons
+        name="log-out-outline"
+        size={20}
+        color="#c62828"
+      />
 
-      {/* =================================================
-          TITRE
-      ================================================= */}
-
-      <Text style={styles.title}>
-        Formulaire Visiteur
+      <Text style={styles.logoutText}>
+        Déconnexion
       </Text>
+    </TouchableOpacity>
+
+    {/* =================================================
+        TITRE
+    ================================================= */}
+
+    <Text style={styles.title}>
+      Formulaire Visiteur
+    </Text>
 
       {/* =================================================
           NOM
@@ -5852,6 +5876,24 @@ contactText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  logoutButton: {
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#c62828",
+    borderRadius: 8,
+  },
+  
+  logoutText: {
+    marginLeft: 6,
+    color: "#c62828",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
 });
