@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-
+import { Image } from "react-native";
 import {
   View,
   Text,
@@ -76,10 +76,11 @@ export default function Login() {
   return (
     <View style={styles.container}>
 
-      {/* TITRE */}
-      <Text style={styles.title}>
-        OLIVED
-      </Text>
+<Image
+  source={require("../../../assets/images/logo-olived-black.png")}
+  style={styles.logo}
+  resizeMode="contain"
+/>
 
       <Text style={styles.subtitle}>
         Connexion
@@ -251,5 +252,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 30,
     fontWeight: "bold",
+  },
+  logo: {
+    width: 180,
+    height: 60,
+    alignSelf: "center",
+    marginBottom: 5,
   },
 });

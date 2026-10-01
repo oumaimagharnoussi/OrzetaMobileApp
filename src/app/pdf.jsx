@@ -28,7 +28,7 @@ import {
 
 import * as Print from "expo-print";
 import { Asset } from "expo-asset";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // =====================================================
 // CONFIGURATION
 // =====================================================
@@ -159,6 +159,29 @@ const getReference = (v) => {
 // =====================================================
 
 export default function PDFScreen() {
+
+  const [commercialName, setCommercialName] = useState("");
+
+  useEffect(() => {
+    const loadCommercial = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("user");
+
+        if (storedUser) {
+          const commercial = JSON.parse(storedUser);
+
+          setCommercialName(
+            `${commercial.prenom || ""} ${commercial.nom || ""}`.trim()
+          );
+        }
+      } catch (error) {
+        console.log("Erreur commercial :", error);
+      }
+    };
+
+    loadCommercial();
+  }, []);
+
   const { id } = useLocalSearchParams();
 
   const router = useRouter();
@@ -992,7 +1015,7 @@ export default function PDFScreen() {
 
     <br />
 
-    Name: Olfa BEN HAJEL
+    Name: ${esc(commercialName)}
 
     <br />
 
@@ -1970,7 +1993,7 @@ export default function PDFScreen() {
           </Text>
 
           <Text>
-            Name: Olfa BEN HAJEL
+            Name: {commercialName}
           </Text>
 
           <Text>

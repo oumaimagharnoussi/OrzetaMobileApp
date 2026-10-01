@@ -63,6 +63,11 @@ import React, {
   
       if (data.success && data.user) {
         setUser(data.user);
+      
+        await AsyncStorage.setItem(
+          "user",
+          JSON.stringify(data.user)
+        );
       }
   
       return data;
