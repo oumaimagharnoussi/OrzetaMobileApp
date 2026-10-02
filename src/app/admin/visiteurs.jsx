@@ -70,13 +70,13 @@ export default function AdminVisiteurs() {
       result = result.filter((item) => {
         const nom = `${item.nom || ""} ${item.prenom || ""}`.toLowerCase();
         const email = (item.email || "").toLowerCase();
-        const entreprise = (item.entreprise || "").toLowerCase();
+        const nom_entreprise = (item.nom_entreprise || "").toLowerCase();
         const telephone = (item.telephone || "").toLowerCase();
 
         return (
           nom.includes(text) ||
           email.includes(text) ||
-          entreprise.includes(text) ||
+          nom_entreprise.includes(text) ||
           telephone.includes(text)
         );
       });
@@ -158,7 +158,7 @@ export default function AdminVisiteurs() {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Entreprise</Text>
           <Text style={styles.infoValue}>
-            {item.entreprise || "-"}
+            {item.nom_entreprise || "-"}
           </Text>
         </View>
 
@@ -485,12 +485,10 @@ export default function AdminVisiteurs() {
             </Text>
 
             <Text style={[styles.headerCell, styles.colNom]}>
-              Nom
+              Nom et Prénom
             </Text>
 
-            <Text style={[styles.headerCell, styles.colPrenom]}>
-              Prénom
-            </Text>
+            
 
             <Text style={[styles.headerCell, styles.colEmail]}>
               Email
@@ -559,16 +557,13 @@ export default function AdminVisiteurs() {
                     {item.nom || "-"}
                   </Text>
 
-                  <Text style={[styles.cell, styles.colPrenom]}>
-                    {item.prenom || "-"}
-                  </Text>
-
+                  
                   <Text style={[styles.cell, styles.colEmail]}>
                     {item.email || "-"}
                   </Text>
 
                   <Text style={[styles.cell, styles.colEntreprise]}>
-                    {item.entreprise || "-"}
+                    {item.nom_entreprise || "-"}
                   </Text>
 
                   <Text style={[styles.cell, styles.colTelephone]}>
@@ -860,9 +855,7 @@ const styles = StyleSheet.create({
     width: 150,
   },
 
-  colPrenom: {
-    width: 150,
-  },
+ 
 
   colEmail: {
     width: 260,

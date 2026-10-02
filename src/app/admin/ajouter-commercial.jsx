@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 
 import { router } from "expo-router";
@@ -29,24 +30,56 @@ export default function AjouterCommercial() {
   // =====================================================
 
   async function handleAddCommercial() {
-    // Validation
-    if (
-      !nom.trim() ||
-      !prenom.trim() ||
-      !email.trim() ||
-      !password
-    ) {
+    // =====================================================
+    // NETTOYAGE DES VALEURS
+    // =====================================================
+
+    const nomValue = nom.trim();
+    const prenomValue = prenom.trim();
+    const emailValue = email.trim().toLowerCase();
+    const passwordValue = password.trim();
+
+    // =====================================================
+    // VALIDATION
+    // Nom, prénom et email obligatoires
+    // Mot de passe facultatif
+    // =====================================================
+
+    if (!nomValue || !prenomValue || !emailValue) {
       Alert.alert(
         "Erreur",
-        "Veuillez remplir tous les champs."
+        "Veuillez remplir le nom, le prénom et l'email."
       );
       return;
     }
 
-    if (password.length < 8) {
+    // =====================================================
+    // VALIDATION EMAIL
+    // =====================================================
+
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(emailValue)) {
       Alert.alert(
         "Erreur",
-        "Le mot de passe doit contenir au moins 8 caractères."
+        "Veuillez saisir une adresse email valide."
+      );
+      return;
+    }
+
+    // =====================================================
+    // MOT DE PASSE FACULTATIF
+    // S'il est renseigné => minimum 8 caractères
+    // =====================================================
+
+    if (
+      passwordValue !== "" &&
+      passwordValue.length < 8
+    ) {
+      Alert.alert(
+        "Erreur",
+        "Si vous renseignez un mot de passe, il doit contenir au moins 8 caractères."
       );
       return;
     }
@@ -54,19 +87,42 @@ export default function AjouterCommercial() {
     try {
       setLoading(true);
 
-      console.log("====================================");
-      console.log("AJOUT COMMERCIAL");
-      console.log("====================================");
+      // =====================================================
+      // VALEUR ENVOYÉE AU BACKEND
+      // Vide => null
+      // Renseigné => mot de passe
+      // =====================================================
+
+      const passwordToSend =
+        passwordValue !== ""
+          ? passwordValue
+          : null;
+
+      console.log(
+        "===================================="
+      );
+
+      console.log(
+        "AJOUT COMMERCIAL"
+      );
+
+      console.log(
+        "===================================="
+      );
 
       console.log({
-        nom: nom.trim(),
-        prenom: prenom.trim(),
-        email: email.trim(),
+        nom: nomValue,
+        prenom: prenomValue,
+        email: emailValue,
+        password:
+          passwordToSend !== null
+            ? "********"
+            : null,
       });
 
-      // =================================================
+      // =====================================================
       // APPEL API
-      // =================================================
+      // =====================================================
 
       const data = await apiFetch(
         "/api/admin/commerciaux",
@@ -78,29 +134,44 @@ export default function AjouterCommercial() {
           },
 
           body: JSON.stringify({
-            nom: nom.trim(),
-            prenom: prenom.trim(),
-            email: email.trim(),
-            password: password,
+            nom: nomValue,
+            prenom: prenomValue,
+            email: emailValue,
+            password: passwordToSend,
           }),
         }
       );
 
-      console.log("RÉPONSE :", data);
+      console.log(
+        "===================================="
+      );
 
-      // =================================================
+      console.log(
+        "RÉPONSE API"
+      );
+
+      console.log(
+        "===================================="
+      );
+
+      console.log(data);
+
+      // =====================================================
       // SUCCÈS
-      // =================================================
+      // =====================================================
 
       if (data.success) {
         Alert.alert(
           "Succès",
-          "Le commercial a été ajouté avec succès.",
+          "Le commercial a été ajouté avec succès.\n\nLe compte est actuellement inactif.",
           [
             {
               text: "OK",
+
               onPress: () => {
-                router.replace("/admin/commerciaux");
+                router.replace(
+                  "/admin/commerciaux"
+                );
               },
             },
           ]
@@ -108,6 +179,10 @@ export default function AjouterCommercial() {
 
         return;
       }
+
+      // =====================================================
+      // ERREUR API
+      // =====================================================
 
       Alert.alert(
         "Erreur",
@@ -117,19 +192,42 @@ export default function AjouterCommercial() {
 
     } catch (error) {
       console.error(
-        "❌ ERREUR AJOUT COMMERCIAL :",
-        error
+        "===================================="
       );
+
+      console.error(
+        "❌ ERREUR AJOUT COMMERCIAL"
+      );
+
+      console.error(
+        "===================================="
+      );
+
+      console.error(error);
 
       Alert.alert(
         "Erreur",
         error.message ||
-          "Une erreur est survenue."
+          "Une erreur est survenue lors de l'ajout du commercial."
       );
 
     } finally {
       setLoading(false);
     }
+  }
+
+  // =====================================================
+  // RETOUR
+  // =====================================================
+
+  function handleBack() {
+    if (loading) {
+      return;
+    }
+
+    router.replace(
+      "/admin/commerciaux"
+    );
   }
 
   // =====================================================
@@ -139,171 +237,297 @@ export default function AjouterCommercial() {
   return (
     <View style={styles.container}>
 
-      {/* ================================================= */}
-      {/* HEADER */}
-      {/* ================================================= */}
+      <ScrollView
+        contentContainerStyle={
+          styles.scrollContent
+        }
+        keyboardShouldPersistTaps="handled"
+      >
 
-      <View style={styles.header}>
+        {/* ================================================= */}
+        {/* HEADER */}
+        {/* ================================================= */}
 
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() =>
-            router.replace("/admin/commerciaux")
-          }
-        >
-          <Ionicons
-            name="arrow-back"
-            size={22}
-            color="#222"
-          />
-        </TouchableOpacity>
-
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.title}>
-            Ajouter un commercial
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Créer un nouveau compte commercial
-          </Text>
-        </View>
-
-      </View>
-
-      {/* ================================================= */}
-      {/* FORMULAIRE */}
-      {/* ================================================= */}
-
-      <View style={styles.form}>
-
-        {/* NOM */}
-
-        <Text style={styles.label}>
-          Nom
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Entrez le nom"
-          value={nom}
-          onChangeText={setNom}
-          autoCapitalize="words"
-        />
-
-        {/* PRÉNOM */}
-
-        <Text style={styles.label}>
-          Prénom
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Entrez le prénom"
-          value={prenom}
-          onChangeText={setPrenom}
-          autoCapitalize="words"
-        />
-
-        {/* EMAIL */}
-
-        <Text style={styles.label}>
-          Email
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="exemple@email.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        {/* MOT DE PASSE */}
-
-        <Text style={styles.label}>
-          Mot de passe
-        </Text>
-
-        <View style={styles.passwordContainer}>
-
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Mot de passe"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        <View style={styles.header}>
 
           <TouchableOpacity
-            style={styles.eyeButton}
-            onPress={() =>
-              setShowPassword(!showPassword)
-            }
+            style={styles.backButton}
+            onPress={handleBack}
+            disabled={loading}
           >
             <Ionicons
-              name={
-                showPassword
-                  ? "eye-off-outline"
-                  : "eye-outline"
-              }
-              size={23}
-              color="#666"
+              name="arrow-back"
+              size={22}
+              color="#222"
             />
           </TouchableOpacity>
 
-        </View>
-
-        {/* ================================================= */}
-        {/* BOUTONS */}
-        {/* ================================================= */}
-
-        <View style={styles.buttonsContainer}>
-
-          {/* ANNULER */}
-
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() =>
-              router.replace("/admin/commerciaux")
+          <View
+            style={
+              styles.headerTitleContainer
             }
-            disabled={loading}
           >
-            <Text style={styles.cancelButtonText}>
-              Annuler
+            <Text style={styles.title}>
+              Ajouter un commercial
             </Text>
-          </TouchableOpacity>
 
-          {/* CRÉER */}
-
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={handleAddCommercial}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons
-                  name="person-add-outline"
-                  size={20}
-                  color="#fff"
-                />
-
-                <Text style={styles.createButtonText}>
-                  Créer le commercial
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+            <Text style={styles.subtitle}>
+              Créer un nouveau compte commercial
+            </Text>
+          </View>
 
         </View>
 
-      </View>
+        {/* ================================================= */}
+        {/* FORMULAIRE */}
+        {/* ================================================= */}
+
+        <View style={styles.form}>
+
+          {/* ================================================= */}
+          {/* NOM */}
+          {/* ================================================= */}
+
+          <Text style={styles.label}>
+            Nom
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Entrez le nom"
+            placeholderTextColor="#999"
+            value={nom}
+            onChangeText={setNom}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          {/* ================================================= */}
+          {/* PRÉNOM */}
+          {/* ================================================= */}
+
+          <Text style={styles.label}>
+            Prénom
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Entrez le prénom"
+            placeholderTextColor="#999"
+            value={prenom}
+            onChangeText={setPrenom}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          {/* ================================================= */}
+          {/* EMAIL */}
+          {/* ================================================= */}
+
+          <Text style={styles.label}>
+            Email
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="exemple@email.com"
+            placeholderTextColor="#999"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          {/* ================================================= */}
+          {/* MOT DE PASSE */}
+          {/* ================================================= */}
+
+          <View
+            style={
+              styles.passwordLabelContainer
+            }
+          >
+
+            <Text style={styles.label}>
+              Mot de passe
+            </Text>
+
+            <Text
+              style={styles.optionalText}
+            >
+              Facultatif
+            </Text>
+
+          </View>
+
+          <View
+            style={
+              styles.passwordContainer
+            }
+          >
+
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Mot de passe (facultatif)"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() =>
+                setShowPassword(
+                  !showPassword
+                )
+              }
+              disabled={loading}
+            >
+
+              <Ionicons
+                name={
+                  showPassword
+                    ? "eye-off-outline"
+                    : "eye-outline"
+                }
+                size={23}
+                color="#666"
+              />
+
+            </TouchableOpacity>
+
+          </View>
+
+          <Text style={styles.helpText}>
+            Vous pouvez laisser ce champ vide.
+            Si vous renseignez un mot de passe,
+            il doit contenir au moins 8 caractères.
+          </Text>
+
+          {/* ================================================= */}
+          {/* INFORMATION COMPTE */}
+          {/* ================================================= */}
+
+          <View
+            style={
+              styles.infoContainer
+            }
+          >
+
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color="#555"
+            />
+
+            <Text
+              style={styles.infoText}
+            >
+              Le compte sera créé comme{" "}
+              <Text
+                style={styles.infoBold}
+              >
+                inactif
+              </Text>
+              . L'administrateur pourra
+              l'activer depuis la liste des
+              commerciaux.
+            </Text>
+
+          </View>
+
+          {/* ================================================= */}
+          {/* BOUTONS */}
+          {/* ================================================= */}
+
+          <View
+            style={
+              styles.buttonsContainer
+            }
+          >
+
+            {/* ANNULER */}
+
+            <TouchableOpacity
+              style={
+                styles.cancelButton
+              }
+              onPress={handleBack}
+              disabled={loading}
+            >
+
+              <Text
+                style={
+                  styles.cancelButtonText
+                }
+              >
+                Annuler
+              </Text>
+
+            </TouchableOpacity>
+
+            {/* CRÉER */}
+
+            <TouchableOpacity
+              style={[
+                styles.createButton,
+                loading &&
+                  styles.disabledButton,
+              ]}
+              onPress={
+                handleAddCommercial
+              }
+              disabled={loading}
+            >
+
+              {loading ? (
+                <>
+                  <ActivityIndicator
+                    color="#fff"
+                    size="small"
+                  />
+
+                  <Text
+                    style={
+                      styles.createButtonText
+                    }
+                  >
+                    Création...
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons
+                    name="person-add-outline"
+                    size={20}
+                    color="#fff"
+                  />
+
+                  <Text
+                    style={
+                      styles.createButtonText
+                    }
+                  >
+                    Créer le commercial
+                  </Text>
+                </>
+              )}
+
+            </TouchableOpacity>
+
+          </View>
+
+        </View>
+
+      </ScrollView>
 
     </View>
   );
@@ -318,7 +542,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f7f7f7",
+  },
+
+  scrollContent: {
     padding: 25,
+    paddingBottom: 40,
   },
 
   // =====================================================
@@ -381,6 +609,18 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
 
+  passwordLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  optionalText: {
+    fontSize: 12,
+    color: "#888",
+    marginBottom: 7,
+  },
+
   input: {
     height: 50,
     borderWidth: 1,
@@ -390,6 +630,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 18,
     backgroundColor: "#fff",
+    color: "#222",
   },
 
   // =====================================================
@@ -403,7 +644,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    marginBottom: 25,
+    marginBottom: 6,
     backgroundColor: "#fff",
   },
 
@@ -412,11 +653,45 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 14,
     fontSize: 16,
+    color: "#222",
   },
 
   eyeButton: {
     paddingHorizontal: 14,
     paddingVertical: 10,
+  },
+
+  helpText: {
+    fontSize: 12,
+    color: "#888",
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+
+  // =====================================================
+  // INFORMATION
+  // =====================================================
+
+  infoContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 25,
+    gap: 8,
+  },
+
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 19,
+  },
+
+  infoBold: {
+    fontWeight: "700",
+    color: "#333",
   },
 
   // =====================================================
@@ -426,6 +701,7 @@ const styles = StyleSheet.create({
   buttonsContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
+    alignItems: "center",
     gap: 10,
   },
 
@@ -437,6 +713,7 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#fff",
   },
 
   cancelButtonText: {
@@ -456,9 +733,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  disabledButton: {
+    opacity: 0.7,
+  },
+
   createButtonText: {
     color: "#fff",
     fontSize: 15,
     fontWeight: "600",
   },
+
 });

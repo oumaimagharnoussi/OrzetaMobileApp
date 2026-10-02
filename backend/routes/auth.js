@@ -110,7 +110,7 @@ router.post(
             role,
             actif
           )
-          VALUES (?, ?, ?, ?, 'commercial', TRUE)
+          VALUES (?, ?, ?, ?, 'commercial', 0)
           `,
           [
             nom.trim(),

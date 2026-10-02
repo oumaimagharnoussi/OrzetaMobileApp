@@ -1015,7 +1015,7 @@ export default function PDFScreen() {
 
     <br />
 
-    Name: ${esc(commercialName)}
+    Name: Olfa BEN HAJEL
 
     <br />
 
@@ -1993,7 +1993,7 @@ export default function PDFScreen() {
           </Text>
 
           <Text>
-            Name: {commercialName}
+            Name: Olfa BEN HAJEL
           </Text>
 
           <Text>

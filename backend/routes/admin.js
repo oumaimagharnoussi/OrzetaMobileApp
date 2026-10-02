@@ -79,6 +79,11 @@ router.post(
 
     try {
 
+      console.log("====================================");
+      console.log("AJOUT COMMERCIAL");
+      console.log("BODY REÇU :", req.body);
+      console.log("====================================");
+
       const {
         nom,
         prenom,
@@ -86,98 +91,120 @@ router.post(
         password
       } = req.body;
 
+      // Nom, prénom et email obligatoires
       if (
         !nom ||
         !prenom ||
-        !email ||
-        !password
+        !email
       ) {
-
         return res.status(400).json({
           success: false,
           message:
-            "Tous les champs sont obligatoires"
+            "Le nom, le prénom et l'email sont obligatoires"
         });
-
       }
 
-      if (password.length < 8) {
+      const nomValue = nom.trim();
+      const prenomValue = prenom.trim();
+      const emailValue = email.trim().toLowerCase();
 
-        return res.status(400).json({
-          success: false,
-          message:
-            "Le mot de passe doit contenir au moins 8 caractères"
-        });
-
-      }
-
+      // Vérifier si l'email existe déjà
       const db = req.app.locals.db;
 
-      const normalizedEmail =
-        email.trim().toLowerCase();
-
-      const [existing] =
-        await db.query(
-          `
-          SELECT id
-          FROM users
-          WHERE email = ?
-          `,
-          [normalizedEmail]
-        );
+      const [existing] = await db.query(
+        `
+        SELECT id
+        FROM users
+        WHERE email = ?
+        `,
+        [emailValue]
+      );
 
       if (existing.length > 0) {
-
         return res.status(409).json({
           success: false,
-          message:
-            "Cet email existe déjà"
+          message: "Cet email existe déjà"
         });
-
       }
 
-      const hashedPassword =
-        await bcrypt.hash(
-          password,
-          10
-        );
+      // Mot de passe OPTIONNEL
+      let hashedPassword = null;
 
-      const [result] =
-        await db.query(
-          `
-          INSERT INTO users
-          (
-            nom,
-            prenom,
-            email,
-            password,
-            role,
-            actif
-          )
-          VALUES (?, ?, ?, ?, 'commercial', TRUE)
-          `,
-          [
-            nom.trim(),
-            prenom.trim(),
-            normalizedEmail,
-            hashedPassword
-          ]
-        );
+      if (
+        password !== null &&
+        password !== undefined &&
+        String(password).trim() !== ""
+      ) {
+
+        const passwordValue =
+          String(password).trim();
+
+        // Si un mot de passe est renseigné
+        // il doit contenir au moins 8 caractères
+        if (passwordValue.length < 8) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Si vous renseignez un mot de passe, il doit contenir au moins 8 caractères"
+          });
+        }
+
+        hashedPassword =
+          await bcrypt.hash(
+            passwordValue,
+            10
+          );
+      }
+
+      console.log(
+        "PASSWORD :",
+        hashedPassword
+          ? "Mot de passe renseigné"
+          : "NULL"
+      );
+
+      // Création du commercial
+      // actif = 0 => compte inactif
+      const [result] = await db.query(
+        `
+        INSERT INTO users
+        (
+          nom,
+          prenom,
+          email,
+          password,
+          role,
+          actif
+        )
+        VALUES (?, ?, ?, ?, 'commercial', 0)
+        `,
+        [
+          nomValue,
+          prenomValue,
+          emailValue,
+          hashedPassword
+        ]
+      );
+
+      console.log(
+        "✅ COMMERCIAL CRÉÉ ID :",
+        result.insertId
+      );
 
       res.status(201).json({
 
         success: true,
 
         message:
-          "Commercial créé avec succès",
+          "Commercial créé avec succès. Le compte est inactif.",
 
         commercial: {
           id: result.insertId,
-          nom: nom.trim(),
-          prenom: prenom.trim(),
-          email: normalizedEmail,
+          nom: nomValue,
+          prenom: prenomValue,
+          email: emailValue,
           role: "commercial",
-          actif: true
+          actif: false
         }
 
       });
@@ -185,7 +212,7 @@ router.post(
     } catch (error) {
 
       console.error(
-        "CREATE COMMERCIAL ERROR:",
+        "❌ CREATE COMMERCIAL ERROR:",
         error
       );
 

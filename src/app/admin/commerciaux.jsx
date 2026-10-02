@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useState,
+} from "react";
 
 import {
   View,
@@ -12,69 +15,145 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import {
+  router,
+  useFocusEffect,
+} from "expo-router";
+
 import { apiFetch } from "../../services/api";
 
 export default function Commerciaux() {
   const [commerciaux, setCommerciaux] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
 
   // =====================================================
   // CHARGER LES COMMERCIAUX
   // =====================================================
 
-  async function loadCommerciaux() {
-    try {
-      setLoading(true);
+  const loadCommerciaux = useCallback(
+    async (showLoader = true) => {
+      try {
+        if (showLoader) {
+          setLoading(true);
+        }
 
-      const data = await apiFetch(
-        "/api/admin/commerciaux"
-      );
+        const data = await apiFetch(
+          "/api/admin/commerciaux"
+        );
 
-      setCommerciaux(data.commerciaux || []);
+        setCommerciaux(
+          Array.isArray(data.commerciaux)
+            ? data.commerciaux
+            : []
+        );
 
-    } catch (error) {
-      console.error(
-        "Erreur chargement commerciaux :",
-        error
-      );
+      } catch (error) {
+        console.error(
+          "❌ ERREUR CHARGEMENT COMMERCIAUX :",
+          error
+        );
 
-      Alert.alert(
-        "Erreur",
-        error.message || "Impossible de charger les commerciaux."
-      );
+        Alert.alert(
+          "Erreur",
+          error.message ||
+            "Impossible de charger les commerciaux."
+        );
 
-    } finally {
-      setLoading(false);
-    }
-  }
+      } finally {
+        if (showLoader) {
+          setLoading(false);
+        }
+      }
+    },
+    []
+  );
 
-  useEffect(() => {
-    loadCommerciaux();
-  }, []);
+  // =====================================================
+  // CHARGER À CHAQUE RETOUR SUR LA PAGE
+  // =====================================================
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCommerciaux();
+
+      return () => {};
+    }, [loadCommerciaux])
+  );
 
   // =====================================================
   // ACTIVER / DESACTIVER
   // =====================================================
 
-  async function toggleCommercial(item) {
-    try {
-      const endpoint = item.actif
-        ? `/api/admin/commerciaux/${item.id}/desactiver`
-        : `/api/admin/commerciaux/${item.id}/activer`;
+  function toggleCommercial(item) {
+    const isActive = Number(item.actif) === 1;
 
-      await apiFetch(endpoint, {
-        method: "PUT",
-      });
+    const action = isActive
+      ? "désactiver"
+      : "activer";
 
-      await loadCommerciaux();
+    const endpoint = isActive
+      ? `/api/admin/commerciaux/${item.id}/desactiver`
+      : `/api/admin/commerciaux/${item.id}/activer`;
 
-    } catch (error) {
-      Alert.alert(
-        "Erreur",
-        error.message || "Une erreur est survenue."
-      );
-    }
+    Alert.alert(
+      isActive
+        ? "Désactiver le commercial"
+        : "Activer le commercial",
+
+      isActive
+        ? `Voulez-vous désactiver le compte de ${item.prenom || ""} ${item.nom || ""} ?`
+        : `Voulez-vous activer le compte de ${item.prenom || ""} ${item.nom || ""} ?`,
+
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+
+        {
+          text:
+            isActive
+              ? "Désactiver"
+              : "Activer",
+
+          style:
+            isActive
+              ? "destructive"
+              : "default",
+
+          onPress: async () => {
+            try {
+              setActionLoading(item.id);
+
+              await apiFetch(
+                endpoint,
+                {
+                  method: "PUT",
+                }
+              );
+
+              await loadCommerciaux(false);
+
+            } catch (error) {
+              console.error(
+                `❌ ERREUR POUR ${action} LE COMMERCIAL :`,
+                error
+              );
+
+              Alert.alert(
+                "Erreur",
+                error.message ||
+                  `Impossible de ${action} le commercial.`
+              );
+
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ]
+    );
   }
 
   // =====================================================
@@ -82,38 +161,89 @@ export default function Commerciaux() {
   // =====================================================
 
   function handleAddCommercial() {
-    router.push("/admin/ajouter-commercial");
+    router.push(
+      "/admin/ajouter-commercial"
+    );
+  }
+
+  // =====================================================
+  // RETOUR ADMIN
+  // =====================================================
+
+  function handleBack() {
+    router.replace("/admin");
   }
 
   // =====================================================
   // AFFICHAGE D'UNE LIGNE
   // =====================================================
 
-  function renderCommercial({ item, index }) {
+  function renderCommercial({
+    item,
+    index,
+  }) {
+    const isActive =
+      Number(item.actif) === 1;
+
+    const isActionLoading =
+      actionLoading === item.id;
+
     return (
       <View
         style={[
           styles.tableRow,
-          index % 2 === 0 && styles.tableRowAlternate,
+
+          index % 2 === 0 &&
+            styles.tableRowAlternate,
         ]}
       >
 
+        {/* ================================================= */}
         {/* NOM */}
-        <View style={[styles.cell, styles.nameCell]}>
-          <Text style={styles.cellText}>
+        {/* ================================================= */}
+
+        <View
+          style={[
+            styles.cell,
+            styles.nameCell,
+          ]}
+        >
+          <Text
+            style={styles.cellText}
+            numberOfLines={1}
+          >
             {item.nom || "-"}
           </Text>
         </View>
 
+        {/* ================================================= */}
         {/* PRÉNOM */}
-        <View style={[styles.cell, styles.firstNameCell]}>
-          <Text style={styles.cellText}>
+        {/* ================================================= */}
+
+        <View
+          style={[
+            styles.cell,
+            styles.firstNameCell,
+          ]}
+        >
+          <Text
+            style={styles.cellText}
+            numberOfLines={1}
+          >
             {item.prenom || "-"}
           </Text>
         </View>
 
+        {/* ================================================= */}
         {/* EMAIL */}
-        <View style={[styles.cell, styles.emailCell]}>
+        {/* ================================================= */}
+
+        <View
+          style={[
+            styles.cell,
+            styles.emailCell,
+          ]}
+        >
           <Text
             style={styles.cellText}
             numberOfLines={1}
@@ -122,20 +252,31 @@ export default function Commerciaux() {
           </Text>
         </View>
 
+        {/* ================================================= */}
         {/* STATUT */}
-        <View style={[styles.cell, styles.statusCell]}>
+        {/* ================================================= */}
+
+        <View
+          style={[
+            styles.cell,
+            styles.statusCell,
+          ]}
+        >
           <View
             style={[
               styles.statusBadge,
-              item.actif
+
+              isActive
                 ? styles.activeBadge
                 : styles.inactiveBadge,
             ]}
           >
+
             <View
               style={[
                 styles.statusDot,
-                item.actif
+
+                isActive
                   ? styles.activeDot
                   : styles.inactiveDot,
               ]}
@@ -144,47 +285,83 @@ export default function Commerciaux() {
             <Text
               style={[
                 styles.statusText,
-                item.actif
+
+                isActive
                   ? styles.activeText
                   : styles.inactiveText,
               ]}
             >
-              {item.actif
+              {isActive
                 ? "Actif"
-                : "Désactivé"}
+                : "Inactif"}
             </Text>
+
           </View>
         </View>
 
+        {/* ================================================= */}
         {/* ACTION */}
-        <View style={[styles.cell, styles.actionCell]}>
+        {/* ================================================= */}
+
+        <View
+          style={[
+            styles.cell,
+            styles.actionCell,
+          ]}
+        >
+
           <TouchableOpacity
             style={[
               styles.actionButton,
-              item.actif
+
+              isActive
                 ? styles.disableButton
                 : styles.enableButton,
+
+              isActionLoading &&
+                styles.disabledButton,
             ]}
             onPress={() =>
               toggleCommercial(item)
             }
+            disabled={isActionLoading}
           >
-            <Ionicons
-              name={
-                item.actif
-                  ? "close-circle-outline"
-                  : "checkmark-circle-outline"
-              }
-              size={18}
-              color="#fff"
-            />
 
-            <Text style={styles.actionButtonText}>
-              {item.actif
-                ? "Désactiver"
-                : "Activer"}
-            </Text>
+            {isActionLoading ? (
+
+              <ActivityIndicator
+                size="small"
+                color="#fff"
+              />
+
+            ) : (
+
+              <>
+                <Ionicons
+                  name={
+                    isActive
+                      ? "close-circle-outline"
+                      : "checkmark-circle-outline"
+                  }
+                  size={18}
+                  color="#fff"
+                />
+
+                <Text
+                  style={
+                    styles.actionButtonText
+                  }
+                >
+                  {isActive
+                    ? "Désactiver"
+                    : "Activer"}
+                </Text>
+              </>
+
+            )}
+
           </TouchableOpacity>
+
         </View>
 
       </View>
@@ -198,6 +375,7 @@ export default function Commerciaux() {
   if (loading) {
     return (
       <View style={styles.loading}>
+
         <ActivityIndicator
           size="large"
           color="#222"
@@ -206,6 +384,7 @@ export default function Commerciaux() {
         <Text style={styles.loadingText}>
           Chargement des commerciaux...
         </Text>
+
       </View>
     );
   }
@@ -217,52 +396,63 @@ export default function Commerciaux() {
   return (
     <View style={styles.container}>
 
-{/* ================================================= */}
-{/* HEADER */}
-{/* ================================================= */}
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
 
-<View style={styles.header}>
+      <View style={styles.header}>
 
-  {/* Retour vers Admin */}
-  <TouchableOpacity
-    style={styles.backButton}
-    onPress={() => router.replace("/admin")}
-  >
-    <Ionicons
-      name="arrow-back"
-      size={24}
-      color="#333"
-    />
-  </TouchableOpacity>
+        {/* RETOUR */}
 
-  {/* Titre */}
-  <View style={styles.headerTitleContainer}>
-    <Text style={styles.title}>
-      Commerciaux
-    </Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+        >
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color="#333"
+          />
+        </TouchableOpacity>
 
-    <Text style={styles.subtitle}>
-      Gestion des commerciaux
-    </Text>
-  </View>
+        {/* TITRE */}
 
-  {/* Ajouter un commercial */}
-  <TouchableOpacity
-    style={styles.addButton}
-    onPress={handleAddCommercial}
-  >
-    <Ionicons
-      name="add"
-      size={22}
-      color="#fff"
-    />
+        <View
+          style={
+            styles.headerTitleContainer
+          }
+        >
+          <Text style={styles.title}>
+            Commerciaux
+          </Text>
 
-    <Text style={styles.addButtonText}>
-      Ajouter un commercial
-    </Text>
-  </TouchableOpacity>
+          <Text style={styles.subtitle}>
+            Gestion des commerciaux
+          </Text>
+        </View>
 
-</View>
+        {/* AJOUTER */}
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAddCommercial}
+        >
+
+          <Ionicons
+            name="add"
+            size={22}
+            color="#fff"
+          />
+
+          <Text
+            style={styles.addButtonText}
+          >
+            Ajouter un commercial
+          </Text>
+
+        </TouchableOpacity>
+
+      </View>
 
       {/* ================================================= */}
       {/* TABLEAU */}
@@ -270,14 +460,18 @@ export default function Commerciaux() {
 
       <ScrollView
         horizontal
-        showsHorizontalScrollIndicator={true}
+        showsHorizontalScrollIndicator
       >
 
         <View style={styles.table}>
 
-          {/* EN-TÊTE DU TABLEAU */}
+          {/* ================================================= */}
+          {/* EN-TÊTE */}
+          {/* ================================================= */}
 
           <View style={styles.tableHeader}>
+
+            {/* NOM */}
 
             <View
               style={[
@@ -285,10 +479,14 @@ export default function Commerciaux() {
                 styles.nameCell,
               ]}
             >
-              <Text style={styles.headerText}>
+              <Text
+                style={styles.headerText}
+              >
                 Nom
               </Text>
             </View>
+
+            {/* PRÉNOM */}
 
             <View
               style={[
@@ -296,10 +494,14 @@ export default function Commerciaux() {
                 styles.firstNameCell,
               ]}
             >
-              <Text style={styles.headerText}>
+              <Text
+                style={styles.headerText}
+              >
                 Prénom
               </Text>
             </View>
+
+            {/* EMAIL */}
 
             <View
               style={[
@@ -307,10 +509,14 @@ export default function Commerciaux() {
                 styles.emailCell,
               ]}
             >
-              <Text style={styles.headerText}>
+              <Text
+                style={styles.headerText}
+              >
                 Email
               </Text>
             </View>
+
+            {/* STATUT */}
 
             <View
               style={[
@@ -318,10 +524,14 @@ export default function Commerciaux() {
                 styles.statusCell,
               ]}
             >
-              <Text style={styles.headerText}>
+              <Text
+                style={styles.headerText}
+              >
                 Statut
               </Text>
             </View>
+
+            {/* ACTION */}
 
             <View
               style={[
@@ -329,18 +539,26 @@ export default function Commerciaux() {
                 styles.actionCell,
               ]}
             >
-              <Text style={styles.headerText}>
+              <Text
+                style={styles.headerText}
+              >
                 Action
               </Text>
             </View>
 
           </View>
 
-          {/* LIGNES */}
+          {/* ================================================= */}
+          {/* LISTE */}
+          {/* ================================================= */}
 
           {commerciaux.length === 0 ? (
 
-            <View style={styles.emptyContainer}>
+            <View
+              style={
+                styles.emptyContainer
+              }
+            >
 
               <Ionicons
                 name="people-outline"
@@ -348,9 +566,36 @@ export default function Commerciaux() {
                 color="#aaa"
               />
 
-              <Text style={styles.emptyText}>
+              <Text
+                style={styles.emptyText}
+              >
                 Aucun commercial trouvé.
               </Text>
+
+              <TouchableOpacity
+                style={
+                  styles.emptyAddButton
+                }
+                onPress={
+                  handleAddCommercial
+                }
+              >
+
+                <Ionicons
+                  name="add"
+                  size={18}
+                  color="#fff"
+                />
+
+                <Text
+                  style={
+                    styles.emptyAddButtonText
+                  }
+                >
+                  Ajouter un commercial
+                </Text>
+
+              </TouchableOpacity>
 
             </View>
 
@@ -361,10 +606,14 @@ export default function Commerciaux() {
               keyExtractor={(item) =>
                 String(item.id)
               }
-              renderItem={renderCommercial}
+              renderItem={
+                renderCommercial
+              }
+              showsVerticalScrollIndicator
               refreshing={loading}
-              onRefresh={loadCommerciaux}
-              showsVerticalScrollIndicator={true}
+              onRefresh={() =>
+                loadCommerciaux()
+              }
             />
 
           )}
@@ -383,6 +632,10 @@ export default function Commerciaux() {
 
 const styles = StyleSheet.create({
 
+  // =====================================================
+  // CONTAINER
+  // =====================================================
+
   container: {
     flex: 1,
     backgroundColor: "#f7f7f7",
@@ -395,9 +648,22 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 25,
+  },
+
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f1f1",
+    marginRight: 15,
+  },
+
+  headerTitleContainer: {
+    flex: 1,
   },
 
   title: {
@@ -491,7 +757,7 @@ const styles = StyleSheet.create({
   },
 
   // =====================================================
-  // LARGEURS DES COLONNES
+  // LARGEURS
   // =====================================================
 
   nameCell: {
@@ -586,6 +852,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#2e7d32",
   },
 
+  disabledButton: {
+    opacity: 0.7,
+  },
+
   actionButtonText: {
     color: "#fff",
     fontSize: 13,
@@ -597,15 +867,33 @@ const styles = StyleSheet.create({
   // =====================================================
 
   emptyContainer: {
-    height: 250,
+    height: 300,
     justifyContent: "center",
     alignItems: "center",
   },
 
   emptyText: {
     marginTop: 10,
+    marginBottom: 18,
     color: "#888",
     fontSize: 15,
+  },
+
+  emptyAddButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#222",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+
+  emptyAddButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   // =====================================================
@@ -624,17 +912,4 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f1f1",
-    marginRight: 15,
-  },
-  
-  headerTitleContainer: {
-    flex: 1,
-  },
 });

@@ -28,6 +28,13 @@ const app = express();
 const PORT = Number(process.env.PORT || 5000);
 
 
+
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ensuite seulement tes routes
+
 // ============================================================
 // MIDDLEWARE
 // ============================================================
@@ -1523,52 +1530,82 @@ app.post(
   authenticateToken,
   requireAdmin,
   async (req, res) => {
-
     try {
+      console.log("========== AJOUT COMMERCIAL ==========");
+      console.log("BODY :", req.body);
 
-      const {
-        nom,
-        prenom,
-        email,
-        password
-      } = req.body;
+      const nom = req.body.nom;
+      const prenom = req.body.prenom;
+      const email = req.body.email;
+      const password = req.body.password;
+
+      // ==========================
+      // SEULEMENT 3 CHAMPS OBLIGATOIRES
+      // ==========================
 
       if (
         !nom ||
         !prenom ||
-        !email ||
-        !password
+        !email
       ) {
         return res.status(400).json({
           success: false,
-          message: "Tous les champs sont obligatoires"
+          message: "Nom, prénom et email sont obligatoires"
         });
       }
 
-      // Vérifier si l'email existe
+      const nomValue = nom.trim();
+      const prenomValue = prenom.trim();
+      const emailValue = email.trim().toLowerCase();
+
+      // ==========================
+      // EMAIL EXISTANT ?
+      // ==========================
+
       const [existing] = await pool.query(
         `
         SELECT id
         FROM users
         WHERE email = ?
         `,
-        [email]
+        [emailValue]
       );
 
       if (existing.length > 0) {
-
         return res.status(409).json({
           success: false,
           message: "Cet email existe déjà"
         });
-
       }
 
-      // Hasher le mot de passe
-      const hashedPassword =
-        await bcrypt.hash(password, 10);
+      // ==========================
+      // PASSWORD OPTIONNEL
+      // ==========================
 
-      // Créer le commercial
+      let passwordValue = null;
+
+      if (
+        password !== null &&
+        password !== undefined &&
+        String(password).trim() !== ""
+      ) {
+        passwordValue = await bcrypt.hash(
+          String(password).trim(),
+          10
+        );
+      }
+
+      console.log(
+        "PASSWORD :",
+        passwordValue === null
+          ? "NULL"
+          : "HASHÉ"
+      );
+
+      // ==========================
+      // INSERT
+      // ==========================
+
       const [result] = await pool.query(
         `
         INSERT INTO users
@@ -1580,32 +1617,35 @@ app.post(
           role,
           actif
         )
-        VALUES (?, ?, ?, ?, 'commercial', TRUE)
+        VALUES (?, ?, ?, ?, 'commercial', 0)
         `,
         [
-          nom,
-          prenom,
-          email,
-          hashedPassword
+          nomValue,
+          prenomValue,
+          emailValue,
+          passwordValue
         ]
       );
 
-      res.status(201).json({
+      console.log(
+        "✅ COMMERCIAL CRÉÉ ID :",
+        result.insertId
+      );
+
+      return res.status(201).json({
         success: true,
         message: "Commercial créé avec succès",
-        commercialId: result.insertId
+        commercialId: result.insertId,
+        actif: 0
       });
 
     } catch (error) {
+      console.error("❌ ERREUR SQL :", error);
 
-      console.error(
-        "CREATE COMMERCIAL ERROR:",
-        error
-      );
-
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: "Erreur serveur"
+        message: "Erreur serveur",
+        error: error.message
       });
     }
   }
