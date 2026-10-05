@@ -26,6 +26,12 @@ export default function AjouterCommercial() {
   const [loading, setLoading] = useState(false);
 
   // =====================================================
+  // MESSAGE DE SUCCÈS
+  // =====================================================
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // =====================================================
   // AJOUTER COMMERCIAL
   // =====================================================
 
@@ -70,7 +76,6 @@ export default function AjouterCommercial() {
 
     // =====================================================
     // MOT DE PASSE FACULTATIF
-    // S'il est renseigné => minimum 8 caractères
     // =====================================================
 
     if (
@@ -160,22 +165,20 @@ export default function AjouterCommercial() {
       // SUCCÈS
       // =====================================================
 
-      if (data.success) {
-        Alert.alert(
-          "Succès",
-          "Le commercial a été ajouté avec succès.\n\nLe compte est actuellement inactif.",
-          [
-            {
-              text: "OK",
+      if (data?.success === true) {
+        setLoading(false);
 
-              onPress: () => {
-                router.replace(
-                  "/admin/commerciaux"
-                );
-              },
-            },
-          ]
+        setSuccessMessage(
+          "Le commercial a été ajouté avec succès. Le compte est actuellement inactif."
         );
+
+        // =====================================================
+        // RETOUR VERS LA LISTE APRÈS 2 SECONDES
+        // =====================================================
+
+        setTimeout(() => {
+          router.replace("/admin/commerciaux");
+        }, 2000);
 
         return;
       }
@@ -186,7 +189,7 @@ export default function AjouterCommercial() {
 
       Alert.alert(
         "Erreur",
-        data.message ||
+        data?.message ||
           "Impossible d'ajouter le commercial."
       );
 
@@ -237,6 +240,49 @@ export default function AjouterCommercial() {
   return (
     <View style={styles.container}>
 
+      {/* ================================================= */}
+      {/* ALERTE SUCCÈS */}
+      {/* ================================================= */}
+
+      {successMessage !== "" && (
+        <View style={styles.successAlert}>
+
+          <View style={styles.successIconContainer}>
+            <Ionicons
+              name="checkmark-circle"
+              size={26}
+              color="#2e7d32"
+            />
+          </View>
+
+          <View style={styles.successContent}>
+
+            <Text style={styles.successTitle}>
+              Succès
+            </Text>
+
+            <Text style={styles.successText}>
+              {successMessage}
+            </Text>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.successCloseButton}
+            onPress={() => {
+              setSuccessMessage("");
+            }}
+          >
+            <Ionicons
+              name="close"
+              size={20}
+              color="#555"
+            />
+          </TouchableOpacity>
+
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={
           styles.scrollContent
@@ -267,6 +313,7 @@ export default function AjouterCommercial() {
               styles.headerTitleContainer
             }
           >
+
             <Text style={styles.title}>
               Ajouter un commercial
             </Text>
@@ -274,6 +321,7 @@ export default function AjouterCommercial() {
             <Text style={styles.subtitle}>
               Créer un nouveau compte commercial
             </Text>
+
           </View>
 
         </View>
@@ -431,15 +479,19 @@ export default function AjouterCommercial() {
             <Text
               style={styles.infoText}
             >
+
               Le compte sera créé comme{" "}
+
               <Text
                 style={styles.infoBold}
               >
                 inactif
               </Text>
+
               . L'administrateur pourra
               l'activer depuis la liste des
               commerciaux.
+
             </Text>
 
           </View>
@@ -490,6 +542,7 @@ export default function AjouterCommercial() {
 
               {loading ? (
                 <>
+
                   <ActivityIndicator
                     color="#fff"
                     size="small"
@@ -502,9 +555,13 @@ export default function AjouterCommercial() {
                   >
                     Création...
                   </Text>
+
                 </>
+
               ) : (
+
                 <>
+
                   <Ionicons
                     name="person-add-outline"
                     size={20}
@@ -518,7 +575,9 @@ export default function AjouterCommercial() {
                   >
                     Créer le commercial
                   </Text>
+
                 </>
+
               )}
 
             </TouchableOpacity>
@@ -539,6 +598,10 @@ export default function AjouterCommercial() {
 
 const styles = StyleSheet.create({
 
+  // =====================================================
+  // CONTAINER
+  // =====================================================
+
   container: {
     flex: 1,
     backgroundColor: "#f7f7f7",
@@ -547,6 +610,50 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 25,
     paddingBottom: 40,
+  },
+
+  // =====================================================
+  // ALERTE SUCCÈS
+  // =====================================================
+
+  successAlert: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    borderWidth: 1,
+    borderColor: "#A5D6A7",
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginHorizontal: 25,
+    marginTop: 20,
+    marginBottom: 5,
+  },
+
+  successIconContainer: {
+    marginRight: 12,
+  },
+
+  successContent: {
+    flex: 1,
+  },
+
+  successTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#2e7d32",
+    marginBottom: 3,
+  },
+
+  successText: {
+    fontSize: 13,
+    color: "#444",
+    lineHeight: 18,
+  },
+
+  successCloseButton: {
+    marginLeft: 10,
+    padding: 4,
   },
 
   // =====================================================
@@ -744,3 +851,4 @@ const styles = StyleSheet.create({
   },
 
 });
+

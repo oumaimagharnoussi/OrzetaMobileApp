@@ -683,7 +683,6 @@ app.get(
 app.post(
   "/api/visiteurs",
   authenticateToken,
-  requireUser,
   async (req, res) => {
 
     try {
@@ -694,28 +693,51 @@ app.post(
         email
       } = req.body;
 
-      // Le commercial connecté
+      // Commercial connecté
       const commercialId = req.user.id;
 
       console.log("Utilisateur connecté :", req.user);
-
       console.log(
         "Visiteur créé par commercial ID :",
         commercialId
       );
 
-      // Ton INSERT ici
-      // ...
+      // INSERT
+      const [result] = await pool.query(
+        `
+        INSERT INTO visiteurs (
+          nom,
+          prenom,
+          email,
+          commercial_id
+        )
+        VALUES (?, ?, ?, ?)
+        `,
+        [
+          nom,
+          prenom,
+          email,
+          commercialId
+        ]
+      );
+      
+      const visiteurId = result.insertId;
 
-      res.json({
+console.log("=======================================");
+console.log("VISITEUR CRÉÉ ID :", visiteurId);
+console.log("=======================================");
+      
+      res.status(200).json({
         success: true,
         message: "Visiteur ajouté",
+        id: visiteurId,
+        visitor_id: visiteurId,
         commercial_id: commercialId
       });
 
     } catch (error) {
 
-      console.error(error);
+      console.error("ERREUR AJOUT VISITEUR :", error);
 
       res.status(500).json({
         success: false,
@@ -731,664 +753,61 @@ app.post(
 
 app.post(
   "/api/visiteurs",
+  authenticateToken,
   async (req, res) => {
+
     try {
-      const body =
-        req.body || {};
 
-      console.log("");
-      console.log(
-        "======================================="
-      );
-      console.log(
-        "NOUVEAU VISITEUR"
-      );
-      console.log(
-        "======================================="
-      );
-
-      // ======================================================
-      // INFORMATIONS GENERALES
-      // ======================================================
-
-      const nom =
-        cleanString(
-          body.nom
-        );
-
-      const prenom =
-        cleanString(
-          body.prenom
-        );
-
-      const email =
-        cleanString(
-          body.email
-        );
-
-      const origine =
-        cleanString(
-          body.origine
-        );
-
-      const indicatif =
-        cleanString(
-          body.indicatif
-        );
-
-      const telephone =
-        cleanString(
-          body.telephone
-        );
-
-      const societe =
-        cleanString(
-          body.societe ??
-          body.company
-        );
-
-      const adresse_societe =
-        cleanString(
-          body.adresse_societe
-        );
-
-      const fonction =
-        cleanString(
-          body.fonction
-        );
-
-      const genre =
-        cleanString(
-          body.genre
-        );
-
-      const langue_communication =
-        cleanString(
-          body.langue_communication
-        );
-
-      const profile =
-        cleanString(
-          body.profile ??
-          body.profil
-        );
-
-      const site =
-        cleanString(
-          body.site
-        );
-
-      const site_web =
-        cleanString(
-          body.site_web ??
-          body.siteWeb
-        );
-
-      const nom_entreprise =
-        cleanString(
-          body.nom_entreprise
-        );
-
-      const contact_professionnel =
-        cleanString(
-          body.contact_professionnel
-        );
-
-      const periode_volume =
-        cleanString(
-          body.periode_volume
-        );
-
-      // ======================================================
-      // TYPE COMMANDE
-      // ======================================================
-
-      const type_commande =
-        normalizeTypeCommande(
-          body.type_commande
-        );
-
-      // ======================================================
-      // QUALIFICATION
-      // ======================================================
-
-      let qualification = null;
-
-      if (
-        body.qualification !==
-          undefined &&
-        body.qualification !==
-          null &&
-        body.qualification !== ""
-      ) {
-        const q =
-          Number(
-            body.qualification
-          );
-
-        if (
-          !Number.isInteger(q) ||
-          q < 1 ||
-          q > 5
-        ) {
-          return res.status(400).json({
-            success: false,
-
-            message:
-              "La qualification doit être comprise entre 1 et 5.",
-          });
-        }
-
-        qualification = q;
-      }
-
-      // ======================================================
-      // VRAC
-      // ======================================================
-
-      const categorie =
-        cleanString(
-          body.categorie
-        );
-
-      const qualite_grade =
-        cleanString(
-          body.qualite_grade
-        );
-
-      let volume_estime = null;
-
-      if (
-        body.volume_estime !==
-          undefined &&
-        body.volume_estime !==
-          null &&
-        body.volume_estime !== ""
-      ) {
-        volume_estime =
-          Number(
-            body.volume_estime
-          );
-      }
-
-      const destination =
-        cleanString(
-          body.destination
-        );
-
-      const destinationport =
-        cleanString(
-          body.destinationport
-        );
-
-      const incoterm =
-        cleanString(
-          body.incoterm
-        );
-
-      const format_livraison =
-        cleanString(
-          body.format_livraison
-        );
-
-      const frequence =
-        cleanString(
-          body.frequence ??
-          body.frequence_commande
-        );
-
-      const exigences =
-        cleanJson(
-          body.exigences ??
-          body.exigences_specifiques
-        );
-
-      const infos =
-        cleanString(
-          body.infos ??
-          body.informations_complementaires
-        );
-
-      // ======================================================
-      // CONDITIONNE
-      // ======================================================
-
-      const pays_conditionne =
-        cleanString(
-          body.pays_conditionne
-        );
-
-      const canal =
-        cleanString(
-          body.canal
-        );
-
-      const canal_distribution =
-        cleanString(
-          body.canal_distribution
-        );
-
-      const volumes_conditionne =
-        cleanString(
-          body.volumes_conditionne ??
-          body.volumes_estimes ??
-          body.volumes ??
-          body.volumes_souhaites
-        );
-
-      // ======================================================
-      // TYPE EMBALLAGE
-      // ======================================================
-
-      let type_emballage = null;
-
-      if (
-        body.type_emballage !==
-          undefined &&
-        body.type_emballage !==
-          null
-      ) {
-        try {
-          type_emballage =
-            typeof body.type_emballage ===
-            "string"
-              ? JSON.stringify(
-                  JSON.parse(
-                    body.type_emballage
-                  )
-                )
-              : JSON.stringify(
-                  body.type_emballage
-                );
-        } catch (error) {
-          return res.status(400).json({
-            success: false,
-
-            message:
-              "Le champ type_emballage contient un JSON invalide.",
-          });
-        }
-      }
-
-      // ======================================================
-      // PACKAGING
-      // ======================================================
-
-      const packaging =
-        cleanJson(
-          body.packaging ??
-          body.formatsEmballage
-        );
-
-      // ======================================================
-      // FORMATS
-      // ======================================================
-
-      const formats_souhaites =
-        cleanJson(
-          body.formats_souhaites ??
-          body.formatsSouhaites
-        );
-
-      // ======================================================
-      // MARQUE
-      // ======================================================
-
-      const type_marque =
-        cleanString(
-          body.type_marque
-        );
-
-      const nom_label =
-        cleanString(
-          body.nom_label
-        );
-
-      const marche_cible =
-        cleanString(
-          body.marche_cible
-        );
-
-      const quantite_prevue =
-        cleanString(
-          body.quantite_prevue
-        );
-
-      const nouvelle_marque_formats =
-        cleanJson(
-          body.nouvelle_marque_formats
-        );
-
-      const nouvelle_marque_design_conditionnement =
-        cleanString(
-          body.nouvelle_marque_design_conditionnement
-        );
-
-      // ======================================================
-      // CONTENEUR
-      // ======================================================
-
-      const type_conteneur =
-        cleanString(
-          body.type_conteneur
-        );
-
-      const nombre_fcl =
-        body.nombre_fcl ===
-          undefined ||
-        body.nombre_fcl ===
-          null ||
-        body.nombre_fcl === ""
-          ? null
-          : Number(
-              body.nombre_fcl
-            );
-
-      const nombre_palettes =
-        body.nombre_palettes ===
-          undefined ||
-        body.nombre_palettes ===
-          null ||
-        body.nombre_palettes === ""
-          ? null
-          : Number(
-              body.nombre_palettes
-            );
-
-      // ======================================================
-      // CERTIFICATIONS
-      // ======================================================
-
-      const certifications_requises =
-        cleanJson(
-          body.certifications_requises
-        );
-
-      // ======================================================
-      // EXIGENCES SPECIFIQUES
-      // ======================================================
-
-      const exigences_specifiques =
-        cleanJson(
-          body.exigences_specifiques
-        );
-
-      // ======================================================
-      // COMMANDES MULTIPLES
-      // ======================================================
-
-      let commandes = null;
-
-      try {
-        commandes =
-          normalizeCommandes(
-            body.commandes,
-            type_commande
-          );
-      } catch (error) {
-        return res.status(400).json({
-          success: false,
-
-          message:
-            error.message,
-        });
-      }
-
-      const commandesSql =
-        commandes === null
-          ? null
-          : JSON.stringify(
-              commandes
-            );
-
-      console.log(
-        "TYPE COMMANDE :",
-        type_commande
-      );
-
-      console.log(
-        "NOMBRE COMMANDES :",
-        commandes
-          ? commandes.length
-          : 0
-      );
-
-      // ======================================================
-      // SQL
-      // ======================================================
-
-      const sql = `
-  INSERT INTO visiteurs (
-    nom,
-    prenom,
-    email,
-    origine,
-    indicatif,
-    telephone,
-    societe,
-    adresse_societe,
-    fonction,
-    site_web,
-    nom_entreprise,
-    langue_communication,
-    profile,
-    type_commande,
-    categorie,
-    qualite_grade,
-    volume_estime,
-    destination,
-    destinationport,
-    incoterm,
-    format_livraison,
-    frequence,
-    exigences,
-    infos,
-    site,
-    pays_conditionne,
-    canal,
-    canal_distribution,
-    volumes_conditionne,
-    type_emballage,
-    packaging,
-    formats_souhaites,
-    contact_professionnel,
-    type_marque,
-    nom_label,
-    marche_cible,
-    quantite_prevue,
-    nouvelle_marque_formats,
-    nouvelle_marque_design_conditionnement,
-    type_conteneur,
-    nombre_fcl,
-    nombre_palettes,
-    certifications_requises,
-    periode_volume,
-    genre,
-    exigences_specifiques,
-    qualification,
-    commandes,
-
-    nom,
-    prenom,
-    email,
-    commercial_id
-  )
-  VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-    ?, ?, ?, ?
-  )
-`;
-      const values = [
+      const {
         nom,
         prenom,
-        email,
-        origine,
-        indicatif,
-        telephone,
-        societe,
-        adresse_societe,
-        fonction,
-        site_web,
-        nom_entreprise,
-        langue_communication,
-        profile,
-        type_commande,
-        categorie,
-        qualite_grade,
-        volume_estime,
-        destination,
-        destinationport,
-        incoterm,
-        format_livraison,
-        frequence,
-        exigences,
-        infos,
-        site,
-        pays_conditionne,
-        canal,
-        canal_distribution,
-        volumes_conditionne,
-        type_emballage,
-        packaging,
-        formats_souhaites,
-        contact_professionnel,
-        type_marque,
-        nom_label,
-        marche_cible,
-        quantite_prevue,
-        nouvelle_marque_formats,
-        nouvelle_marque_design_conditionnement,
-        type_conteneur,
-        nombre_fcl,
-        nombre_palettes,
-        certifications_requises,
-        periode_volume,
-        genre,
-        exigences_specifiques,
-        qualification,
-        commandesSql,
-        nom,
-    prenom,
-    email,
-    commercialId,
-      ];
+        email
+      } = req.body;
 
-      console.log("=======================================");
-      console.log("DEBUG SQL INSERT");
-      console.log("Nombre de valeurs :", values.length);
-      
-      const nombrePlaceholders = (sql.match(/\?/g) || []).length;
-      
-      console.log("Nombre de ? :", nombrePlaceholders);
-      
-      if (nombrePlaceholders !== values.length) {
-        console.error("❌ ERREUR : nombre de colonnes/valeurs différent !");
-        console.error("Placeholders :", nombrePlaceholders);
-        console.error("Values :", values.length);
-        console.error("Valeurs :", values);
-      
-        return res.status(500).json({
-          success: false,
-          error: "Nombre de colonnes SQL différent du nombre de valeurs",
-          placeholders: nombrePlaceholders,
-          values: values.length
-        });
-      }
-      
-      console.log("✅ Nombre de placeholders :", nombrePlaceholders);
-      console.log("✅ Nombre de valeurs :", values.length);
-      // ======================================================
-      // INSERT
-      // ======================================================
+      const commercialId = req.user.id;
 
-      const [result] =
-        await pool.execute(
-          sql,
-          values
-        );
+      console.log("Utilisateur connecté :", req.user);
 
-      const insertedId =
-        result.insertId;
-
-      // ======================================================
-      // REFERENCE
-      // ======================================================
-
-      const reference =
-        generateReference(
-          insertedId,
-          type_commande
-        );
-
-      await pool.execute(
+      const [result] = await pool.query(
         `
-          UPDATE visiteurs
-          SET reference = ?
-          WHERE id = ?
+        INSERT INTO visiteurs (
+          nom,
+          prenom,
+          email,
+          commercial_id
+        )
+        VALUES (?, ?, ?, ?)
         `,
         [
-          reference,
-          insertedId,
+          nom,
+          prenom,
+          email,
+          commercialId
         ]
       );
 
-      // ======================================================
-      // RESPONSE
-      // ======================================================
+      const visiteurId = result.insertId;
 
-      res.status(201).json({
+      console.log("VISITEUR CRÉÉ ID :", visiteurId);
+
+      return res.status(200).json({
         success: true,
-
-        message:
-          "Visiteur enregistré avec succès.",
-
-        id:
-          insertedId,
-
-        reference,
-
-        type_commande,
-
-        qualification,
-
-        commandes:
-          commandes || [],
+        message: "Visiteur ajouté",
+        id: visiteurId,
+        visitor_id: visiteurId,
+        commercial_id: commercialId
       });
 
     } catch (error) {
-      console.error(
-        "======================================="
-      );
 
       console.error(
-        "❌ ERREUR AJOUT VISITEUR"
-      );
-
-      console.error(
-        "======================================="
-      );
-
-      console.error(
+        "ERREUR AJOUT VISITEUR :",
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-
-        message:
-          "Erreur lors de l'enregistrement du visiteur.",
-
-        error:
-          error.message,
-
-        sqlMessage:
-          error.sqlMessage,
-
-        sqlCode:
-          error.code,
+        message: "Erreur serveur"
       });
     }
   }
@@ -1651,93 +1070,96 @@ app.post(
   }
 );
 
-app.put(
-  "/api/admin/commerciaux/:id/desactiver",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const { id } = req.params;
-
-      const [result] = await pool.query(
-        `
-        UPDATE users
-        SET actif = FALSE
-        WHERE id = ?
-        AND role = 'commercial'
-        `,
-        [id]
-      );
-
-      if (result.affectedRows === 0) {
-
-        return res.status(404).json({
-          success: false,
-          message: "Commercial introuvable"
-        });
-
-      }
-
-      res.json({
-        success: true,
-        message: "Commercial désactivé"
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        success: false,
-        message: "Erreur serveur"
-      });
-    }
-  }
-);
+// =====================================================
+// ACTIVER UN COMMERCIAL
+// =====================================================
 
 app.put(
   "/api/admin/commerciaux/:id/activer",
   authenticateToken,
   requireAdmin,
   async (req, res) => {
-
     try {
-
       const { id } = req.params;
+
+      console.log("🟢 ACTIVATION COMMERCIAL :", id);
 
       const [result] = await pool.query(
         `
         UPDATE users
-        SET actif = TRUE
+        SET actif = 1
         WHERE id = ?
         AND role = 'commercial'
         `,
         [id]
       );
 
-      if (result.affectedRows === 0) {
+      console.log("RESULTAT UPDATE :", result);
 
+      if (result.affectedRows === 0) {
         return res.status(404).json({
           success: false,
-          message: "Commercial introuvable"
+          message: "Commercial introuvable.",
         });
-
       }
 
-      res.json({
+      return res.json({
         success: true,
-        message: "Commercial activé"
+        message: "Commercial activé avec succès.",
       });
 
     } catch (error) {
+      console.error("❌ ERREUR ACTIVATION :", error);
 
-      console.error(error);
-
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: "Erreur serveur"
+        message: error.message,
+      });
+    }
+  }
+);
+
+
+app.put(
+  "/api/admin/commerciaux/:id/desactiver",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      console.log("🔴 DESACTIVATION COMMERCIAL :", id);
+
+      const [result] = await pool.query(
+        `
+        UPDATE users
+        SET actif = 0
+        WHERE id = ?
+        AND role = 'commercial'
+        `,
+        [id]
+      );
+
+      console.log("RESULTAT UPDATE :", result);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Commercial introuvable.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Commercial désactivé avec succès.",
+      });
+
+    } catch (error) {
+      console.error("❌ ERREUR DESACTIVATION :", error);
+
+      return res.status(500).json({
+        success: false,
+        message: error.message,
       });
     }
   }
@@ -1853,9 +1275,7 @@ app.get(
 // GET VISITEUR PAR ID
 // ============================================================
 
-app.get(
-  "/api/visiteurs/:id",
-  async (req, res) => {
+app.get("/api/visiteurs/:id", authenticateToken, async (req, res) => {
     try {
       const id =
         Number(

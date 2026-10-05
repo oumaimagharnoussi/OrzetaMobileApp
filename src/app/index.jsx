@@ -14,7 +14,8 @@ import { useRouter } from "expo-router";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-
+import { apiFetch } from "../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // =====================================================
 // URL BACKEND
 // =====================================================
@@ -2071,20 +2072,28 @@ nombre_palettes:
     // ===================================================
 
     try {
+      const token = await AsyncStorage.getItem("token");
+    
+      console.log(
+        "TOKEN :",
+        token ? "PRÉSENT" : "ABSENT"
+      );
+    
+      if (!token) {
+        throw new Error("Authentification requise");
+      }
+    
       const response = await fetch(
         `${API_URL}/api/visiteurs`,
         {
           method: "POST",
-
+    
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-
-          body:
-            JSON.stringify(
-              visitorData
-            ),
+    
+          body: JSON.stringify(visitorData),
         }
       );
 

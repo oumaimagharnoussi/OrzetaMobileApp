@@ -310,58 +310,75 @@ export default function Commerciaux() {
           ]}
         >
 
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
+<TouchableOpacity
+  style={[
+    styles.actionButton,
+    isActive
+      ? styles.disableButton
+      : styles.enableButton,
+    isActionLoading && styles.disabledButton,
+  ]}
+  onPress={async () => {
+    console.log("🟢 BOUTON CLIQUÉ");
+    console.log("ID COMMERCIAL :", item.id);
+    console.log("ACTIF :", item.actif);
 
-              isActive
-                ? styles.disableButton
-                : styles.enableButton,
+    try {
+      setActionLoading(item.id);
 
-              isActionLoading &&
-                styles.disabledButton,
-            ]}
-            onPress={() =>
-              toggleCommercial(item)
-            }
-            disabled={isActionLoading}
-          >
+      const endpoint = isActive
+        ? `/api/admin/commerciaux/${item.id}/desactiver`
+        : `/api/admin/commerciaux/${item.id}/activer`;
 
-            {isActionLoading ? (
+      console.log("📡 ENVOI :", endpoint);
 
-              <ActivityIndicator
-                size="small"
-                color="#fff"
-              />
+      const result = await apiFetch(endpoint, {
+        method: "PUT",
+      });
 
-            ) : (
+      console.log("✅ RÉPONSE API :", result);
 
-              <>
-                <Ionicons
-                  name={
-                    isActive
-                      ? "close-circle-outline"
-                      : "checkmark-circle-outline"
-                  }
-                  size={18}
-                  color="#fff"
-                />
+      await loadCommerciaux(false);
 
-                <Text
-                  style={
-                    styles.actionButtonText
-                  }
-                >
-                  {isActive
-                    ? "Désactiver"
-                    : "Activer"}
-                </Text>
-              </>
+    } catch (error) {
+      console.error("❌ ERREUR API :", error);
 
-            )}
+      Alert.alert(
+        "Erreur",
+        error.message || "Erreur lors de la modification."
+      );
 
-          </TouchableOpacity>
+    } finally {
+      setActionLoading(null);
+    }
+  }}
+  disabled={isActionLoading}
+>
+  {isActionLoading ? (
+    <ActivityIndicator
+      size="small"
+      color="#fff"
+    />
+  ) : (
+    <>
+      <Ionicons
+        name={
+          isActive
+            ? "close-circle-outline"
+            : "checkmark-circle-outline"
+        }
+        size={18}
+        color="#fff"
+      />
 
+      <Text style={styles.actionButtonText}>
+        {isActive
+          ? "Désactiver"
+          : "Activer"}
+      </Text>
+    </>
+  )}
+</TouchableOpacity>
         </View>
 
       </View>

@@ -60,19 +60,23 @@ import React, {
   
     async function login(email, password) {
       const data = await apiLogin(email, password);
-  
+    
       if (data.success && data.user) {
         setUser(data.user);
-      
+    
         await AsyncStorage.setItem(
           "user",
           JSON.stringify(data.user)
         );
+    
+        await AsyncStorage.setItem(
+          "token",
+          data.token
+        );
       }
-  
+    
       return data;
     }
-  
     // ==========================================================
     // LOGOUT
     // ==========================================================

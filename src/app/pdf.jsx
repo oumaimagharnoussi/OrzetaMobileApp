@@ -214,96 +214,90 @@ export default function PDFScreen() {
 
   useEffect(() => {
     let active = true;
-
+  
     const loadVisiteur = async () => {
-      if (!visitorId) {
+      if (!id) {
         setLoading(false);
-
+  
         Alert.alert(
           "Erreur",
           "Identifiant du visiteur introuvable."
         );
-
+  
         return;
       }
-
+  
       try {
+        console.log("=======================================");
+        console.log("CHARGEMENT VISITEUR");
+        console.log("Visitor ID :", id);
+        console.log("TYPE ID :", typeof id);
+        console.log("=======================================");
+      
+        const token = await AsyncStorage.getItem("token");
+      
         console.log(
-          "======================================="
+          "TOKEN PDF :",
+          token ? "PRÉSENT" : "ABSENT"
         );
-
-        console.log(
-          "CHARGEMENT VISITEUR"
-        );
-
-        console.log(
-          "Visitor ID :",
-          visitorId
-        );
-
-        console.log(
-          "======================================="
-        );
-
+      
+        if (!token) {
+          throw new Error("Token d'authentification introuvable.");
+        }
+      
         const response = await fetch(
-          `${API_URL}/api/visiteurs/${encodeURIComponent(
-            visitorId
-          )}`
+          `${API_URL}/api/visiteurs/${encodeURIComponent(id)}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
-
+      
         const data = await response.json();
-
+      
         console.log(
           "GET VISITEUR STATUS :",
           response.status
         );
-
+      
         console.log(
           "GET VISITEUR RESPONSE :",
           data
         );
-
+      
         if (!response.ok) {
           throw new Error(
             data?.message ||
               "Impossible de charger le visiteur."
           );
         }
-
+      
         if (!data?.success) {
           throw new Error(
             data?.message ||
               "Le serveur n'a pas retourné les données du visiteur."
           );
         }
-
-        /*
-         * Le nouveau server.js retourne :
-         *
-         * {
-         *   success: true,
-         *   data: visitor,
-         *   visitor: visitor
-         * }
-         *
-         * On accepte les deux.
-         */
-
+      
         const visitorData =
           data?.data ||
           data?.visitor ||
           data?.visiteur ||
           data;
-
+      
         if (active) {
           setVisiteur(visitorData);
         }
+      
       } catch (error) {
         console.error(
           "ERREUR CHARGEMENT VISITEUR :",
           error
         );
-
+      
         if (active) {
           Alert.alert(
             "Erreur",
@@ -311,20 +305,20 @@ export default function PDFScreen() {
               "Impossible de charger le visiteur."
           );
         }
-      } finally {
+      
+} finally {
         if (active) {
           setLoading(false);
         }
       }
     };
-
+  
     loadVisiteur();
-
+  
     return () => {
       active = false;
     };
-  }, [visitorId]);
-
+  }, [id]);
   // ===================================================
   // NOM CLIENT
   // ===================================================
