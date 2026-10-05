@@ -1145,6 +1145,190 @@ export default function PDFScreen() {
     }
   };
 
+  const demanderValidation = async (channel) => {
+    try {
+      if (!visiteur) {
+        throw new Error(
+          "Aucune donnée client disponible."
+        );
+      }
+  
+      // ================================
+      // VÉRIFICATION EMAIL
+      // ================================
+  
+      if (
+        channel === "email" &&
+        !visiteur.email?.trim()
+      ) {
+        throw new Error(
+          "L'adresse email du visiteur est manquante."
+        );
+      }
+  
+      // ================================
+      // VÉRIFICATION WHATSAPP
+      // ================================
+  
+      if (channel === "whatsapp") {
+        const telephone = getPhone(visiteur);
+  
+        if (!telephone) {
+          throw new Error(
+            "Le numéro WhatsApp du visiteur est manquant."
+          );
+        }
+      }
+  
+      setSending(true);
+  
+      // ================================
+      // GÉNÉRER LE HTML
+      // ================================
+  
+      const content = await html();
+  
+      // ================================
+      // CRÉER LA DEMANDE DE VALIDATION
+      // ================================
+  
+      const response = await fetch(
+        `${API_URL}/api/validation/create`,
+        {
+          method: "POST",
+  
+          headers: {
+            "Content-Type": "application/json",
+          },
+  
+          body: JSON.stringify({
+            visitorId: Number(visitorId),
+  
+            reference,
+  
+            channel,
+  
+            pdfHtml: content,
+          }),
+        }
+      );
+  
+      const data = await response.json();
+  
+      console.log(
+        "======================================="
+      );
+  
+      console.log(
+        "RÉPONSE VALIDATION"
+      );
+  
+      console.log(
+        "STATUS :",
+        response.status
+      );
+  
+      console.log(
+        "DATA :",
+        data
+      );
+  
+      console.log(
+        "======================================="
+      );
+  
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data?.message ||
+            "Impossible de créer le lien de validation."
+        );
+      }
+  
+      const validationUrl =
+        data.validationUrl;
+  
+      // ================================
+      // MESSAGE POUR LE VALIDATEUR
+      // ================================
+  
+      const message =
+        `Bonjour,\n\n` +
+        `Une fiche OLIVED est prête pour validation.\n\n` +
+        `Référence : ${reference}\n\n` +
+        `Veuillez consulter la fiche et choisir VALIDER ou REFUSER.\n\n` +
+        `Lien de validation :\n` +
+        `${validationUrl}`;
+  
+      // ================================
+      // NUMÉRO DE VALIDATION
+      // ================================
+  
+      const validationPhone =
+        "21654839761";
+  
+      const whatsappUrl =
+        `https://wa.me/${validationPhone}?text=` +
+        encodeURIComponent(message);
+  
+      // ================================
+      // OUVRIR WHATSAPP
+      // ================================
+  
+      if (Platform.OS === "web") {
+  
+        window.open(
+          whatsappUrl,
+          "_blank"
+        );
+  
+      } else {
+  
+        const supported =
+          await Linking.canOpenURL(
+            whatsappUrl
+          );
+  
+        if (!supported) {
+          throw new Error(
+            "WhatsApp n'est pas disponible sur cet appareil."
+          );
+        }
+  
+        await Linking.openURL(
+          whatsappUrl
+        );
+      }
+  
+      setShowSendModal(false);
+  
+      Alert.alert(
+        "Validation demandée",
+        "La fiche a été envoyée pour validation."
+      );
+  
+    } catch (error) {
+  
+      console.error(
+        "ERREUR DEMANDE VALIDATION :",
+        error
+      );
+  
+      Alert.alert(
+        "Erreur",
+        error?.message ||
+          "Impossible de créer la demande de validation."
+      );
+  
+    } finally {
+  
+      setSending(false);
+  
+    }
+  };
+
   // ===================================================
   // ENVOYER WHATSAPP
   // ===================================================
@@ -1173,16 +1357,20 @@ export default function PDFScreen() {
   // ===================================================
   // MSG WHATSAPP
   // ===================================================
-  const message =
+
+const message =
   `Dear ${nomComplet},\n\n` +
   `I hope you are doing well.\n\n` +
-  `Please find attached our quotation for the requested olive oil products.\n` +
-  `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
-  `Please do not hesitate to contact us should you need any further information or clarification.\n` +
+  `Please find attached our quotation for the requested olive oil products.\n\n` +
+  `The offer includes the product specifications, packaging options, quantities, and corresponding prices.\n\n` +
+  `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
+  `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
   `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
   `Reference: ${reference}\n\n` +
   `Best regards,\n` +
   `OLIVED`;
+
+
   
       // Nettoyage du numéro :
       
@@ -2131,8 +2319,8 @@ export default function PDFScreen() {
               }
               onPress={() => {
                 setShowSendModal(false);
-
-                envoyerParEmail();
+              
+                demanderValidation("email");
               }}
             >
 
@@ -2179,8 +2367,8 @@ export default function PDFScreen() {
               }
               onPress={() => {
                 setShowSendModal(false);
-
-                envoyerParWhatsApp();
+              
+                demanderValidation("whatsapp");
               }}
             >
 

@@ -17,7 +17,7 @@ const FormData = require("form-data");
 const { Readable } = require("stream");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
-
+const crypto = require("crypto");
 
 // ============================================================
 // APP
@@ -572,53 +572,37 @@ async function generatePdfFromHtml(
 // ============================================================
 
 function createEmailTransporter() {
-  const host =
-    process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
 
-  const port =
-    Number(
-      process.env.SMTP_PORT || 465
-    );
-
-  const secure =
-    String(
-      process.env.SMTP_SECURE ||
-        "true"
-    ).toLowerCase() ===
-    "true";
-
-  const user =
-    process.env.SMTP_USER;
-
-  const pass =
-    process.env.SMTP_PASS;
-
-  if (!host) {
-    throw new Error(
-      "SMTP_HOST est manquant dans .env"
-    );
-  }
-
-  if (!user) {
+  if (!smtpUser) {
     throw new Error(
       "SMTP_USER est manquant dans .env"
     );
   }
 
-  if (!pass) {
+  if (!smtpPass) {
     throw new Error(
-      "SMTP_PASS est manquant dans .env"
+      "SMTP_PASSWORD est manquant dans .env"
     );
   }
 
   return nodemailer.createTransport({
-    host,
-    port,
-    secure,
+    host:
+      process.env.SMTP_HOST ||
+      "smtp.hostinger.com",
+
+    port:
+      Number(process.env.SMTP_PORT || 465),
+
+    secure:
+      String(
+        process.env.SMTP_SECURE
+      ).toLowerCase() === "true",
 
     auth: {
-      user,
-      pass,
+      user: smtpUser,
+      pass: smtpPass,
     },
   });
 }
@@ -672,6 +656,1184 @@ app.get(
 
         message:
           "Erreur de connexion à MySQL.",
+
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+// ============================================================
+// CRÉER UNE DEMANDE DE VALIDATION PDF
+// ============================================================
+
+app.post("/api/validation/create", async (req, res) => {
+  try {
+    const {
+      visitorId,
+      reference,
+      channel,
+      pdfHtml,
+    } = req.body;
+
+    console.log("=======================================");
+    console.log("CRÉATION VALIDATION PDF");
+    console.log("Visitor ID :", visitorId);
+    console.log("Reference :", reference);
+    console.log("Channel :", channel);
+    console.log("PDF HTML :", pdfHtml?.length);
+    console.log("=======================================");
+
+    if (!visitorId) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifiant visiteur manquant.",
+      });
+    }
+
+    if (!reference) {
+      return res.status(400).json({
+        success: false,
+        message: "Référence manquante.",
+      });
+    }
+
+    if (
+      channel !== "whatsapp" &&
+      channel !== "email"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Canal d'envoi invalide.",
+      });
+    }
+
+    if (
+      !pdfHtml ||
+      typeof pdfHtml !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "HTML du PDF manquant.",
+      });
+    }
+
+    // ✅ IMPORTANT : pool et non db
+    const [visiteurs] = await pool.query(
+      `
+        SELECT *
+        FROM visiteurs
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [visitorId]
+    );
+
+    if (!visiteurs.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Visiteur introuvable.",
+      });
+    }
+
+    const visiteur = visiteurs[0];
+
+    const token = crypto
+      .randomBytes(32)
+      .toString("hex");
+
+    const expiresAt = new Date(
+      Date.now() + 48 * 60 * 60 * 1000
+    );
+
+    // ✅ IMPORTANT : pool et non db
+    await pool.query(
+      `
+        INSERT INTO pdf_validations
+        (
+          token,
+          visitor_id,
+          reference,
+          channel,
+          pdf_html,
+          status,
+          expires_at
+        )
+        VALUES (?, ?, ?, ?, ?, 'pending', ?)
+      `,
+      [
+        token,
+        visitorId,
+        reference,
+        channel,
+        pdfHtml,
+        expiresAt,
+      ]
+    );
+
+    const appPublicUrl =
+      process.env.APP_PUBLIC_URL;
+
+    if (!appPublicUrl) {
+      throw new Error(
+        "APP_PUBLIC_URL est manquant dans le fichier .env"
+      );
+    }
+
+    const validationUrl =
+      `${appPublicUrl}/validation/${token}`;
+
+    console.log("=======================================");
+    console.log("VALIDATION CRÉÉE");
+    console.log("Token :", token);
+    console.log("URL :", validationUrl);
+    console.log(
+      "Visiteur :",
+      visiteur.nom,
+      visiteur.prenom
+    );
+    console.log("Canal :", channel);
+    console.log("=======================================");
+
+    return res.json({
+      success: true,
+      message: "Lien de validation créé.",
+      validationUrl,
+      token,
+      reference,
+      channel,
+    });
+
+  } catch (error) {
+    console.error("=======================================");
+    console.error(
+      "ERREUR CREATE VALIDATION :",
+      error
+    );
+    console.error("=======================================");
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Erreur lors de la création du lien de validation.",
+      error: error.message,
+    });
+  }
+});
+
+// ============================================================
+// PAGE DE VALIDATION PDF
+// ============================================================
+
+app.get("/validation/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    console.log("=======================================");
+    console.log("OUVERTURE LIEN VALIDATION");
+    console.log("Token :", token);
+    console.log("=======================================");
+
+    const [rows] = await pool.query(
+      `
+      SELECT
+        id,
+        visitor_id,
+        reference,
+        channel,
+        pdf_html,
+        status,
+        expires_at
+      FROM pdf_validations
+      WHERE token = ?
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>Validation OLIVED</title>
+        </head>
+
+        <body style="
+          margin:0;
+          padding:40px;
+          font-family:Arial,sans-serif;
+          text-align:center;
+          background:#f5f5f5;
+        ">
+          <h1>Lien invalide</h1>
+          <p>Le lien de validation n'existe pas.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    const validation = rows[0];
+
+    // Vérification expiration
+    if (
+      validation.expires_at &&
+      new Date(validation.expires_at) < new Date()
+    ) {
+      return res.status(410).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>Validation OLIVED</title>
+        </head>
+
+        <body style="
+          margin:0;
+          padding:40px;
+          font-family:Arial,sans-serif;
+          text-align:center;
+          background:#f5f5f5;
+        ">
+          <h1>Lien expiré</h1>
+          <p>Ce lien de validation a expiré.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    // ========================================================
+    // GÉNÉRER LE PDF
+    // ========================================================
+
+    const pdfBuffer =
+      await generatePdfFromHtml(
+        validation.pdf_html
+      );
+
+    // ========================================================
+    // ENVOYER LE PDF DIRECTEMENT AU NAVIGATEUR
+    // ========================================================
+
+    res.setHeader(
+      "Content-Type",
+      "text/html; charset=utf-8"
+    );
+
+    const pdfBase64 =
+      pdfBuffer.toString("base64");
+
+    const isPending =
+      validation.status === "pending";
+
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="fr">
+
+      <head>
+
+        <meta charset="UTF-8">
+
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        >
+
+        <title>
+          Validation PDF OLIVED - ${validation.reference}
+        </title>
+
+        <style>
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+          }
+
+          body {
+            font-family:
+              Arial,
+              Helvetica,
+              sans-serif;
+
+            background: #eeeeee;
+
+            display: flex;
+            flex-direction: column;
+
+            min-height: 100vh;
+          }
+
+          .header {
+            background: white;
+
+            padding: 18px 25px;
+
+            border-bottom:
+              1px solid #ddd;
+
+            display: flex;
+
+            justify-content:
+              space-between;
+
+            align-items: center;
+
+            gap: 20px;
+
+            flex-wrap: wrap;
+          }
+
+          .title {
+            font-size: 20px;
+
+            font-weight: 700;
+
+            color: #222;
+          }
+
+          .reference {
+            font-size: 14px;
+
+            color: #666;
+          }
+
+          .pdf-container {
+            flex: 1;
+
+            padding: 20px;
+
+            display: flex;
+
+            justify-content: center;
+
+            min-height: 0;
+          }
+
+          .pdf-frame {
+            width: 100%;
+
+            max-width: 1200px;
+
+            height: calc(100vh - 150px);
+
+            min-height: 600px;
+
+            border: none;
+
+            background: white;
+
+            box-shadow:
+              0 2px 15px
+              rgba(0,0,0,0.15);
+
+            border-radius: 6px;
+          }
+
+          .actions {
+            background: white;
+
+            padding: 18px 25px;
+
+            border-top:
+              1px solid #ddd;
+
+            display: flex;
+
+            justify-content: center;
+
+            gap: 20px;
+
+            position: sticky;
+
+            bottom: 0;
+
+            z-index: 100;
+          }
+
+          button {
+            border: none;
+
+            padding:
+              14px 45px;
+
+            border-radius: 7px;
+
+            font-size: 16px;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+            min-width: 180px;
+          }
+
+          .validate {
+            background: #198754;
+
+            color: white;
+          }
+
+          .validate:hover {
+            background: #157347;
+          }
+
+          .reject {
+            background: #dc3545;
+
+            color: white;
+          }
+
+          .reject:hover {
+            background: #bb2d3b;
+          }
+
+          .disabled {
+            background: #999;
+
+            color: white;
+
+            cursor: not-allowed;
+          }
+
+          .status {
+            text-align: center;
+
+            padding: 15px;
+
+            font-weight: 700;
+
+            background: #fff3cd;
+
+            color: #856404;
+          }
+
+          @media(max-width:700px) {
+
+            .pdf-container {
+              padding: 5px;
+            }
+
+            .pdf-frame {
+              height:
+                calc(100vh - 190px);
+
+              min-height: 500px;
+            }
+
+            .actions {
+              flex-direction: column;
+            }
+
+            button {
+              width: 100%;
+            }
+
+          }
+
+        </style>
+
+      </head>
+
+      <body>
+
+        <div class="header">
+
+          <div class="title">
+            OLIVED - Validation de la fiche
+          </div>
+
+          <div class="reference">
+            Référence :
+            <strong>
+              ${validation.reference}
+            </strong>
+          </div>
+
+        </div>
+
+
+        ${
+          !isPending
+            ? `
+              <div class="status">
+                Cette demande a déjà été
+                ${
+                  validation.status === "validated"
+                    ? "VALIDÉE"
+                    : "REFUSÉE"
+                }.
+              </div>
+            `
+            : ""
+        }
+
+
+        <div class="pdf-container">
+
+          <iframe
+            class="pdf-frame"
+            src="data:application/pdf;base64,${pdfBase64}"
+          ></iframe>
+
+        </div>
+
+
+        ${
+          isPending
+            ? `
+              <div class="actions">
+
+                <button
+                  class="validate"
+                  onclick="valider()"
+                >
+                  ✓ VALIDER
+                </button>
+
+                <button
+                  class="reject"
+                  onclick="refuser()"
+                >
+                  ✕ REFUSER
+                </button>
+
+              </div>
+            `
+            : ""
+        }
+
+
+        <script>
+
+          async function valider() {
+
+            const confirmation =
+              confirm(
+                "Voulez-vous VALIDER cette fiche ?"
+              );
+
+            if (!confirmation) {
+              return;
+            }
+
+            try {
+
+              const response =
+                await fetch(
+                  "/api/validation/${token}/validate",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type":
+                        "application/json"
+                    }
+                  }
+                );
+
+              const data =
+                await response.json();
+
+              if (!response.ok || !data.success) {
+
+                alert(
+                  data.message ||
+                  "Erreur lors de la validation."
+                );
+
+                return;
+              }
+
+              alert(
+                "✓ Fiche validée avec succès."
+              );
+
+              window.location.reload();
+
+            } catch (error) {
+
+              console.error(error);
+
+              alert(
+                "Erreur de connexion au serveur."
+              );
+
+            }
+
+          }
+
+
+          async function refuser() {
+
+            const confirmation =
+              confirm(
+                "Voulez-vous REFUSER cette fiche ?"
+              );
+
+            if (!confirmation) {
+              return;
+            }
+
+            try {
+
+              const response =
+                await fetch(
+                  "/api/validation/${token}/reject",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type":
+                        "application/json"
+                    }
+                  }
+                );
+
+              const data =
+                await response.json();
+
+              if (!response.ok || !data.success) {
+
+                alert(
+                  data.message ||
+                  "Erreur lors du refus."
+                );
+
+                return;
+              }
+
+              alert(
+                "La fiche a été refusée."
+              );
+
+              window.location.reload();
+
+            } catch (error) {
+
+              console.error(error);
+
+              alert(
+                "Erreur de connexion au serveur."
+              );
+
+            }
+
+          }
+
+        </script>
+
+      </body>
+
+      </html>
+    `);
+
+  } catch (error) {
+
+    console.error(
+      "ERREUR PAGE VALIDATION :",
+      error
+    );
+
+    return res.status(500).send(`
+      <h1>Erreur serveur</h1>
+      <p>
+        Impossible d'afficher la fiche.
+      </p>
+    `);
+
+  }
+});
+// ============================================================
+// VALIDER UNE DEMANDE DE VALIDATION PDF
+// ============================================================
+
+app.post(
+  "/api/validation/:token/validate",
+  async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      console.log("=======================================");
+      console.log("VALIDATION PDF");
+      console.log("Token :", token);
+      console.log("=======================================");
+
+      // --------------------------------------------------------
+      // 1. Récupérer la validation
+      // --------------------------------------------------------
+
+      const [rows] = await pool.query(
+        `
+        SELECT *
+        FROM pdf_validations
+        WHERE token = ?
+        LIMIT 1
+        `,
+        [token]
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Demande de validation introuvable.",
+        });
+      }
+
+      const validation = rows[0];
+
+      // --------------------------------------------------------
+      // 2. Vérifier le statut
+      // --------------------------------------------------------
+
+      if (validation.status !== "pending") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cette fiche a déjà été traitée.",
+          status: validation.status,
+        });
+      }
+
+      // --------------------------------------------------------
+      // 3. Vérifier expiration
+      // --------------------------------------------------------
+
+      if (
+        validation.expires_at &&
+        new Date(validation.expires_at) < new Date()
+      ) {
+        return res.status(410).json({
+          success: false,
+          message:
+            "Le lien de validation a expiré.",
+        });
+      }
+
+      // --------------------------------------------------------
+      // 4. Récupérer le visiteur
+      // --------------------------------------------------------
+
+const visiteur =
+  await getVisitorById(
+    validation.visitor_id
+  );
+
+// Nom complet du visiteur
+const nomComplet =
+  `${visiteur.prenom || ""} ${visiteur.nom || ""}`.trim();
+
+console.log(
+  "Visiteur :",
+  nomComplet
+);
+
+console.log(
+  "Canal :",
+  validation.channel
+);
+
+
+      console.log(
+        "Canal :",
+        validation.channel
+      );
+
+      // --------------------------------------------------------
+      // 5. Générer le PDF
+      // --------------------------------------------------------
+
+      const pdfBuffer =
+        await generatePdfFromHtml(
+          validation.pdf_html
+        );
+
+      // ========================================================
+      // 6. ENVOI EMAIL
+      // ========================================================
+
+      if (
+        validation.channel === "email"
+      ) {
+        const recipient =
+          visiteur.email;
+
+        if (!recipient) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "L'adresse email du visiteur est manquante.",
+          });
+        }
+
+        console.log(
+          "Envoi email vers :",
+          recipient
+        );
+
+        const transporter =
+          createEmailTransporter();
+
+        await transporter.sendMail({
+          from:
+            process.env.EMAIL_FROM ||
+            process.env.SMTP_USER,
+
+          to: recipient,
+
+          subject:
+            `Official Price Offer OLIVED - ${validation.reference}`,
+
+          text:
+          `Dear ${nomComplet},\n\n` +
+  `I hope you are doing well.\n\n` +
+  `Please find attached our quotation for the requested olive oil products.\n` +
+  `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
+  `Please do not hesitate to contact us should you need any further information or clarification.\n` +
+  `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+  `Reference: ${validation.reference}\n\n` +
+  `Best regards,\n` +
+  `OLIVED`,
+
+
+          attachments: [
+            {
+              filename:
+                `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
+
+              content: pdfBuffer,
+
+              contentType:
+                "application/pdf",
+            },
+          ],
+        });
+
+        console.log(
+          "EMAIL ENVOYÉ AVEC SUCCÈS"
+        );
+      }
+
+      // ========================================================
+      // 7. ENVOI WHATSAPP
+      // ========================================================
+
+      if (
+        validation.channel === "whatsapp"
+      ) {
+        const telephone =
+          visiteur.telephone ||
+          visiteur.phone ||
+          visiteur.whatsapp;
+
+        if (!telephone) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Le numéro WhatsApp du visiteur est manquant.",
+          });
+        }
+
+        const accessToken =
+          process.env.WHATSAPP_ACCESS_TOKEN;
+
+        const phoneNumberId =
+          process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+        const graphVersion =
+          process.env.WHATSAPP_GRAPH_VERSION ||
+          "v23.0";
+
+        if (
+          !accessToken ||
+          !phoneNumberId
+        ) {
+          return res.status(500).json({
+            success: false,
+            message:
+              "Configuration WhatsApp manquante.",
+          });
+        }
+
+        // ------------------------------------------------------
+        // Normaliser le numéro
+        // ------------------------------------------------------
+
+        let phone = String(
+          telephone
+        ).replace(/\D/g, "");
+
+        if (
+          phone.startsWith("00")
+        ) {
+          phone =
+            phone.substring(2);
+        }
+
+        if (
+          phone.startsWith("2") ||
+          phone.startsWith("5") ||
+          phone.startsWith("9")
+        ) {
+          if (
+            phone.length === 8
+          ) {
+            phone =
+              "216" + phone;
+          }
+        }
+
+        console.log(
+          "WhatsApp destinataire :",
+          phone
+        );
+
+        // ------------------------------------------------------
+        // Upload PDF vers Meta
+        // ------------------------------------------------------
+
+        const formData =
+          new FormData();
+
+        formData.append(
+          "messaging_product",
+          "whatsapp"
+        );
+
+        formData.append(
+          "file",
+          pdfBuffer,
+          {
+            filename:
+              `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
+
+            contentType:
+              "application/pdf",
+          }
+        );
+
+        const uploadResponse =
+          await axios.post(
+            `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`,
+            formData,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+
+                ...formData.getHeaders(),
+              },
+            }
+          );
+
+        const mediaId =
+          uploadResponse.data.id;
+
+        console.log(
+          "Media ID WhatsApp :",
+          mediaId
+        );
+
+        // ------------------------------------------------------
+        // Envoyer le PDF
+        // ------------------------------------------------------
+
+        await axios.post(
+          `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`,
+          {
+            messaging_product:
+              "whatsapp",
+
+            to: phone,
+
+            type: "document",
+
+            document: {
+              id: mediaId,
+
+              filename:
+                `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
+
+              caption:
+                `OLIVED - Official Price Offer\nReference : ${validation.reference}`,
+            },
+          },
+          {
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+
+              "Content-Type":
+                "application/json",
+            },
+          }
+        );
+
+        console.log(
+          "WHATSAPP ENVOYÉ AVEC SUCCÈS"
+        );
+      }
+
+      // --------------------------------------------------------
+      // 8. Mettre à jour la validation
+      // --------------------------------------------------------
+
+      await pool.query(
+        `
+        UPDATE pdf_validations
+        SET
+          status = 'validated',
+          validated_at = NOW()
+        WHERE token = ?
+        `,
+        [token]
+      );
+
+      console.log(
+        "VALIDATION ENREGISTRÉE EN BASE"
+      );
+
+      return res.json({
+        success: true,
+
+        message:
+          "Fiche validée et envoyée avec succès.",
+
+        channel:
+          validation.channel,
+
+        reference:
+          validation.reference,
+      });
+
+    } catch (error) {
+
+      console.error(
+        "======================================="
+      );
+
+      console.error(
+        "ERREUR VALIDATION PDF :",
+        error
+      );
+
+      console.error(
+        "======================================="
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Erreur lors de la validation et de l'envoi.",
+
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// REFUSER UNE DEMANDE DE VALIDATION PDF
+// ============================================================
+
+app.post(
+  "/api/validation/:token/reject",
+  async (req, res) => {
+    try {
+      const { token } = req.params;
+
+      console.log("=======================================");
+      console.log("REFUS PDF");
+      console.log("Token :", token);
+      console.log("=======================================");
+
+      const [rows] = await pool.query(
+        `
+        SELECT *
+        FROM pdf_validations
+        WHERE token = ?
+        LIMIT 1
+        `,
+        [token]
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Demande de validation introuvable.",
+        });
+      }
+
+      const validation = rows[0];
+
+      if (validation.status !== "pending") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cette fiche a déjà été traitée.",
+        });
+      }
+
+      if (
+        validation.expires_at &&
+        new Date(validation.expires_at) < new Date()
+      ) {
+        return res.status(410).json({
+          success: false,
+          message:
+            "Le lien de validation a expiré.",
+        });
+      }
+
+      await pool.query(
+        `
+        UPDATE pdf_validations
+        SET
+          status = 'rejected',
+          validated_at = NOW()
+        WHERE token = ?
+        `,
+        [token]
+      );
+
+      console.log(
+        "FICHE REFUSÉE"
+      );
+
+      return res.json({
+        success: true,
+
+        message:
+          "La fiche a été refusée.",
+
+        reference:
+          validation.reference,
+      });
+
+    } catch (error) {
+
+      console.error(
+        "ERREUR REFUS PDF :",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Erreur lors du refus de la fiche.",
 
         error:
           error.message,
