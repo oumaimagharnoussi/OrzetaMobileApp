@@ -1215,61 +1215,78 @@ app.get("/validation/:token", async (req, res) => {
 
         <script>
 
-          async function valider() {
+      
+        async function valider() {
 
-            const confirmation =
-              confirm(
-                "Voulez-vous VALIDER cette fiche ?"
+          const confirmation = confirm(
+            "Voulez-vous VALIDER cette fiche ?"
+          );
+        
+          if (!confirmation) {
+            return;
+          }
+        
+          try {
+        
+            const response = await fetch(
+              \`/api/validation/${token}/validate\`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+        
+            const data = await response.json();
+        
+            console.log(
+              "RÉPONSE VALIDATION :",
+              data
+            );
+        
+            if (!response.ok || !data.success) {
+        
+              alert(
+                data.message ||
+                "Erreur lors de la validation."
               );
-
-            if (!confirmation) {
+        
               return;
             }
-
-            try {
-
-              const response =
-                await fetch(
-                  "/api/validation/${token}/validate",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type":
-                        "application/json"
-                    }
-                  }
-                );
-
-              const data =
-                await response.json();
-
-              if (!response.ok || !data.success) {
-
-                alert(
-                  data.message ||
-                  "Erreur lors de la validation."
-                );
-
-                return;
-              }
-
-              alert(
-                "✓ Fiche validée avec succès."
+        
+            if (data.whatsappUrl) {
+        
+              console.log(
+                "OUVERTURE WHATSAPP :",
+                data.whatsappUrl
               );
-
-              window.location.reload();
-
-            } catch (error) {
-
-              console.error(error);
-
-              alert(
-                "Erreur de connexion au serveur."
-              );
-
+        
+              window.location.href =
+                data.whatsappUrl;
+        
+              return;
             }
-
+        
+            alert(
+              "✓ Fiche validée avec succès."
+            );
+        
+            window.location.reload();
+        
+          } catch (error) {
+        
+            console.error(
+              "ERREUR VALIDATION :",
+              error
+            );
+        
+            alert(
+              "Erreur de connexion au serveur."
+            );
           }
+        }
+        
 
 
           async function refuser() {
@@ -1522,170 +1539,110 @@ console.log(
         );
       }
 
-      // ========================================================
-      // 7. ENVOI WHATSAPP
-      // ========================================================
+           // ========================================================
+// 7. WHATSAPP — SANS API META
+// ========================================================
 
-      if (
-        validation.channel === "whatsapp"
-      ) {
-        const telephone =
-          visiteur.telephone ||
-          visiteur.phone ||
-          visiteur.whatsapp;
+let whatsappUrl = null;
 
-        if (!telephone) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Le numéro WhatsApp du visiteur est manquant.",
-          });
-        }
+if (validation.channel === "whatsapp") {
 
-        const accessToken =
-          process.env.WHATSAPP_ACCESS_TOKEN;
+  const telephone =
+    visiteur.telephone ||
+    visiteur.phone ||
+    visiteur.whatsapp;
 
-        const phoneNumberId =
-          process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!telephone) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Le numéro WhatsApp du visiteur est manquant.",
+    });
+  }
 
-        const graphVersion =
-          process.env.WHATSAPP_GRAPH_VERSION ||
-          "v23.0";
+  // ------------------------------------------------------
+  // Normaliser le numéro
+  // ------------------------------------------------------
 
-        if (
-          !accessToken ||
-          !phoneNumberId
-        ) {
-          return res.status(500).json({
-            success: false,
-            message:
-              "Configuration WhatsApp manquante.",
-          });
-        }
+  let phone = String(telephone).replace(/\D/g, "");
 
-        // ------------------------------------------------------
-        // Normaliser le numéro
-        // ------------------------------------------------------
+  if (phone.startsWith("00")) {
+    phone = phone.substring(2);
+  }
 
-        let phone = String(
-          telephone
-        ).replace(/\D/g, "");
+  if (
+    (phone.startsWith("2") ||
+      phone.startsWith("5") ||
+      phone.startsWith("9")) &&
+    phone.length === 8
+  ) {
+    phone = "216" + phone;
+  }
 
-        if (
-          phone.startsWith("00")
-        ) {
-          phone =
-            phone.substring(2);
-        }
+  console.log(
+    "WhatsApp destinataire :",
+    phone
+  );
 
-        if (
-          phone.startsWith("2") ||
-          phone.startsWith("5") ||
-          phone.startsWith("9")
-        ) {
-          if (
-            phone.length === 8
-          ) {
-            phone =
-              "216" + phone;
-          }
-        }
+  // ------------------------------------------------------
+  // Nom du visiteur
+  // ------------------------------------------------------
 
-        console.log(
-          "WhatsApp destinataire :",
-          phone
-        );
+  const nomComplet =
+    `${visiteur.prenom || ""} ${visiteur.nom || ""}`.trim();
 
-        // ------------------------------------------------------
-        // Upload PDF vers Meta
-        // ------------------------------------------------------
+  // ------------------------------------------------------
+  // Message WhatsApp
+  // ------------------------------------------------------
 
-        const formData =
-          new FormData();
+  const message = 
+`Dear ${nomComplet},\n\n` +
+  `I hope you are doing well.\n\n` +
+  `Please find attached our quotation for the requested olive oil products.\n` +
+  `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
+  `Please do not hesitate to contact us should you need any further information or clarification.\n` +
+  `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+  `Reference: ${validation.reference}\n\n` +
+  `Best regards,\n` +
+  `OLIVED`;
+  // ------------------------------------------------------
+  // Créer le lien WhatsApp
+  // ------------------------------------------------------
 
-        formData.append(
-          "messaging_product",
-          "whatsapp"
-        );
+  whatsappUrl =
+    `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
-        formData.append(
-          "file",
-          pdfBuffer,
-          {
-            filename:
-              `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
+  console.log(
+    "======================================="
+  );
 
-            contentType:
-              "application/pdf",
-          }
-        );
+  console.log(
+    "WHATSAPP SANS API META"
+  );
 
-        const uploadResponse =
-          await axios.post(
-            `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`,
-            formData,
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${accessToken}`,
+  console.log(
+    "Destinataire :",
+    phone
+  );
 
-                ...formData.getHeaders(),
-              },
-            }
-          );
+  console.log(
+    "Référence :",
+    validation.reference
+  );
 
-        const mediaId =
-          uploadResponse.data.id;
+  console.log(
+    "WhatsApp URL :",
+    whatsappUrl
+  );
 
-        console.log(
-          "Media ID WhatsApp :",
-          mediaId
-        );
-
-        // ------------------------------------------------------
-        // Envoyer le PDF
-        // ------------------------------------------------------
-
-        await axios.post(
-          `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`,
-          {
-            messaging_product:
-              "whatsapp",
-
-            to: phone,
-
-            type: "document",
-
-            document: {
-              id: mediaId,
-
-              filename:
-                `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
-
-              caption:
-                `OLIVED - Official Price Offer\nReference : ${validation.reference}`,
-            },
-          },
-          {
-            headers: {
-              Authorization:
-                `Bearer ${accessToken}`,
-
-              "Content-Type":
-                "application/json",
-            },
-          }
-        );
-
-        console.log(
-          "WHATSAPP ENVOYÉ AVEC SUCCÈS"
-        );
-      }
-
+  console.log(
+    "=======================================");
+}
+      
       // --------------------------------------------------------
       // 8. Mettre à jour la validation
       // --------------------------------------------------------
-
+      
       await pool.query(
         `
         UPDATE pdf_validations
@@ -1696,51 +1653,44 @@ console.log(
         `,
         [token]
       );
-
+      
       console.log(
         "VALIDATION ENREGISTRÉE EN BASE"
       );
-
+      
       return res.json({
         success: true,
-
-        message:
-          "Fiche validée et envoyée avec succès.",
-
-        channel:
-          validation.channel,
-
-        reference:
-          validation.reference,
+        message: "Validation effectuée avec succès.",
+        reference: validation.reference,
+        whatsappUrl: whatsappUrl,
       });
-
-    } catch (error) {
-
-      console.error(
-        "======================================="
-      );
-
-      console.error(
-        "ERREUR VALIDATION PDF :",
-        error
-      );
-
-      console.error(
-        "======================================="
-      );
-
-      return res.status(500).json({
-        success: false,
-
-        message:
-          "Erreur lors de la validation et de l'envoi.",
-
-        error:
-          error.message,
+      
+      } catch (error) {
+      
+        console.error(
+          "======================================="
+        );
+      
+        console.error(
+          "ERREUR VALIDATION :",
+          error
+        );
+      
+        console.error(
+          "======================================="
+        );
+      
+        return res.status(500).json({
+          success: false,
+      
+          message:
+            "Erreur lors de la validation et de l'envoi.",
+      
+          error:
+            error.message,
+        });
+      }
       });
-    }
-  }
-);
 
 
 // ============================================================
@@ -3427,40 +3377,7 @@ app.post(
           );
       }
 
-      // ======================================================
-      // ENV WHATSAPP
-      // ======================================================
-
-      const accessToken =
-        process.env
-          .WHATSAPP_ACCESS_TOKEN;
-
-      const phoneNumberId =
-        process.env
-          .WHATSAPP_PHONE_NUMBER_ID;
-
-      const graphVersion =
-        process.env
-          .WHATSAPP_GRAPH_VERSION ||
-        "v23.0";
-
-      if (!accessToken) {
-        return res.status(500).json({
-          success: false,
-
-          message:
-            "WHATSAPP_ACCESS_TOKEN est manquant dans .env",
-        });
-      }
-
-      if (!phoneNumberId) {
-        return res.status(500).json({
-          success: false,
-
-          message:
-            "WHATSAPP_PHONE_NUMBER_ID est manquant dans .env",
-        });
-      }
+      
 
       // ======================================================
       // GENERATION PDF
