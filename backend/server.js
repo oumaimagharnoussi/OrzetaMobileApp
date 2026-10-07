@@ -475,11 +475,6 @@ async function insererCommande(
         nouvelle_marque_formats,
         nouvelle_marque_autre_emballage,
   
-        demande_echantillon,
-        adresse_echantillon,
-        personne_reception_echantillon,
-        tel_reception_echantillon,
-  
         k232_demande,
         k232_valeur,
         k270_demande,
@@ -505,8 +500,6 @@ async function insererCommande(
   
         ?, ?, ?,
   
-        ?, ?, ?, ?,
-  
         ?, ?, ?, ?
       )
     `,
@@ -523,16 +516,19 @@ async function insererCommande(
       commande.incoterm || null,
       commande.format_livraison || null,
       commande.frequence_commande || null,
+  
       commande.exigences_specifiques
         ? Array.isArray(commande.exigences_specifiques)
           ? JSON.stringify(commande.exigences_specifiques)
           : commande.exigences_specifiques
         : null,
+  
       commande.informations_complementaires || null,
   
       // =========================
       // CONDITIONNÉ
       // =========================
+  
       commande.pays_conditionne || null,
       commande.periode_volume ?? commande.periodeVolume ?? null,
       commande.nombre_fcl ?? commande.nombreFcl ?? null,
@@ -601,34 +597,24 @@ async function insererCommande(
   
       commande.nouvelle_marque_formats?.autre || null,
   
-      commande.demande_echantillon ? 1 : 0,
-  
-      commande.demande_echantillon
-        ? commande.adresse_echantillon || null
-        : null,
-  
-      commande.demande_echantillon
-        ? commande.personne_reception_echantillon || null
-        : null,
-  
-      commande.demande_echantillon
-        ? commande.tel_reception_echantillon || null
-        : null,
+      // =========================
+      // K232 / K270
+      // =========================
   
       commande.k232_demande ? 1 : 0,
+  
       commande.k232_demande
         ? commande.k232_valeur || null
         : null,
   
       commande.k270_demande ? 1 : 0,
+  
       commande.k270_demande
         ? commande.k270_valeur || null
         : null,
     ]
   );
 }
-
-
 // ============================================================
 // GET VISITEUR
 // ============================================================
@@ -2217,7 +2203,6 @@ app.post(
 
     let connection = null;
 
-
     try {
 
       // ========================================================
@@ -2242,6 +2227,16 @@ app.post(
         qualification,
         commandes,
         nombre_commandes,
+
+        // ======================================================
+        // ÉCHANTILLON
+        // Ces champs appartiennent maintenant à VISITEURS
+        // ======================================================
+        demande_echantillon,
+        adresse_echantillon,
+        personne_reception_echantillon,
+        tel_reception_echantillon,
+
       } = req.body;
 
 
@@ -2249,8 +2244,7 @@ app.post(
       // COMMERCIAL
       // ========================================================
 
-      const commercialId =
-        req.user.id;
+      const commercialId = req.user.id;
 
 
       console.log(
@@ -2271,6 +2265,26 @@ app.post(
         Array.isArray(commandes)
           ? commandes.length
           : 0
+      );
+
+      console.log(
+        "ÉCHANTILLON :",
+        demande_echantillon
+      );
+
+      console.log(
+        "ADRESSE ÉCHANTILLON :",
+        adresse_echantillon
+      );
+
+      console.log(
+        "PERSONNE RÉCEPTION :",
+        personne_reception_echantillon
+      );
+
+      console.log(
+        "TÉLÉPHONE RÉCEPTION :",
+        tel_reception_echantillon
       );
 
       console.log(
@@ -2297,11 +2311,9 @@ app.post(
         qualification !== ""
       ) {
 
-        const q =
-          Number(
-            qualification
-          );
-
+        const q = Number(
+          qualification
+        );
 
         if (
           !Number.isInteger(q) ||
@@ -2322,9 +2334,7 @@ app.post(
       // NORMALISER COMMANDES
       // ========================================================
 
-      let normalizedCommandes =
-        commandes;
-
+      let normalizedCommandes = commandes;
 
       if (
         commandes !== undefined
@@ -2356,7 +2366,6 @@ app.post(
       connection =
         await pool.getConnection();
 
-
       await connection.beginTransaction();
 
 
@@ -2367,29 +2376,35 @@ app.post(
       const [result] =
         await connection.execute(
           `
-            INSERT INTO visiteurs (
-              nom,
-              prenom,
-              email,
-              site,
-              origine,
-              indicatif,
-              telephone,
-              societe,
-              adresse_societe,
-              fonction,
-              genre,
-              langue_communication,
-              profile,
-              type_commande,
-              qualification,
-              commercial_id
-            )
+          INSERT INTO visiteurs (
+            nom,
+            prenom,
+            email,
+            site,
+            origine,
+            indicatif,
+            telephone,
+            societe,
+            adresse_societe,
+            fonction,
+            genre,
+            langue_communication,
+            profile,
+            type_commande,
+            qualification,
+            commercial_id,
 
-            VALUES (
-              ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?
-            )
+            demande_echantillon,
+            adresse_echantillon,
+            personne_reception_echantillon,
+            tel_reception_echantillon
+          )
+
+          VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?
+          )
           `,
           [
             nom || null,
@@ -2408,6 +2423,40 @@ app.post(
             type_commande || null,
             qualification || null,
             commercialId,
+
+            // ==================================================
+            // ÉCHANTILLON
+            // ==================================================
+
+            demande_echantillon === "oui" ||
+            demande_echantillon === 1 ||
+            demande_echantillon === true
+              ? 1
+              : 0,
+
+            (
+              demande_echantillon === "oui" ||
+              demande_echantillon === 1 ||
+              demande_echantillon === true
+            )
+              ? adresse_echantillon?.trim() || null
+              : null,
+
+            (
+              demande_echantillon === "oui" ||
+              demande_echantillon === 1 ||
+              demande_echantillon === true
+            )
+              ? personne_reception_echantillon?.trim() || null
+              : null,
+
+            (
+              demande_echantillon === "oui" ||
+              demande_echantillon === 1 ||
+              demande_echantillon === true
+            )
+              ? tel_reception_echantillon?.trim() || null
+              : null,
           ]
         );
 
@@ -2482,9 +2531,9 @@ app.post(
 
         await connection.execute(
           `
-            UPDATE visiteurs
-            SET reference = ?
-            WHERE id = ?
+          UPDATE visiteurs
+          SET reference = ?
+          WHERE id = ?
           `,
           [
             reference,
@@ -2545,6 +2594,7 @@ app.post(
             ? normalizedCommandes.length
             : 0,
       });
+
 
     } catch (error) {
 
