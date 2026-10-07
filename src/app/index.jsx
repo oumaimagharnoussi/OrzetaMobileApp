@@ -20,8 +20,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // URL BACKEND
 // =====================================================
 
-const API_URL = "http://192.168.1.146:5000";
-
+//const API_URL = "http://192.168.1.146:5000";
+const API_URL = "https://orzetamobileapp.onrender.com";
 // =====================================================
 // COMPOSANT
 // =====================================================

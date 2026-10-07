@@ -33,7 +33,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // CONFIGURATION
 // =====================================================
 
-const API_URL = "http://192.168.1.146:5000";
+//const API_URL = "http://192.168.1.146:5000";
+const API_URL = "https://orzetamobileapp.onrender.com";
 
 const ORANGE = "#5C681F";
 

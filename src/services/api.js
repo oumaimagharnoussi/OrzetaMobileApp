@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // ============================================================
 
 // PC + téléphone sur le même Wi-Fi
-export const API_URL = "http://192.168.1.146:5000";
+export const API_URL = "https://orzetamobileapp.onrender.com";//const API_URL = "http://192.168.1.146:5000";
 
 // Pour le web local, tu peux utiliser :
 // export const API_URL = "http://localhost:5000";
