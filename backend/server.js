@@ -18,6 +18,8 @@ const { Readable } = require("stream");
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+
 
 // ============================================================
 // APP
@@ -28,28 +30,18 @@ const app = express();
 const PORT = Number(process.env.PORT || 5000);
 
 
-
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// ensuite seulement tes routes
-
 // ============================================================
 // MIDDLEWARE
 // ============================================================
 
-// CORS
 app.use(cors());
 
-// JSON
 app.use(
   express.json({
     limit: "15mb",
   })
 );
 
-// Form data
 app.use(
   express.urlencoded({
     extended: true,
@@ -78,6 +70,33 @@ const pool = mysql.createPool({
 
 
 // ============================================================
+// MYSQL DISPONIBLE DANS LES ROUTES
+// ============================================================
+
+app.locals.db = pool;
+
+
+// ============================================================
+// VARIABLES WHATSAPP META
+// ============================================================
+
+const graphVersion =
+  process.env.WHATSAPP_GRAPH_VERSION ||
+  process.env.GRAPH_VERSION ||
+  "v23.0";
+
+const phoneNumberId =
+  process.env.WHATSAPP_PHONE_NUMBER_ID ||
+  process.env.PHONE_NUMBER_ID ||
+  null;
+
+const accessToken =
+  process.env.WHATSAPP_ACCESS_TOKEN ||
+  process.env.ACCESS_TOKEN ||
+  null;
+
+
+// ============================================================
 // TEST MYSQL
 // ============================================================
 
@@ -91,15 +110,11 @@ pool
     connection.release();
   })
   .catch((error) => {
-    console.error("❌ ERREUR MYSQL :", error.message);
+    console.error(
+      "❌ ERREUR MYSQL :",
+      error.message
+    );
   });
-
-
-// ============================================================
-// RENDRE MYSQL DISPONIBLE DANS LES ROUTES
-// ============================================================
-
-app.locals.db = pool;
 
 
 // ============================================================
@@ -108,7 +123,10 @@ app.locals.db = pool;
 
 const authRoutes = require("./routes/auth");
 
-app.use("/api/auth", authRoutes);
+app.use(
+  "/api/auth",
+  authRoutes
+);
 
 
 // ============================================================
@@ -117,7 +135,10 @@ app.use("/api/auth", authRoutes);
 
 const adminRoutes = require("./routes/admin");
 
-app.use("/api/admin", adminRoutes);
+app.use(
+  "/api/admin",
+  adminRoutes
+);
 
 
 // ============================================================
@@ -133,70 +154,14 @@ const {
 
 
 // ============================================================
-// TEST SERVEUR
-// ============================================================
-
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "API OLIVED fonctionne",
-  });
-});
-
-
-// ============================================================
-// TEST AUTH
-// ============================================================
-
-// Cette route permet de vérifier que /api/auth est bien chargé.
-// Tu peux ensuite la supprimer si tu veux.
-
-app.get("/api/test-auth", (req, res) => {
-  res.json({
-    success: true,
-    message: "Serveur et routes principales fonctionnent",
-  });
-});
-
-
-// ============================================================
-// TES AUTRES ROUTES EXISTANTES
-// ============================================================
-//
-// ⚠️ IMPORTANT :
-// À partir d'ici, garde tout ton code actuel.
-//
-// Exemple :
-//
-// app.post("/api/visiteurs", ...);
-// app.get("/api/visiteurs", ...);
-// app.get("/api/visiteurs/:id", ...);
-// app.put(...);
-// app.post("/api/email/send", ...);
-// etc.
-//
-// NE REMPLACE PAS tes routes existantes par des exemples.
-//
-
-
-// ============================================================
-// DEMARRAGE SERVEUR
-// ============================================================
-
-app.listen(PORT, () => {
-  console.log("=================================");
-  console.log("🚀 SERVEUR DÉMARRÉ");
-  console.log(`📡 http://localhost:${PORT}`);
-  console.log(`🔐 Auth : http://localhost:${PORT}/api/auth`);
-  console.log(`👑 Admin : http://localhost:${PORT}/api/admin`);
-  console.log("=================================");
-});
-// ============================================================
 // HELPERS
 // ============================================================
 
 function cleanString(value) {
-  if (value === undefined || value === null) {
+  if (
+    value === undefined ||
+    value === null
+  ) {
     return null;
   }
 
@@ -204,6 +169,7 @@ function cleanString(value) {
 
   return str === "" ? null : str;
 }
+
 
 // ============================================================
 // CLEAN JSON
@@ -228,7 +194,8 @@ function cleanJson(value) {
   }
 
   if (typeof value === "string") {
-    const valueClean = value.trim();
+    const valueClean =
+      value.trim();
 
     if (
       valueClean === "" ||
@@ -238,22 +205,30 @@ function cleanJson(value) {
     }
 
     try {
-      const parsed = JSON.parse(valueClean);
+      const parsed =
+        JSON.parse(valueClean);
 
       return JSON.stringify(parsed);
+
     } catch (error) {
-      return JSON.stringify(valueClean);
+      return JSON.stringify(
+        valueClean
+      );
     }
   }
 
   return JSON.stringify(value);
 }
 
+
 // ============================================================
 // PARSE JSON
 // ============================================================
 
-function parseJson(value, fallback = null) {
+function parseJson(
+  value,
+  fallback = null
+) {
   if (
     value === undefined ||
     value === null ||
@@ -262,7 +237,9 @@ function parseJson(value, fallback = null) {
     return fallback;
   }
 
-  if (typeof value === "object") {
+  if (
+    typeof value === "object"
+  ) {
     return value;
   }
 
@@ -273,18 +250,21 @@ function parseJson(value, fallback = null) {
   }
 }
 
+
 // ============================================================
 // NORMALISATION TYPE COMMANDE
 // ============================================================
 
 function normalizeTypeCommande(value) {
-  const valueClean = cleanString(value);
+  const valueClean =
+    cleanString(value);
 
   if (!valueClean) {
     return null;
   }
 
-  const lower = valueClean.toLowerCase();
+  const lower =
+    valueClean.toLowerCase();
 
   if (lower === "vrac") {
     return "vrac";
@@ -300,29 +280,9 @@ function normalizeTypeCommande(value) {
   return valueClean;
 }
 
+
 // ============================================================
-// COMMANDES MULTIPLES
-// ============================================================
-//
-// Exemple :
-//
-// commandes: [
-//   {
-//     type_commande: "vrac",
-//     categorie: "...",
-//     volume_estime: "..."
-//   },
-//   {
-//     type_commande: "vrac",
-//     categorie: "...",
-//     volume_estime: "..."
-//   }
-// ]
-//
-// Impossible de mélanger :
-//
-// Vrac + Conditionné
-//
+// NORMALISATION COMMANDES
 // ============================================================
 
 function normalizeCommandes(
@@ -344,6 +304,7 @@ function normalizeCommandes(
       typeof value === "string"
         ? JSON.parse(value)
         : value;
+
   } catch (error) {
     throw new Error(
       "Le champ commandes contient un JSON invalide."
@@ -376,8 +337,8 @@ function normalizeCommandes(
     const typeCommande =
       normalizeTypeCommande(
         commande.type_commande ??
-          commande.typeCommande ??
-          typePrincipal
+        commande.typeCommande ??
+        typePrincipal
       );
 
     if (!typeCommande) {
@@ -407,16 +368,9 @@ function normalizeCommandes(
   return commandes;
 }
 
+
 // ============================================================
 // REFERENCE
-// ============================================================
-//
-// ID 85 + 1 + V + 2026
-// => 86V2026
-//
-// ID 85 + 1 + B + 2026
-// => 86B2026
-//
 // ============================================================
 
 function generateReference(
@@ -438,6 +392,242 @@ function generateReference(
 
   return `${numero}${lettre}2026`;
 }
+
+
+// ============================================================
+// INSERTION COMMANDE
+// ============================================================
+
+async function insererCommande(
+  connection,
+  visiteurId,
+  commande,
+  numeroCommande
+) {
+  const typeCommande =
+    normalizeTypeCommande(
+      commande.type_commande ||
+      commande.type
+    );
+
+  if (!typeCommande) {
+    throw new Error(
+      "Le type de commande est obligatoire."
+    );
+  }
+
+  const numero =
+    Number(numeroCommande) || 1;
+
+
+  // ==========================================================
+  // INSERT
+  // ==========================================================
+
+  await connection.execute(
+    `
+      INSERT INTO commandes (
+        visiteur_id,
+        numero_commande,
+        type_commande,
+  
+        categorie,
+        qualite_grade,
+        volume_estime,
+        destination,
+        destinationport,
+        incoterm,
+        format_livraison,
+        frequence_commande,
+        exigences_specifiques,
+        informations_complementaires,
+  
+        pays_conditionne,
+        periode_volume,
+        nombre_fcl,
+        nom_label,
+        canal_distribution,
+        volumes_estimes,
+  
+        type_emballage,
+        formats_souhaites,
+        emballages_selectionnes,
+        formats_emballage,
+        autre_emballage,
+        autres_selectionnes,
+        autres_emballages,
+  
+        type_marque,
+        certifications_requises,
+        profil_aromatique,
+  
+        nom_entreprise,
+        site_web,
+        contact_professionnel,
+  
+        quantite_commande,
+        nombre_palettes,
+  
+        marche_cible,
+        quantite_prevue,
+  
+        nouvelle_marque_emballages,
+        nouvelle_marque_formats,
+        nouvelle_marque_autre_emballage,
+  
+        demande_echantillon,
+        adresse_echantillon,
+        personne_reception_echantillon,
+        tel_reception_echantillon,
+  
+        k232_demande,
+        k232_valeur,
+        k270_demande,
+        k270_valeur
+      )
+  
+      VALUES (
+        ?, ?, ?,
+  
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+  
+        ?, ?, ?, ?, ?, ?,
+  
+        ?, ?, ?, ?, ?, ?, ?,
+  
+        ?, ?, ?,
+  
+        ?, ?, ?,
+  
+        ?, ?,
+  
+        ?, ?,
+  
+        ?, ?, ?,
+  
+        ?, ?, ?, ?,
+  
+        ?, ?, ?, ?
+      )
+    `,
+    [
+      visiteurId,
+      numero,
+      typeCommande,
+  
+      commande.categorie || null,
+      commande.qualite_grade || null,
+      commande.volume_estime ?? null,
+      commande.destination || null,
+      commande.destinationport?.trim() || null,
+      commande.incoterm || null,
+      commande.format_livraison || null,
+      commande.frequence_commande || null,
+      commande.exigences_specifiques
+        ? Array.isArray(commande.exigences_specifiques)
+          ? JSON.stringify(commande.exigences_specifiques)
+          : commande.exigences_specifiques
+        : null,
+      commande.informations_complementaires || null,
+  
+      // =========================
+      // CONDITIONNÉ
+      // =========================
+      commande.pays_conditionne || null,
+      commande.periode_volume ?? commande.periodeVolume ?? null,
+      commande.nombre_fcl ?? commande.nombreFcl ?? null,
+      commande.nom_label ?? commande.nomLabel ?? null,
+      commande.canal_distribution || commande.canal || null,
+      commande.volumes_estimes ?? commande.volumes_conditionne ?? null,
+  
+      commande.type_emballage
+        ? JSON.stringify(commande.type_emballage)
+        : null,
+  
+      commande.formats_souhaites
+        ? JSON.stringify(commande.formats_souhaites)
+        : null,
+  
+      commande.type_emballage?.emballages
+        ? JSON.stringify(commande.type_emballage.emballages)
+        : null,
+  
+      commande.packaging
+        ? JSON.stringify(commande.packaging)
+        : null,
+  
+      commande.type_emballage?.autres?.Autre || null,
+  
+      commande.type_emballage?.autres
+        ? JSON.stringify(commande.type_emballage.autres)
+        : null,
+  
+      commande.type_emballage?.autres
+        ? JSON.stringify(commande.type_emballage.autres)
+        : null,
+  
+      commande.type_marque || null,
+  
+      commande.certifications_requises
+        ? Array.isArray(commande.certifications_requises)
+          ? JSON.stringify(commande.certifications_requises)
+          : commande.certifications_requises
+        : null,
+  
+      commande.profil_aromatique
+        ? JSON.stringify(commande.profil_aromatique)
+        : null,
+  
+      commande.nom_entreprise || null,
+      commande.site_web || null,
+      commande.contact_professionnel || null,
+  
+      commande.type_conteneur ||
+        commande.quantite_commande ||
+        null,
+  
+      commande.nombre_palettes ?? null,
+  
+      commande.marche_cible || null,
+      commande.quantite_prevue || null,
+  
+      commande.nouvelle_marque_formats?.emballages
+        ? JSON.stringify(commande.nouvelle_marque_formats.emballages)
+        : null,
+  
+      commande.nouvelle_marque_formats?.formats
+        ? JSON.stringify(commande.nouvelle_marque_formats.formats)
+        : null,
+  
+      commande.nouvelle_marque_formats?.autre || null,
+  
+      commande.demande_echantillon ? 1 : 0,
+  
+      commande.demande_echantillon
+        ? commande.adresse_echantillon || null
+        : null,
+  
+      commande.demande_echantillon
+        ? commande.personne_reception_echantillon || null
+        : null,
+  
+      commande.demande_echantillon
+        ? commande.tel_reception_echantillon || null
+        : null,
+  
+      commande.k232_demande ? 1 : 0,
+      commande.k232_demande
+        ? commande.k232_valeur || null
+        : null,
+  
+      commande.k270_demande ? 1 : 0,
+      commande.k270_demande
+        ? commande.k270_valeur || null
+        : null,
+    ]
+  );
+}
+
 
 // ============================================================
 // GET VISITEUR
@@ -475,6 +665,43 @@ async function getVisitorById(id) {
 
   return rows[0];
 }
+
+
+// ============================================================
+// GET COMMANDES VISITEUR
+// ============================================================
+
+async function getCommandesByVisitorId(
+  visitorId
+) {
+  const id =
+    Number(visitorId);
+
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    throw new Error(
+      "Identifiant du visiteur invalide."
+    );
+  }
+
+  const [rows] =
+    await pool.execute(
+      `
+        SELECT *
+        FROM commandes
+        WHERE visiteur_id = ?
+        ORDER BY
+          numero_commande ASC,
+          id ASC
+      `,
+      [id]
+    );
+
+  return rows;
+}
+
 
 // ============================================================
 // PDF - PUPPETEER
@@ -519,8 +746,7 @@ async function generatePdfFromHtml(
     await page.setContent(
       htmlContent,
       {
-        waitUntil:
-          "networkidle0",
+        waitUntil: "networkidle0",
         timeout: 60000,
       }
     );
@@ -553,6 +779,7 @@ async function generatePdfFromHtml(
     return pdfBuffer;
 
   } catch (error) {
+
     if (browser) {
       try {
         await browser.close();
@@ -567,13 +794,17 @@ async function generatePdfFromHtml(
   }
 }
 
+
 // ============================================================
-// EMAIL
+// EMAIL TRANSPORTER
 // ============================================================
 
 function createEmailTransporter() {
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASSWORD;
+  const smtpUser =
+    process.env.SMTP_USER;
+
+  const smtpPass =
+    process.env.SMTP_PASSWORD;
 
   if (!smtpUser) {
     throw new Error(
@@ -593,7 +824,10 @@ function createEmailTransporter() {
       "smtp.hostinger.com",
 
     port:
-      Number(process.env.SMTP_PORT || 465),
+      Number(
+        process.env.SMTP_PORT ||
+        465
+      ),
 
     secure:
       String(
@@ -607,6 +841,7 @@ function createEmailTransporter() {
   });
 }
 
+
 // ============================================================
 // ROOT
 // ============================================================
@@ -616,12 +851,28 @@ app.get(
   (req, res) => {
     res.json({
       success: true,
-
       message:
         "OLIVED API fonctionne correctement.",
     });
   }
 );
+
+
+// ============================================================
+// TEST AUTH
+// ============================================================
+
+app.get(
+  "/api/test-auth",
+  (req, res) => {
+    res.json({
+      success: true,
+      message:
+        "Serveur et routes principales fonctionnent.",
+    });
+  }
+);
+
 
 // ============================================================
 // TEST DB
@@ -638,14 +889,13 @@ app.get(
 
       res.json({
         success: true,
-
         message:
           "Connexion MySQL réussie.",
-
         data: rows,
       });
 
     } catch (error) {
+
       console.error(
         "❌ TEST DB :",
         error
@@ -653,10 +903,8 @@ app.get(
 
       res.status(500).json({
         success: false,
-
         message:
           "Erreur de connexion à MySQL.",
-
         error:
           error.message,
       });
@@ -664,740 +912,890 @@ app.get(
   }
 );
 
+
 // ============================================================
-// CRÉER UNE DEMANDE DE VALIDATION PDF
+// CRÉER DEMANDE VALIDATION PDF
 // ============================================================
 
-app.post("/api/validation/create", async (req, res) => {
-  try {
-    const {
-      visitorId,
-      reference,
-      channel,
-      pdfHtml,
-    } = req.body;
+app.post(
+  "/api/validation/create",
+  async (req, res) => {
+    try {
 
-    console.log("=======================================");
-    console.log("CRÉATION VALIDATION PDF");
-    console.log("Visitor ID :", visitorId);
-    console.log("Reference :", reference);
-    console.log("Channel :", channel);
-    console.log("PDF HTML :", pdfHtml?.length);
-    console.log("=======================================");
-
-    if (!visitorId) {
-      return res.status(400).json({
-        success: false,
-        message: "Identifiant visiteur manquant.",
-      });
-    }
-
-    if (!reference) {
-      return res.status(400).json({
-        success: false,
-        message: "Référence manquante.",
-      });
-    }
-
-    if (
-      channel !== "whatsapp" &&
-      channel !== "email"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Canal d'envoi invalide.",
-      });
-    }
-
-    if (
-      !pdfHtml ||
-      typeof pdfHtml !== "string"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "HTML du PDF manquant.",
-      });
-    }
-
-    // ✅ IMPORTANT : pool et non db
-    const [visiteurs] = await pool.query(
-      `
-        SELECT *
-        FROM visiteurs
-        WHERE id = ?
-        LIMIT 1
-      `,
-      [visitorId]
-    );
-
-    if (!visiteurs.length) {
-      return res.status(404).json({
-        success: false,
-        message: "Visiteur introuvable.",
-      });
-    }
-
-    const visiteur = visiteurs[0];
-
-    const token = crypto
-      .randomBytes(32)
-      .toString("hex");
-
-    const expiresAt = new Date(
-      Date.now() + 48 * 60 * 60 * 1000
-    );
-
-    // ✅ IMPORTANT : pool et non db
-    await pool.query(
-      `
-        INSERT INTO pdf_validations
-        (
-          token,
-          visitor_id,
-          reference,
-          channel,
-          pdf_html,
-          status,
-          expires_at
-        )
-        VALUES (?, ?, ?, ?, ?, 'pending', ?)
-      `,
-      [
-        token,
+      const {
         visitorId,
         reference,
         channel,
         pdfHtml,
-        expiresAt,
-      ]
-    );
+      } = req.body;
 
-    const appPublicUrl =
-      process.env.APP_PUBLIC_URL;
-
-    if (!appPublicUrl) {
-      throw new Error(
-        "APP_PUBLIC_URL est manquant dans le fichier .env"
+      console.log(
+        "======================================="
       );
-    }
 
-    const validationUrl =
-      `${appPublicUrl}/validation/${token}`;
+      console.log(
+        "CRÉATION VALIDATION PDF"
+      );
 
-    console.log("=======================================");
-    console.log("VALIDATION CRÉÉE");
-    console.log("Token :", token);
-    console.log("URL :", validationUrl);
-    console.log(
-      "Visiteur :",
-      visiteur.nom,
-      visiteur.prenom
-    );
-    console.log("Canal :", channel);
-    console.log("=======================================");
+      console.log(
+        "Visitor ID :",
+        visitorId
+      );
 
-    return res.json({
-      success: true,
-      message: "Lien de validation créé.",
-      validationUrl,
-      token,
-      reference,
-      channel,
-    });
+      console.log(
+        "Reference :",
+        reference
+      );
 
-  } catch (error) {
-    console.error("=======================================");
-    console.error(
-      "ERREUR CREATE VALIDATION :",
-      error
-    );
-    console.error("=======================================");
+      console.log(
+        "Channel :",
+        channel
+      );
 
-    return res.status(500).json({
-      success: false,
-      message:
-        "Erreur lors de la création du lien de validation.",
-      error: error.message,
-    });
-  }
-});
+      console.log(
+        "PDF HTML :",
+        pdfHtml?.length
+      );
 
-// ============================================================
-// PAGE DE VALIDATION PDF
-// ============================================================
+      console.log(
+        "======================================="
+      );
 
-app.get("/validation/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
 
-    console.log("=======================================");
-    console.log("OUVERTURE LIEN VALIDATION");
-    console.log("Token :", token);
-    console.log("=======================================");
+      if (!visitorId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Identifiant visiteur manquant.",
+        });
+      }
 
-    const [rows] = await pool.query(
-      `
-      SELECT
-        id,
-        visitor_id,
+      if (!reference) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Référence manquante.",
+        });
+      }
+
+      if (
+        channel !== "whatsapp" &&
+        channel !== "email"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Canal d'envoi invalide.",
+        });
+      }
+
+      if (
+        !pdfHtml ||
+        typeof pdfHtml !== "string"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "HTML du PDF manquant.",
+        });
+      }
+
+
+      const [visiteurs] =
+        await pool.query(
+          `
+            SELECT *
+            FROM visiteurs
+            WHERE id = ?
+            LIMIT 1
+          `,
+          [visitorId]
+        );
+
+
+      if (!visiteurs.length) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Visiteur introuvable.",
+        });
+      }
+
+
+      const visiteur =
+        visiteurs[0];
+
+
+      const token =
+        crypto
+          .randomBytes(32)
+          .toString("hex");
+
+
+      const expiresAt =
+        new Date(
+          Date.now() +
+          48 * 60 * 60 * 1000
+        );
+
+
+      await pool.query(
+        `
+          INSERT INTO pdf_validations
+          (
+            token,
+            visitor_id,
+            reference,
+            channel,
+            pdf_html,
+            status,
+            expires_at
+          )
+          VALUES (
+            ?, ?, ?, ?, ?,
+            'pending',
+            ?
+          )
+        `,
+        [
+          token,
+          visitorId,
+          reference,
+          channel,
+          pdfHtml,
+          expiresAt,
+        ]
+      );
+
+
+      const appPublicUrl =
+        process.env.APP_PUBLIC_URL;
+
+
+      if (!appPublicUrl) {
+        throw new Error(
+          "APP_PUBLIC_URL est manquant dans .env"
+        );
+      }
+
+
+      const validationUrl =
+        `${appPublicUrl}/validation/${token}`;
+
+
+      console.log(
+        "======================================="
+      );
+
+      console.log(
+        "VALIDATION CRÉÉE"
+      );
+
+      console.log(
+        "Token :",
+        token
+      );
+
+      console.log(
+        "URL :",
+        validationUrl
+      );
+
+      console.log(
+        "Visiteur :",
+        visiteur.nom,
+        visiteur.prenom
+      );
+
+      console.log(
+        "Canal :",
+        channel
+      );
+
+      console.log(
+        "======================================="
+      );
+
+
+      return res.json({
+        success: true,
+        message:
+          "Lien de validation créé.",
+        validationUrl,
+        token,
         reference,
         channel,
-        pdf_html,
-        status,
-        expires_at
-      FROM pdf_validations
-      WHERE token = ?
-      LIMIT 1
-      `,
-      [token]
-    );
+      });
 
-    if (!rows.length) {
-      return res.status(404).send(`
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-          <meta charset="UTF-8">
-          <title>Validation OLIVED</title>
-        </head>
+    } catch (error) {
 
-        <body style="
-          margin:0;
-          padding:40px;
-          font-family:Arial,sans-serif;
-          text-align:center;
-          background:#f5f5f5;
-        ">
-          <h1>Lien invalide</h1>
-          <p>Le lien de validation n'existe pas.</p>
-        </body>
-        </html>
-      `);
-    }
-
-    const validation = rows[0];
-
-    // Vérification expiration
-    if (
-      validation.expires_at &&
-      new Date(validation.expires_at) < new Date()
-    ) {
-      return res.status(410).send(`
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-          <meta charset="UTF-8">
-          <title>Validation OLIVED</title>
-        </head>
-
-        <body style="
-          margin:0;
-          padding:40px;
-          font-family:Arial,sans-serif;
-          text-align:center;
-          background:#f5f5f5;
-        ">
-          <h1>Lien expiré</h1>
-          <p>Ce lien de validation a expiré.</p>
-        </body>
-        </html>
-      `);
-    }
-
-    // ========================================================
-    // GÉNÉRER LE PDF
-    // ========================================================
-
-    const pdfBuffer =
-      await generatePdfFromHtml(
-        validation.pdf_html
+      console.error(
+        "======================================="
       );
 
-    // ========================================================
-    // ENVOYER LE PDF DIRECTEMENT AU NAVIGATEUR
-    // ========================================================
+      console.error(
+        "ERREUR CREATE VALIDATION :",
+        error
+      );
+
+      console.error(
+        "======================================="
+      );
+
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Erreur lors de la création du lien de validation.",
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// PAGE VALIDATION PDF
+// ============================================================
+
+app.get(
+  "/validation/:token",
+  async (req, res) => {
+
+    try {
+
+      const { token } =
+        req.params;
+
+
+      console.log(
+        "======================================="
+      );
+
+      console.log(
+        "OUVERTURE LIEN VALIDATION"
+      );
+
+      console.log(
+        "Token :",
+        token
+      );
+
+      console.log(
+        "======================================="
+      );
+
+
+      const [rows] =
+        await pool.query(
+          `
+            SELECT
+              id,
+              visitor_id,
+              reference,
+              channel,
+              pdf_html,
+              status,
+              expires_at
+            FROM pdf_validations
+            WHERE token = ?
+            LIMIT 1
+          `,
+          [token]
+        );
+
+
+      if (!rows.length) {
+
+        return res.status(404).send(`
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <title>Validation OLIVED</title>
+          </head>
 
-    res.setHeader(
-      "Content-Type",
-      "text/html; charset=utf-8"
-    );
+          <body style="
+            margin:0;
+            padding:40px;
+            font-family:Arial,sans-serif;
+            text-align:center;
+            background:#f5f5f5;
+          ">
 
-    const pdfBase64 =
-      pdfBuffer.toString("base64");
+            <h1>
+              Lien invalide
+            </h1>
 
-    const isPending =
-      validation.status === "pending";
+            <p>
+              Le lien de validation n'existe pas.
+            </p>
+
+          </body>
+          </html>
+        `);
+      }
 
-    return res.send(`
-      <!DOCTYPE html>
-      <html lang="fr">
 
-      <head>
+      const validation =
+        rows[0];
 
-        <meta charset="UTF-8">
 
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0"
-        >
+      if (
+        validation.expires_at &&
+        new Date(
+          validation.expires_at
+        ) < new Date()
+      ) {
 
-        <title>
-          Validation PDF OLIVED - ${validation.reference}
-        </title>
+        return res.status(410).send(`
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <title>Validation OLIVED</title>
+          </head>
 
-        <style>
+          <body style="
+            margin:0;
+            padding:40px;
+            font-family:Arial,sans-serif;
+            text-align:center;
+            background:#f5f5f5;
+          ">
 
-          * {
-            box-sizing: border-box;
-          }
+            <h1>
+              Lien expiré
+            </h1>
 
-          html,
-          body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-          }
+            <p>
+              Ce lien de validation a expiré.
+            </p>
 
-          body {
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
+          </body>
+          </html>
+        `);
+      }
 
-            background: #eeeeee;
 
-            display: flex;
-            flex-direction: column;
+      const pdfBuffer =
+        await generatePdfFromHtml(
+          validation.pdf_html
+        );
 
-            min-height: 100vh;
-          }
 
-          .header {
-            background: white;
+      res.setHeader(
+        "Content-Type",
+        "text/html; charset=utf-8"
+      );
 
-            padding: 18px 25px;
 
-            border-bottom:
-              1px solid #ddd;
+      const pdfBase64 =
+        pdfBuffer.toString(
+          "base64"
+        );
 
-            display: flex;
 
-            justify-content:
-              space-between;
+      const isPending =
+        validation.status === "pending";
 
-            align-items: center;
 
-            gap: 20px;
+      return res.send(`
+        <!DOCTYPE html>
 
-            flex-wrap: wrap;
-          }
+        <html lang="fr">
 
-          .title {
-            font-size: 20px;
+        <head>
 
-            font-weight: 700;
+          <meta charset="UTF-8">
 
-            color: #222;
-          }
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+          >
 
-          .reference {
-            font-size: 14px;
+          <title>
+            Validation PDF OLIVED -
+            ${validation.reference}
+          </title>
 
-            color: #666;
-          }
+          <style>
 
-          .pdf-container {
-            flex: 1;
+            * {
+              box-sizing: border-box;
+            }
 
-            padding: 20px;
+            html,
+            body {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+            }
 
-            display: flex;
+            body {
+              font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
 
-            justify-content: center;
+              background: #eeeeee;
 
-            min-height: 0;
-          }
+              display: flex;
+              flex-direction: column;
 
-          .pdf-frame {
-            width: 100%;
+              min-height: 100vh;
+            }
 
-            max-width: 1200px;
+            .header {
+              background: white;
 
-            height: calc(100vh - 150px);
+              padding: 18px 25px;
 
-            min-height: 600px;
+              border-bottom:
+                1px solid #ddd;
 
-            border: none;
+              display: flex;
 
-            background: white;
+              justify-content:
+                space-between;
 
-            box-shadow:
-              0 2px 15px
-              rgba(0,0,0,0.15);
+              align-items: center;
 
-            border-radius: 6px;
-          }
+              gap: 20px;
 
-          .actions {
-            background: white;
+              flex-wrap: wrap;
+            }
 
-            padding: 18px 25px;
+            .title {
+              font-size: 20px;
 
-            border-top:
-              1px solid #ddd;
+              font-weight: 700;
 
-            display: flex;
+              color: #222;
+            }
 
-            justify-content: center;
+            .reference {
+              font-size: 14px;
 
-            gap: 20px;
-
-            position: sticky;
-
-            bottom: 0;
-
-            z-index: 100;
-          }
-
-          button {
-            border: none;
-
-            padding:
-              14px 45px;
-
-            border-radius: 7px;
-
-            font-size: 16px;
-
-            font-weight: 700;
-
-            cursor: pointer;
-
-            min-width: 180px;
-          }
-
-          .validate {
-            background: #198754;
-
-            color: white;
-          }
-
-          .validate:hover {
-            background: #157347;
-          }
-
-          .reject {
-            background: #dc3545;
-
-            color: white;
-          }
-
-          .reject:hover {
-            background: #bb2d3b;
-          }
-
-          .disabled {
-            background: #999;
-
-            color: white;
-
-            cursor: not-allowed;
-          }
-
-          .status {
-            text-align: center;
-
-            padding: 15px;
-
-            font-weight: 700;
-
-            background: #fff3cd;
-
-            color: #856404;
-          }
-
-          @media(max-width:700px) {
+              color: #666;
+            }
 
             .pdf-container {
-              padding: 5px;
+              flex: 1;
+
+              padding: 20px;
+
+              display: flex;
+
+              justify-content: center;
+
+              min-height: 0;
             }
 
             .pdf-frame {
-              height:
-                calc(100vh - 190px);
+              width: 100%;
 
-              min-height: 500px;
+              max-width: 1200px;
+
+              height:
+                calc(100vh - 150px);
+
+              min-height: 600px;
+
+              border: none;
+
+              background: white;
+
+              box-shadow:
+                0 2px 15px
+                rgba(0,0,0,0.15);
+
+              border-radius: 6px;
             }
 
             .actions {
-              flex-direction: column;
+              background: white;
+
+              padding: 18px 25px;
+
+              border-top:
+                1px solid #ddd;
+
+              display: flex;
+
+              justify-content: center;
+
+              gap: 20px;
+
+              position: sticky;
+
+              bottom: 0;
+
+              z-index: 100;
             }
 
             button {
-              width: 100%;
+              border: none;
+
+              padding:
+                14px 45px;
+
+              border-radius: 7px;
+
+              font-size: 16px;
+
+              font-weight: 700;
+
+              cursor: pointer;
+
+              min-width: 180px;
             }
 
-          }
+            .validate {
+              background: #198754;
 
-        </style>
+              color: white;
+            }
 
-      </head>
+            .validate:hover {
+              background: #157347;
+            }
 
-      <body>
+            .reject {
+              background: #dc3545;
 
-        <div class="header">
+              color: white;
+            }
 
-          <div class="title">
-            OLIVED - Validation de la fiche
-          </div>
+            .reject:hover {
+              background: #bb2d3b;
+            }
 
-          <div class="reference">
-            Référence :
-            <strong>
-              ${validation.reference}
-            </strong>
-          </div>
+            .status {
+              text-align: center;
 
-        </div>
+              padding: 15px;
 
+              font-weight: 700;
 
-        ${
-          !isPending
-            ? `
-              <div class="status">
-                Cette demande a déjà été
-                ${
-                  validation.status === "validated"
-                    ? "VALIDÉE"
-                    : "REFUSÉE"
-                }.
-              </div>
-            `
-            : ""
-        }
+              background: #fff3cd;
 
+              color: #856404;
+            }
 
-        <div class="pdf-container">
+            @media(max-width:700px) {
 
-          <iframe
-            class="pdf-frame"
-            src="data:application/pdf;base64,${pdfBase64}"
-          ></iframe>
-
-        </div>
-
-
-        ${
-          isPending
-            ? `
-              <div class="actions">
-
-                <button
-                  class="validate"
-                  onclick="valider()"
-                >
-                  ✓ VALIDER
-                </button>
-
-                <button
-                  class="reject"
-                  onclick="refuser()"
-                >
-                  ✕ REFUSER
-                </button>
-
-              </div>
-            `
-            : ""
-        }
-
-
-        <script>
-
-      
-        async function valider() {
-
-          const confirmation = confirm(
-            "Voulez-vous VALIDER cette fiche ?"
-          );
-        
-          if (!confirmation) {
-            return;
-          }
-        
-          try {
-        
-            const response = await fetch(
-              \`/api/validation/${token}/validate\`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
+              .pdf-container {
+                padding: 5px;
               }
-            );
-        
-            const data = await response.json();
-        
-            console.log(
-              "RÉPONSE VALIDATION :",
-              data
-            );
-        
-            if (!response.ok || !data.success) {
-        
-              alert(
-                data.message ||
-                "Erreur lors de la validation."
-              );
-        
-              return;
+
+              .pdf-frame {
+                height:
+                  calc(100vh - 190px);
+
+                min-height: 500px;
+              }
+
+              .actions {
+                flex-direction: column;
+              }
+
+              button {
+                width: 100%;
+              }
+
             }
-        
-            if (data.whatsappUrl) {
-        
-              console.log(
-                "OUVERTURE WHATSAPP :",
-                data.whatsappUrl
-              );
-        
-              window.location.href =
-                data.whatsappUrl;
-        
-              return;
-            }
-        
-            alert(
-              "✓ Fiche validée avec succès."
-            );
-        
-            window.location.reload();
-        
-          } catch (error) {
-        
-            console.error(
-              "ERREUR VALIDATION :",
-              error
-            );
-        
-            alert(
-              "Erreur de connexion au serveur."
-            );
+
+          </style>
+
+        </head>
+
+
+        <body>
+
+          <div class="header">
+
+            <div class="title">
+              OLIVED - Validation de la fiche
+            </div>
+
+            <div class="reference">
+              Référence :
+              <strong>
+                ${validation.reference}
+              </strong>
+            </div>
+
+          </div>
+
+
+          ${
+            !isPending
+              ? `
+                <div class="status">
+
+                  Cette demande a déjà été
+
+                  ${
+                    validation.status === "validated"
+                      ? "VALIDÉE"
+                      : "REFUSÉE"
+                  }.
+
+                </div>
+              `
+              : ""
           }
-        }
-        
 
 
-          async function refuser() {
+          <div class="pdf-container">
 
-            const confirmation =
-              confirm(
-                "Voulez-vous REFUSER cette fiche ?"
-              );
+            <iframe
+              class="pdf-frame"
+              src="data:application/pdf;base64,${pdfBase64}"
+            ></iframe>
 
-            if (!confirmation) {
-              return;
-            }
+          </div>
 
-            try {
 
-              const response =
-                await fetch(
-                  "/api/validation/${token}/reject",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type":
-                        "application/json"
-                    }
-                  }
+          ${
+            isPending
+              ? `
+                <div class="actions">
+
+                  <button
+                    class="validate"
+                    onclick="valider()"
+                  >
+                    ✓ VALIDER
+                  </button>
+
+                  <button
+                    class="reject"
+                    onclick="refuser()"
+                  >
+                    ✕ REFUSER
+                  </button>
+
+                </div>
+              `
+              : ""
+          }
+
+
+          <script>
+
+            async function valider() {
+
+              const confirmation =
+                confirm(
+                  "Voulez-vous VALIDER cette fiche ?"
                 );
 
-              const data =
-                await response.json();
-
-              if (!response.ok || !data.success) {
-
-                alert(
-                  data.message ||
-                  "Erreur lors du refus."
-                );
-
+              if (!confirmation) {
                 return;
               }
 
-              alert(
-                "La fiche a été refusée."
-              );
+              try {
 
-              window.location.reload();
+                const response =
+                  await fetch(
+                    "/api/validation/${token}/validate",
+                    {
+                      method: "POST",
 
-            } catch (error) {
+                      headers: {
+                        "Content-Type":
+                          "application/json",
+                      },
+                    }
+                  );
 
-              console.error(error);
+                const data =
+                  await response.json();
 
-              alert(
-                "Erreur de connexion au serveur."
-              );
+                console.log(
+                  "RÉPONSE VALIDATION :",
+                  data
+                );
 
+                if (
+                  !response.ok ||
+                  !data.success
+                ) {
+
+                  alert(
+                    data.message ||
+                    "Erreur lors de la validation."
+                  );
+
+                  return;
+                }
+
+                if (
+                  data.whatsappUrl
+                ) {
+
+                  window.location.href =
+                    data.whatsappUrl;
+
+                  return;
+                }
+
+                alert(
+                  "✓ Fiche validée avec succès."
+                );
+
+                window.location.reload();
+
+              } catch (error) {
+
+                console.error(
+                  "ERREUR VALIDATION :",
+                  error
+                );
+
+                alert(
+                  "Erreur de connexion au serveur."
+                );
+              }
             }
 
-          }
 
-        </script>
+            async function refuser() {
 
-      </body>
+              const confirmation =
+                confirm(
+                  "Voulez-vous REFUSER cette fiche ?"
+                );
 
-      </html>
-    `);
+              if (!confirmation) {
+                return;
+              }
 
-  } catch (error) {
+              try {
 
-    console.error(
-      "ERREUR PAGE VALIDATION :",
-      error
-    );
+                const response =
+                  await fetch(
+                    "/api/validation/${token}/reject",
+                    {
+                      method: "POST",
 
-    return res.status(500).send(`
-      <h1>Erreur serveur</h1>
-      <p>
-        Impossible d'afficher la fiche.
-      </p>
-    `);
+                      headers: {
+                        "Content-Type":
+                          "application/json",
+                      },
+                    }
+                  );
 
+                const data =
+                  await response.json();
+
+                if (
+                  !response.ok ||
+                  !data.success
+                ) {
+
+                  alert(
+                    data.message ||
+                    "Erreur lors du refus."
+                  );
+
+                  return;
+                }
+
+                alert(
+                  "La fiche a été refusée."
+                );
+
+                window.location.reload();
+
+              } catch (error) {
+
+                console.error(
+                  error
+                );
+
+                alert(
+                  "Erreur de connexion au serveur."
+                );
+              }
+            }
+
+          </script>
+
+        </body>
+
+        </html>
+      `);
+
+    } catch (error) {
+
+      console.error(
+        "ERREUR PAGE VALIDATION :",
+        error
+      );
+
+      return res.status(500).send(`
+        <h1>Erreur serveur</h1>
+
+        <p>
+          Impossible d'afficher la fiche.
+        </p>
+      `);
+    }
   }
-});
+);
+
+
 // ============================================================
-// VALIDER UNE DEMANDE DE VALIDATION PDF
+// VALIDER PDF
 // ============================================================
 
 app.post(
   "/api/validation/:token/validate",
   async (req, res) => {
+
     try {
-      const { token } = req.params;
 
-      console.log("=======================================");
-      console.log("VALIDATION PDF");
-      console.log("Token :", token);
-      console.log("=======================================");
+      const { token } =
+        req.params;
 
-      // --------------------------------------------------------
-      // 1. Récupérer la validation
-      // --------------------------------------------------------
 
-      const [rows] = await pool.query(
-        `
-        SELECT *
-        FROM pdf_validations
-        WHERE token = ?
-        LIMIT 1
-        `,
-        [token]
+      console.log(
+        "======================================="
       );
 
+      console.log(
+        "VALIDATION PDF"
+      );
+
+      console.log(
+        "Token :",
+        token
+      );
+
+      console.log(
+        "======================================="
+      );
+
+
+      const [rows] =
+        await pool.query(
+          `
+            SELECT *
+            FROM pdf_validations
+            WHERE token = ?
+            LIMIT 1
+          `,
+          [token]
+        );
+
+
       if (!rows.length) {
+
         return res.status(404).json({
           success: false,
           message:
@@ -1405,29 +1803,33 @@ app.post(
         });
       }
 
-      const validation = rows[0];
 
-      // --------------------------------------------------------
-      // 2. Vérifier le statut
-      // --------------------------------------------------------
+      const validation =
+        rows[0];
 
-      if (validation.status !== "pending") {
+
+      if (
+        validation.status !==
+        "pending"
+      ) {
+
         return res.status(400).json({
           success: false,
           message:
             "Cette fiche a déjà été traitée.",
-          status: validation.status,
+          status:
+            validation.status,
         });
       }
 
-      // --------------------------------------------------------
-      // 3. Vérifier expiration
-      // --------------------------------------------------------
 
       if (
         validation.expires_at &&
-        new Date(validation.expires_at) < new Date()
+        new Date(
+          validation.expires_at
+        ) < new Date()
       ) {
+
         return res.status(410).json({
           success: false,
           message:
@@ -1435,55 +1837,50 @@ app.post(
         });
       }
 
-      // --------------------------------------------------------
-      // 4. Récupérer le visiteur
-      // --------------------------------------------------------
 
-const visiteur =
-  await getVisitorById(
-    validation.visitor_id
-  );
+      const visiteur =
+        await getVisitorById(
+          validation.visitor_id
+        );
 
-// Nom complet du visiteur
-const nomComplet =
-  `${visiteur.prenom || ""} ${visiteur.nom || ""}`.trim();
 
-console.log(
-  "Visiteur :",
-  nomComplet
-);
+      const nomComplet =
+        `${visiteur.prenom || ""} ${visiteur.nom || ""}`
+          .trim();
 
-console.log(
-  "Canal :",
-  validation.channel
-);
 
+      console.log(
+        "Visiteur :",
+        nomComplet
+      );
 
       console.log(
         "Canal :",
         validation.channel
       );
 
-      // --------------------------------------------------------
-      // 5. Générer le PDF
-      // --------------------------------------------------------
 
       const pdfBuffer =
         await generatePdfFromHtml(
           validation.pdf_html
         );
 
+
       // ========================================================
-      // 6. ENVOI EMAIL
+      // EMAIL
       // ========================================================
 
       if (
-        validation.channel === "email"
+        validation.channel ===
+        "email"
       ) {
+
         const recipient =
           visiteur.email;
 
+
         if (!recipient) {
+
           return res.status(400).json({
             success: false,
             message:
@@ -1491,42 +1888,49 @@ console.log(
           });
         }
 
-        console.log(
-          "Envoi email vers :",
-          recipient
-        );
 
         const transporter =
           createEmailTransporter();
 
+
         await transporter.sendMail({
+
           from:
             process.env.EMAIL_FROM ||
             process.env.SMTP_USER,
 
-          to: recipient,
+          to:
+            recipient,
 
           subject:
             `Official Price Offer OLIVED - ${validation.reference}`,
 
           text:
-          `Dear ${nomComplet},\n\n` +
-  `I hope you are doing well.\n\n` +
-  `Please find attached our quotation for the requested olive oil products.\n` +
-  `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
-  `Please do not hesitate to contact us should you need any further information or clarification.\n` +
-  `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-  `Reference: ${validation.reference}\n\n` +
-  `Best regards,\n` +
-  `OLIVED`,
+            `Dear ${nomComplet},\n\n` +
 
+            `I hope you are doing well.\n\n` +
+
+            `Please find attached our quotation for the requested olive oil products.\n` +
+
+            `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
+
+            `Please do not hesitate to contact us should you need any further information or clarification.\n` +
+
+            `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+
+            `Reference: ${validation.reference}\n\n` +
+
+            `Best regards,\n` +
+
+            `OLIVED`,
 
           attachments: [
             {
               filename:
                 `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
 
-              content: pdfBuffer,
+              content:
+                pdfBuffer,
 
               contentType:
                 "application/pdf",
@@ -1534,191 +1938,189 @@ console.log(
           ],
         });
 
+
         console.log(
           "EMAIL ENVOYÉ AVEC SUCCÈS"
         );
       }
 
-           // ========================================================
-// 7. WHATSAPP — SANS API META
-// ========================================================
 
-let whatsappUrl = null;
+      // ========================================================
+      // WHATSAPP SANS META
+      // ========================================================
 
-if (validation.channel === "whatsapp") {
+      let whatsappUrl =
+        null;
 
-  const telephone =
-    visiteur.telephone ||
-    visiteur.phone ||
-    visiteur.whatsapp;
 
-  if (!telephone) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Le numéro WhatsApp du visiteur est manquant.",
-    });
-  }
+      if (
+        validation.channel ===
+        "whatsapp"
+      ) {
 
-  // ------------------------------------------------------
-  // Normaliser le numéro
-  // ------------------------------------------------------
+        const telephone =
+          visiteur.telephone ||
+          visiteur.phone ||
+          visiteur.whatsapp;
 
-  let phone = String(telephone).replace(/\D/g, "");
 
-  if (phone.startsWith("00")) {
-    phone = phone.substring(2);
-  }
+        if (!telephone) {
 
-  if (
-    (phone.startsWith("2") ||
-      phone.startsWith("5") ||
-      phone.startsWith("9")) &&
-    phone.length === 8
-  ) {
-    phone = "216" + phone;
-  }
+          return res.status(400).json({
+            success: false,
+            message:
+              "Le numéro WhatsApp du visiteur est manquant.",
+          });
+        }
 
-  console.log(
-    "WhatsApp destinataire :",
-    phone
-  );
 
-  // ------------------------------------------------------
-  // Nom du visiteur
-  // ------------------------------------------------------
+        let phone =
+          String(telephone)
+            .replace(/\D/g, "");
 
-  const nomComplet =
-    `${visiteur.prenom || ""} ${visiteur.nom || ""}`.trim();
 
-  // ------------------------------------------------------
-  // Message WhatsApp
-  // ------------------------------------------------------
+        if (
+          phone.startsWith("00")
+        ) {
 
-  const message = 
-`Dear ${nomComplet},\n\n` +
-  `I hope you are doing well.\n\n` +
-  `Please find attached our quotation for the requested olive oil products.\n` +
-  `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
-  `Please do not hesitate to contact us should you need any further information or clarification.\n` +
-  `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-  `Reference: ${validation.reference}\n\n` +
-  `Best regards,\n` +
-  `OLIVED`;
-  // ------------------------------------------------------
-  // Créer le lien WhatsApp
-  // ------------------------------------------------------
+          phone =
+            phone.substring(2);
+        }
 
-  whatsappUrl =
-    `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
-  console.log(
-    "======================================="
-  );
+        if (
+          (
+            phone.startsWith("2") ||
+            phone.startsWith("5") ||
+            phone.startsWith("9")
+          ) &&
+          phone.length === 8
+        ) {
 
-  console.log(
-    "WHATSAPP SANS API META"
-  );
+          phone =
+            "216" + phone;
+        }
 
-  console.log(
-    "Destinataire :",
-    phone
-  );
 
-  console.log(
-    "Référence :",
-    validation.reference
-  );
+        const message =
+          `Dear ${nomComplet},\n\n` +
 
-  console.log(
-    "WhatsApp URL :",
-    whatsappUrl
-  );
+          `I hope you are doing well.\n\n` +
 
-  console.log(
-    "=======================================");
-}
-      
-      // --------------------------------------------------------
-      // 8. Mettre à jour la validation
-      // --------------------------------------------------------
-      
+          `Please find attached our quotation for the requested olive oil products.\n` +
+
+          `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
+
+          `Please do not hesitate to contact us should you need any further information or clarification.\n` +
+
+          `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+
+          `Reference: ${validation.reference}\n\n` +
+
+          `Best regards,\n` +
+
+          `OLIVED`;
+
+
+        whatsappUrl =
+          `https://wa.me/${phone}?text=${encodeURIComponent(
+            message
+          )}`;
+
+
+        console.log(
+          "WHATSAPP URL :",
+          whatsappUrl
+        );
+      }
+
+
+      // ========================================================
+      // UPDATE VALIDATION
+      // ========================================================
+
       await pool.query(
         `
-        UPDATE pdf_validations
-        SET
-          status = 'validated',
-          validated_at = NOW()
-        WHERE token = ?
+          UPDATE pdf_validations
+          SET
+            status = 'validated',
+            validated_at = NOW()
+          WHERE token = ?
         `,
         [token]
       );
-      
+
+
       console.log(
         "VALIDATION ENREGISTRÉE EN BASE"
       );
-      
+
+
       return res.json({
         success: true,
-        message: "Validation effectuée avec succès.",
-        reference: validation.reference,
-        whatsappUrl: whatsappUrl,
+        message:
+          "Validation effectuée avec succès.",
+        reference:
+          validation.reference,
+        whatsappUrl,
       });
-      
-      } catch (error) {
-      
-        console.error(
-          "======================================="
-        );
-      
-        console.error(
-          "ERREUR VALIDATION :",
-          error
-        );
-      
-        console.error(
-          "======================================="
-        );
-      
-        return res.status(500).json({
-          success: false,
-      
-          message:
-            "Erreur lors de la validation et de l'envoi.",
-      
-          error:
-            error.message,
-        });
-      }
+
+    } catch (error) {
+
+      console.error(
+        "======================================="
+      );
+
+      console.error(
+        "ERREUR VALIDATION :",
+        error
+      );
+
+      console.error(
+        "======================================="
+      );
+
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Erreur lors de la validation et de l'envoi.",
+        error:
+          error.message,
       });
+    }
+  }
+);
 
 
 // ============================================================
-// REFUSER UNE DEMANDE DE VALIDATION PDF
+// REFUSER PDF
 // ============================================================
 
 app.post(
   "/api/validation/:token/reject",
   async (req, res) => {
+
     try {
-      const { token } = req.params;
 
-      console.log("=======================================");
-      console.log("REFUS PDF");
-      console.log("Token :", token);
-      console.log("=======================================");
+      const { token } =
+        req.params;
 
-      const [rows] = await pool.query(
-        `
-        SELECT *
-        FROM pdf_validations
-        WHERE token = ?
-        LIMIT 1
-        `,
-        [token]
-      );
+
+      const [rows] =
+        await pool.query(
+          `
+            SELECT *
+            FROM pdf_validations
+            WHERE token = ?
+            LIMIT 1
+          `,
+          [token]
+        );
+
 
       if (!rows.length) {
+
         return res.status(404).json({
           success: false,
           message:
@@ -1726,9 +2128,16 @@ app.post(
         });
       }
 
-      const validation = rows[0];
 
-      if (validation.status !== "pending") {
+      const validation =
+        rows[0];
+
+
+      if (
+        validation.status !==
+        "pending"
+      ) {
+
         return res.status(400).json({
           success: false,
           message:
@@ -1736,10 +2145,14 @@ app.post(
         });
       }
 
+
       if (
         validation.expires_at &&
-        new Date(validation.expires_at) < new Date()
+        new Date(
+          validation.expires_at
+        ) < new Date()
       ) {
+
         return res.status(410).json({
           success: false,
           message:
@@ -1747,27 +2160,28 @@ app.post(
         });
       }
 
+
       await pool.query(
         `
-        UPDATE pdf_validations
-        SET
-          status = 'rejected',
-          validated_at = NOW()
-        WHERE token = ?
+          UPDATE pdf_validations
+          SET
+            status = 'rejected',
+            validated_at = NOW()
+          WHERE token = ?
         `,
         [token]
       );
+
 
       console.log(
         "FICHE REFUSÉE"
       );
 
+
       return res.json({
         success: true,
-
         message:
           "La fiche a été refusée.",
-
         reference:
           validation.reference,
       });
@@ -1779,12 +2193,11 @@ app.post(
         error
       );
 
+
       return res.status(500).json({
         success: false,
-
         message:
           "Erreur lors du refus de la fiche.",
-
         error:
           error.message,
       });
@@ -1792,171 +2205,414 @@ app.post(
   }
 );
 
+
+// ============================================================
+// POST VISITEUR + COMMANDES
+// ============================================================
+
 app.post(
   "/api/visiteurs",
   authenticateToken,
   async (req, res) => {
 
+    let connection = null;
+
+
     try {
+
+      // ========================================================
+      // DONNÉES VISITEUR
+      // ========================================================
 
       const {
         nom,
         prenom,
-        email
+        email,
+        site,
+        origine,
+        indicatif,
+        telephone,
+        societe,
+        adresse_societe,
+        fonction,
+        genre,
+        langue_communication,
+        profile,
+        type_commande,
+        qualification,
+        commandes,
+        nombre_commandes,
       } = req.body;
 
-      // Commercial connecté
-      const commercialId = req.user.id;
 
-      console.log("Utilisateur connecté :", req.user);
+      // ========================================================
+      // COMMERCIAL
+      // ========================================================
+
+      const commercialId =
+        req.user.id;
+
+
       console.log(
-        "Visiteur créé par commercial ID :",
+        "======================================="
+      );
+
+      console.log(
+        "📥 POST /api/visiteurs"
+      );
+
+      console.log(
+        "COMMERCIAL ID :",
         commercialId
       );
 
-      // INSERT
-      const [result] = await pool.query(
-        `
-        INSERT INTO visiteurs (
-          nom,
-          prenom,
-          email,
-          commercial_id
-        )
-        VALUES (?, ?, ?, ?)
-        `,
-        [
-          nom,
-          prenom,
-          email,
-          commercialId
-        ]
-      );
-      
-      const visiteurId = result.insertId;
-
-console.log("=======================================");
-console.log("VISITEUR CRÉÉ ID :", visiteurId);
-console.log("=======================================");
-      
-      res.status(200).json({
-        success: true,
-        message: "Visiteur ajouté",
-        id: visiteurId,
-        visitor_id: visiteurId,
-        commercial_id: commercialId
-      });
-
-    } catch (error) {
-
-      console.error("ERREUR AJOUT VISITEUR :", error);
-
-      res.status(500).json({
-        success: false,
-        message: "Erreur serveur"
-      });
-    }
-  }
-);
-
-// ============================================================
-// POST VISITEUR
-// ============================================================
-
-app.post(
-  "/api/visiteurs",
-  authenticateToken,
-  async (req, res) => {
-
-    try {
-
-      const {
-        nom,
-        prenom,
-        email
-      } = req.body;
-
-      const commercialId = req.user.id;
-
-      console.log("Utilisateur connecté :", req.user);
-
-      const [result] = await pool.query(
-        `
-        INSERT INTO visiteurs (
-          nom,
-          prenom,
-          email,
-          commercial_id
-        )
-        VALUES (?, ?, ?, ?)
-        `,
-        [
-          nom,
-          prenom,
-          email,
-          commercialId
-        ]
+      console.log(
+        "NOMBRE COMMANDES :",
+        Array.isArray(commandes)
+          ? commandes.length
+          : 0
       );
 
-      const visiteurId = result.insertId;
+      console.log(
+        "COMMANDES :",
+        JSON.stringify(
+          commandes,
+          null,
+          2
+        )
+      );
 
-      console.log("VISITEUR CRÉÉ ID :", visiteurId);
+      console.log(
+        "======================================="
+      );
+
+
+      // ========================================================
+      // VALIDATION QUALIFICATION
+      // ========================================================
+
+      if (
+        qualification !== undefined &&
+        qualification !== null &&
+        qualification !== ""
+      ) {
+
+        const q =
+          Number(
+            qualification
+          );
+
+
+        if (
+          !Number.isInteger(q) ||
+          q < 1 ||
+          q > 5
+        ) {
+
+          return res.status(400).json({
+            success: false,
+            message:
+              "La qualification doit être comprise entre 1 et 5.",
+          });
+        }
+      }
+
+
+      // ========================================================
+      // NORMALISER COMMANDES
+      // ========================================================
+
+      let normalizedCommandes =
+        commandes;
+
+
+      if (
+        commandes !== undefined
+      ) {
+
+        try {
+
+          normalizedCommandes =
+            normalizeCommandes(
+              commandes,
+              type_commande
+            );
+
+        } catch (error) {
+
+          return res.status(400).json({
+            success: false,
+            message:
+              error.message,
+          });
+        }
+      }
+
+
+      // ========================================================
+      // CONNEXION
+      // ========================================================
+
+      connection =
+        await pool.getConnection();
+
+
+      await connection.beginTransaction();
+
+
+      // ========================================================
+      // INSERT VISITEUR
+      // ========================================================
+
+      const [result] =
+        await connection.execute(
+          `
+            INSERT INTO visiteurs (
+              nom,
+              prenom,
+              email,
+              site,
+              origine,
+              indicatif,
+              telephone,
+              societe,
+              adresse_societe,
+              fonction,
+              genre,
+              langue_communication,
+              profile,
+              type_commande,
+              qualification,
+              commercial_id
+            )
+
+            VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?
+            )
+          `,
+          [
+            nom || null,
+            prenom || null,
+            email || null,
+            site || null,
+            origine || null,
+            indicatif || null,
+            telephone || null,
+            societe || null,
+            adresse_societe || null,
+            fonction || null,
+            genre || null,
+            langue_communication || null,
+            profile || null,
+            type_commande || null,
+            qualification || null,
+            commercialId,
+          ]
+        );
+
+
+      const visiteurId =
+        result.insertId;
+
+
+      console.log(
+        "✅ VISITEUR CRÉÉ ID :",
+        visiteurId
+      );
+
+
+      // ========================================================
+      // INSERT COMMANDES
+      // ========================================================
+
+      if (
+        Array.isArray(
+          normalizedCommandes
+        ) &&
+        normalizedCommandes.length > 0
+      ) {
+
+        for (
+          let index = 0;
+          index <
+          normalizedCommandes.length;
+          index++
+        ) {
+
+          const commande =
+            normalizedCommandes[index];
+
+
+          console.log(
+            `📦 INSERTION COMMANDE ${index + 1}`
+          );
+
+
+          await insererCommande(
+            connection,
+            visiteurId,
+            commande,
+            index + 1
+          );
+        }
+
+      } else {
+
+        console.log(
+          "⚠️ AUCUNE COMMANDE À INSÉRER"
+        );
+      }
+
+
+      // ========================================================
+      // REFERENCE
+      // ========================================================
+
+      if (
+        type_commande
+      ) {
+
+        const reference =
+          generateReference(
+            visiteurId,
+            type_commande
+          );
+
+
+        await connection.execute(
+          `
+            UPDATE visiteurs
+            SET reference = ?
+            WHERE id = ?
+          `,
+          [
+            reference,
+            visiteurId,
+          ]
+        );
+      }
+
+
+      // ========================================================
+      // COMMIT
+      // ========================================================
+
+      await connection.commit();
+
+
+      console.log(
+        "======================================="
+      );
+
+      console.log(
+        "✅ VISITEUR + COMMANDES ENREGISTRÉS"
+      );
+
+      console.log(
+        "VISITEUR ID :",
+        visiteurId
+      );
+
+      console.log(
+        "COMMANDES :",
+        Array.isArray(
+          normalizedCommandes
+        )
+          ? normalizedCommandes.length
+          : 0
+      );
+
+      console.log(
+        "======================================="
+      );
+
 
       return res.status(200).json({
         success: true,
-        message: "Visiteur ajouté",
-        id: visiteurId,
-        visitor_id: visiteurId,
-        commercial_id: commercialId
+        message:
+          "Visiteur ajouté",
+        id:
+          visiteurId,
+        visitor_id:
+          visiteurId,
+        commercial_id:
+          commercialId,
+        nombre_commandes:
+          Array.isArray(
+            normalizedCommandes
+          )
+            ? normalizedCommandes.length
+            : 0,
       });
 
     } catch (error) {
 
+      // ========================================================
+      // ROLLBACK
+      // ========================================================
+
+      if (connection) {
+
+        try {
+
+          await connection.rollback();
+
+        } catch (rollbackError) {
+
+          console.error(
+            "❌ ERREUR ROLLBACK :",
+            rollbackError
+          );
+        }
+      }
+
+
       console.error(
-        "ERREUR AJOUT VISITEUR :",
-        error
+        "======================================="
       );
+
+      console.error(
+        "❌ ERREUR POST VISITEUR"
+      );
+
+      console.error(
+        "MESSAGE :",
+        error.message
+      );
+
+      console.error(
+        "STACK :",
+        error.stack
+      );
+
+      console.error(
+        "======================================="
+      );
+
 
       return res.status(500).json({
         success: false,
-        message: "Erreur serveur"
+        message:
+          "Erreur lors de l'enregistrement du visiteur.",
+        error:
+          error.message,
       });
+
+    } finally {
+
+      if (connection) {
+        connection.release();
+      }
     }
   }
 );
 
-app.get(
-  "/api/visiteurs",
-  authenticateToken,
-  requireUser,
-  async (req, res) => {
 
-    try {
+// ============================================================
+// GET TOUS LES VISITEURS
+// ============================================================
 
-      const [visiteurs] = await pool.query(
-        `
-        SELECT *
-        FROM visiteurs
-        ORDER BY id DESC
-        `
-      );
-
-      res.json({
-        success: true,
-        visiteurs
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        success: false,
-        message: "Erreur serveur"
-      });
-    }
-  }
-);
 app.get(
   "/api/visiteurs",
   authenticateToken,
@@ -1967,460 +2623,112 @@ app.get(
 
       let visiteurs;
 
-      // ADMIN
-      if (req.user.role === "admin") {
-
-        [visiteurs] = await pool.query(
-          `
-          SELECT *
-          FROM visiteurs
-          ORDER BY id DESC
-          `
-        );
-
-      }
-
-      // COMMERCIAL
-      else {
-
-        [visiteurs] = await pool.query(
-          `
-          SELECT *
-          FROM visiteurs
-          WHERE commercial_id = ?
-          ORDER BY id DESC
-          `,
-          [req.user.id]
-        );
-
-      }
-
-      res.json({
-        success: true,
-        visiteurs
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        success: false,
-        message: "Erreur serveur"
-      });
-    }
-  }
-);
-app.get(
-  "/api/admin/commerciaux",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-
-    try {
-
-      const [commerciaux] = await pool.query(
-        `
-        SELECT
-          id,
-          nom,
-          prenom,
-          email,
-          role,
-          actif,
-          created_at
-        FROM users
-        WHERE role = 'commercial'
-        ORDER BY id DESC
-        `
-      );
-
-      res.json({
-        success: true,
-        commerciaux
-      });
-
-    } catch (error) {
-
-      console.error(
-        "GET COMMERCIAUX ERROR:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message: "Erreur serveur"
-      });
-    }
-  }
-);
-const bcrypt = require("bcryptjs");
-
-app.post(
-  "/api/admin/commerciaux",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      console.log("========== AJOUT COMMERCIAL ==========");
-      console.log("BODY :", req.body);
-
-      const nom = req.body.nom;
-      const prenom = req.body.prenom;
-      const email = req.body.email;
-      const password = req.body.password;
-
-      // ==========================
-      // SEULEMENT 3 CHAMPS OBLIGATOIRES
-      // ==========================
 
       if (
-        !nom ||
-        !prenom ||
-        !email
+        req.user.role === "admin"
       ) {
-        return res.status(400).json({
-          success: false,
-          message: "Nom, prénom et email sont obligatoires"
-        });
+
+        [visiteurs] =
+          await pool.query(
+            `
+              SELECT *
+              FROM visiteurs
+              ORDER BY id DESC
+            `
+          );
+
+      } else {
+
+        [visiteurs] =
+          await pool.query(
+            `
+              SELECT *
+              FROM visiteurs
+              WHERE commercial_id = ?
+              ORDER BY id DESC
+            `,
+            [req.user.id]
+          );
       }
 
-      const nomValue = nom.trim();
-      const prenomValue = prenom.trim();
-      const emailValue = email.trim().toLowerCase();
-
-      // ==========================
-      // EMAIL EXISTANT ?
-      // ==========================
-
-      const [existing] = await pool.query(
-        `
-        SELECT id
-        FROM users
-        WHERE email = ?
-        `,
-        [emailValue]
-      );
-
-      if (existing.length > 0) {
-        return res.status(409).json({
-          success: false,
-          message: "Cet email existe déjà"
-        });
-      }
-
-      // ==========================
-      // PASSWORD OPTIONNEL
-      // ==========================
-
-      let passwordValue = null;
-
-      if (
-        password !== null &&
-        password !== undefined &&
-        String(password).trim() !== ""
-      ) {
-        passwordValue = await bcrypt.hash(
-          String(password).trim(),
-          10
-        );
-      }
-
-      console.log(
-        "PASSWORD :",
-        passwordValue === null
-          ? "NULL"
-          : "HASHÉ"
-      );
-
-      // ==========================
-      // INSERT
-      // ==========================
-
-      const [result] = await pool.query(
-        `
-        INSERT INTO users
-        (
-          nom,
-          prenom,
-          email,
-          password,
-          role,
-          actif
-        )
-        VALUES (?, ?, ?, ?, 'commercial', 0)
-        `,
-        [
-          nomValue,
-          prenomValue,
-          emailValue,
-          passwordValue
-        ]
-      );
-
-      console.log(
-        "✅ COMMERCIAL CRÉÉ ID :",
-        result.insertId
-      );
-
-      return res.status(201).json({
-        success: true,
-        message: "Commercial créé avec succès",
-        commercialId: result.insertId,
-        actif: 0
-      });
-
-    } catch (error) {
-      console.error("❌ ERREUR SQL :", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Erreur serveur",
-        error: error.message
-      });
-    }
-  }
-);
-
-// =====================================================
-// ACTIVER UN COMMERCIAL
-// =====================================================
-
-app.put(
-  "/api/admin/commerciaux/:id/activer",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      console.log("🟢 ACTIVATION COMMERCIAL :", id);
-
-      const [result] = await pool.query(
-        `
-        UPDATE users
-        SET actif = 1
-        WHERE id = ?
-        AND role = 'commercial'
-        `,
-        [id]
-      );
-
-      console.log("RESULTAT UPDATE :", result);
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Commercial introuvable.",
-        });
-      }
-
-      return res.json({
-        success: true,
-        message: "Commercial activé avec succès.",
-      });
-
-    } catch (error) {
-      console.error("❌ ERREUR ACTIVATION :", error);
-
-      return res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  }
-);
-
-
-app.put(
-  "/api/admin/commerciaux/:id/desactiver",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      console.log("🔴 DESACTIVATION COMMERCIAL :", id);
-
-      const [result] = await pool.query(
-        `
-        UPDATE users
-        SET actif = 0
-        WHERE id = ?
-        AND role = 'commercial'
-        `,
-        [id]
-      );
-
-      console.log("RESULTAT UPDATE :", result);
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Commercial introuvable.",
-        });
-      }
-
-      return res.json({
-        success: true,
-        message: "Commercial désactivé avec succès.",
-      });
-
-    } catch (error) {
-      console.error("❌ ERREUR DESACTIVATION :", error);
-
-      return res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  }
-);
-app.get(
-  "/api/auth/me",
-  authenticateToken,
-  async (req, res) => {
-
-    try {
-
-      const [users] = await pool.query(
-        `
-        SELECT
-          id,
-          nom,
-          prenom,
-          email,
-          role,
-          actif,
-          created_at
-        FROM users
-        WHERE id = ?
-        `,
-        [req.user.id]
-      );
-
-      if (users.length === 0) {
-
-        return res.status(404).json({
-          success: false,
-          message: "Utilisateur introuvable"
-        });
-
-      }
 
       res.json({
         success: true,
-        user: users[0]
+        visiteurs,
       });
 
     } catch (error) {
 
-      console.error(error);
-
-      res.status(500).json({
-        success: false,
-        message: "Erreur serveur"
-      });
-    }
-  }
-);
-
-// ============================================================
-// GET TOUS LES VISITEURS
-// ============================================================
-
-/*app.get(
-  "/api/visiteurs",
-  async (req, res) => {
-    try {
-      const [rows] =
-        await pool.query(
-          `
-            SELECT *
-            FROM visiteurs
-            ORDER BY id DESC
-          `
-        );
-
-      const data =
-        rows.map(
-          (visitor) => ({
-            ...visitor,
-
-            commandes:
-              parseJson(
-                visitor.commandes,
-                []
-              ),
-          })
-        );
-
-      res.json({
-        success: true,
-
-        count:
-          data.length,
-
-        data,
-      });
-
-    } catch (error) {
       console.error(
         "❌ GET VISITEURS :",
         error
       );
 
+
       res.status(500).json({
         success: false,
-
         message:
-          "Erreur lors de la récupération des visiteurs.",
-
-        error:
-          error.message,
+          "Erreur serveur",
       });
     }
   }
-);*/
+);
+
 
 // ============================================================
 // GET VISITEUR PAR ID
 // ============================================================
 
-app.get("/api/visiteurs/:id", authenticateToken, async (req, res) => {
+app.get(
+  "/api/visiteurs/:id",
+  authenticateToken,
+  async (req, res) => {
+
     try {
+
       const id =
         Number(
           req.params.id
         );
 
+
       if (
         !Number.isInteger(id) ||
         id <= 0
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Identifiant visiteur invalide.",
         });
       }
 
+
       const visitor =
         await getVisitorById(id);
 
-      // ======================================================
-      // REFERENCE
-      // ======================================================
+
+      if (!visitor) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            "Visiteur introuvable.",
+        });
+      }
+
 
       if (
         !visitor.reference
       ) {
+
         const reference =
           generateReference(
             visitor.id,
             visitor.type_commande
           );
+
 
         await pool.execute(
           `
@@ -2434,54 +2742,55 @@ app.get("/api/visiteurs/:id", authenticateToken, async (req, res) => {
           ]
         );
 
+
         visitor.reference =
           reference;
       }
 
-      // ======================================================
-      // COMMANDES
-      // ======================================================
 
-      visitor.commandes =
-        parseJson(
-          visitor.commandes,
-          []
+      const commandes =
+        await getCommandesByVisitorId(
+          id
         );
 
-      res.json({
-        success: true,
 
+      visitor.commandes =
+        commandes;
+
+
+      return res.status(200).json({
+        success: true,
         data:
           visitor,
-
         visitor:
           visitor,
       });
 
     } catch (error) {
+
       console.error(
         "❌ GET VISITEUR :",
         error
       );
 
+
       if (
         error.message ===
         "Visiteur introuvable."
       ) {
+
         return res.status(404).json({
           success: false,
-
           message:
             error.message,
         });
       }
 
-      res.status(500).json({
-        success: false,
 
+      return res.status(500).json({
+        success: false,
         message:
           "Erreur lors de la récupération du visiteur.",
-
         error:
           error.message,
       });
@@ -2489,36 +2798,141 @@ app.get("/api/visiteurs/:id", authenticateToken, async (req, res) => {
   }
 );
 
+
 // ============================================================
 // PUT VISITEUR
 // ============================================================
 
 app.put(
   "/api/visiteurs/:id",
+  authenticateToken,
   async (req, res) => {
+
     try {
+
       const id =
         Number(
           req.params.id
         );
 
+
       if (
         !Number.isInteger(id) ||
         id <= 0
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Identifiant visiteur invalide.",
         });
       }
 
+
       const currentVisitor =
         await getVisitorById(id);
 
+
       const body =
         req.body || {};
+
+
+      // ========================================================
+      // COMMANDES
+      // ========================================================
+
+      if (
+        body.commandes !== undefined
+      ) {
+
+        const newType =
+          normalizeTypeCommande(
+            body.type_commande ??
+            currentVisitor.type_commande
+          );
+
+
+        let normalized;
+
+
+        try {
+
+          normalized =
+            normalizeCommandes(
+              body.commandes,
+              newType
+            );
+
+        } catch (error) {
+
+          return res.status(400).json({
+            success: false,
+            message:
+              error.message,
+          });
+        }
+
+
+        const connection =
+          await pool.getConnection();
+
+
+        try {
+
+          await connection.beginTransaction();
+
+
+          await connection.execute(
+            `
+              DELETE FROM commandes
+              WHERE visiteur_id = ?
+            `,
+            [id]
+          );
+
+
+          if (
+            Array.isArray(
+              normalized
+            ) &&
+            normalized.length > 0
+          ) {
+
+            for (
+              let index = 0;
+              index <
+              normalized.length;
+              index++
+            ) {
+
+              await insererCommande(
+                connection,
+                id,
+                normalized[index],
+                index + 1
+              );
+            }
+          }
+
+
+          await connection.commit();
+
+        } catch (error) {
+
+          await connection.rollback();
+
+          throw error;
+
+        } finally {
+
+          connection.release();
+        }
+      }
+
+
+      // ========================================================
+      // CHAMPS VISITEUR
+      // ========================================================
 
       const allowedFields = [
         "nom",
@@ -2531,140 +2945,56 @@ app.put(
         "societe",
         "adresse_societe",
         "fonction",
+        "genre",
         "langue_communication",
         "profile",
-        "site_web",
-        "nom_entreprise",
         "type_commande",
-        "categorie",
-        "qualite_grade",
-        "volume_estime",
-        "destination",
-        "destinationport",
-        "canal_distribution",
-        "incoterm",
-        "format_livraison",
-        "frequence",
-        "exigences",
-        "infos",
-        "pays_conditionne",
-        "canal",
-        "volumes_conditionne",
-        "type_emballage",
-        "packaging",
-        "formats_souhaites",
-        "type_marque",
-        "nom_label",
-        "marche_cible",
-        "quantite_prevue",
-        "nouvelle_marque_formats",
-        "nouvelle_marque_design_conditionnement",
-        "periode_volume",
-        "type_conteneur",
-        "nombre_fcl",
-        "nombre_palettes",
-        "contact_professionnel",
-        "genre",
-        "certifications_requises",
-        "exigences_specifiques",
         "qualification",
-        "commandes",
       ];
 
-      const jsonFields = [
-        "exigences",
-        "volumes_conditionne",
-        "type_emballage",
-        "packaging",
-        "formats_souhaites",
-        "nouvelle_marque_formats",
-        "certifications_requises",
-        "exigences_specifiques",
-      ];
 
       const fields = [];
       const values = [];
 
+
       for (
         const field of allowedFields
       ) {
+
         if (
-          body[field] ===
-          undefined
+          body[field] === undefined
         ) {
           continue;
         }
 
-        // ====================================================
-        // COMMANDES
-        // ====================================================
 
-        if (
-          field === "commandes"
-        ) {
-          const newType =
-            normalizeTypeCommande(
-              body.type_commande ??
-              currentVisitor.type_commande
-            );
-
-          let normalized;
-
-          try {
-            normalized =
-              normalizeCommandes(
-                body.commandes,
-                newType
-              );
-          } catch (error) {
-            return res.status(400).json({
-              success: false,
-
-              message:
-                error.message,
-            });
-          }
-
-          fields.push(
-            "commandes = ?"
-          );
-
-          values.push(
-            normalized === null
-              ? null
-              : JSON.stringify(
-                  normalized
-                )
-          );
-
-          continue;
-        }
-
-        // ====================================================
+        // ======================================================
         // QUALIFICATION
-        // ====================================================
+        // ======================================================
 
         if (
-          field ===
-          "qualification"
+          field === "qualification"
         ) {
+
           const q =
             Number(
               body[field]
             );
+
 
           if (
             !Number.isInteger(q) ||
             q < 1 ||
             q > 5
           ) {
+
             return res.status(400).json({
               success: false,
-
               message:
                 "La qualification doit être comprise entre 1 et 5.",
             });
           }
+
 
           fields.push(
             "qualification = ?"
@@ -2675,74 +3005,30 @@ app.put(
           continue;
         }
 
-        // ====================================================
-        // JSON
-        // ====================================================
 
-        if (
-          jsonFields.includes(
-            field
-          )
-        ) {
-          fields.push(
-            `${field} = ?`
-          );
-
-          values.push(
-            cleanJson(
-              body[field]
-            )
-          );
-
-          continue;
-        }
-
-        // ====================================================
+        // ======================================================
         // TYPE COMMANDE
-        // ====================================================
+        // ======================================================
 
         if (
-          field ===
-          "type_commande"
+          field === "type_commande"
         ) {
+
           const type =
             normalizeTypeCommande(
               body[field]
             );
 
-          // Si le type change, on vérifie
-          // les commandes existantes.
-          if (
-            currentVisitor.commandes &&
-            type
-          ) {
-            const oldCommandes =
-              parseJson(
-                currentVisitor.commandes,
-                []
-              );
 
-            if (
-              oldCommandes.length
-            ) {
-              const oldType =
-                normalizeTypeCommande(
-                  currentVisitor.type_commande
-                );
+          if (!type) {
 
-              if (
-                oldType &&
-                oldType !== type
-              ) {
-                return res.status(400).json({
-                  success: false,
-
-                  message:
-                    "Impossible de changer le type de commande après l'ajout de commandes.",
-                });
-              }
-            }
+            return res.status(400).json({
+              success: false,
+              message:
+                "Type de commande invalide.",
+            });
           }
+
 
           fields.push(
             "type_commande = ?"
@@ -2753,77 +3039,86 @@ app.put(
           continue;
         }
 
-        // ====================================================
-        // AUTRES
-        // ====================================================
 
         fields.push(
           `${field} = ?`
         );
 
+
         values.push(
-          body[field]
+          cleanString(
+            body[field]
+          )
         );
       }
 
-      if (
-        !fields.length
-      ) {
-        return res.status(400).json({
-          success: false,
 
-          message:
-            "Aucune donnée à modifier.",
-        });
+      // ========================================================
+      // UPDATE VISITEUR
+      // ========================================================
+
+      if (
+        fields.length > 0
+      ) {
+
+        values.push(id);
+
+
+        const sql =
+          `
+            UPDATE visiteurs
+            SET ${fields.join(", ")}
+            WHERE id = ?
+          `;
+
+
+        await pool.execute(
+          sql,
+          values
+        );
       }
 
-      values.push(id);
 
-      const sql = `
-        UPDATE visiteurs
-        SET ${fields.join(", ")}
-        WHERE id = ?
-      `;
-
-      await pool.execute(
-        sql,
-        values
-      );
+      // ========================================================
+      // VISITEUR MIS À JOUR
+      // ========================================================
 
       const updated =
         await getVisitorById(id);
 
-      updated.commandes =
-        parseJson(
-          updated.commandes,
-          []
+
+      const commandes =
+        await getCommandesByVisitorId(
+          id
         );
 
-      res.json({
-        success: true,
 
+      updated.commandes =
+        commandes;
+
+
+      return res.json({
+        success: true,
         message:
           "Visiteur modifié avec succès.",
-
         data:
           updated,
       });
 
     } catch (error) {
+
       console.error(
         "❌ PUT VISITEUR :",
         error
       );
 
-      res.status(500).json({
-        success: false,
 
+      return res.status(500).json({
+        success: false,
         message:
           "Erreur lors de la modification du visiteur.",
-
         error:
           error.message,
-
         sqlMessage:
           error.sqlMessage,
       });
@@ -2831,32 +3126,39 @@ app.put(
   }
 );
 
+
 // ============================================================
 // DELETE VISITEUR
 // ============================================================
 
 app.delete(
   "/api/visiteurs/:id",
+  authenticateToken,
   async (req, res) => {
+
     try {
+
       const id =
         Number(
           req.params.id
         );
 
+
       if (
         !Number.isInteger(id) ||
         id <= 0
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Identifiant visiteur invalide.",
         });
       }
 
+
       await getVisitorById(id);
+
 
       await pool.execute(
         `
@@ -2866,27 +3168,26 @@ app.delete(
         [id]
       );
 
+
       res.json({
         success: true,
-
         message:
           "Visiteur supprimé avec succès.",
-
         id,
       });
 
     } catch (error) {
+
       console.error(
         "❌ DELETE VISITEUR :",
         error
       );
 
+
       res.status(500).json({
         success: false,
-
         message:
           "Erreur lors de la suppression du visiteur.",
-
         error:
           error.message,
       });
@@ -2894,35 +3195,42 @@ app.delete(
   }
 );
 
+
 // ============================================================
 // QUALIFICATION
 // ============================================================
 
 app.put(
   "/api/visiteurs/:id/qualification",
+  authenticateToken,
   async (req, res) => {
+
     try {
+
       const id =
         Number(
           req.params.id
         );
+
 
       const qualification =
         Number(
           req.body?.qualification
         );
 
+
       if (
         !Number.isInteger(id) ||
         id <= 0
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "ID visiteur invalide.",
         });
       }
+
 
       if (
         !Number.isInteger(
@@ -2931,15 +3239,17 @@ app.put(
         qualification < 1 ||
         qualification > 5
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "La qualification doit être comprise entre 1 et 5.",
         });
       }
 
+
       await getVisitorById(id);
+
 
       await pool.execute(
         `
@@ -2952,6 +3262,7 @@ app.put(
           id,
         ]
       );
+
 
       const [rows] =
         await pool.execute(
@@ -2968,34 +3279,34 @@ app.put(
           [id]
         );
 
+
       res.json({
         success: true,
-
         message:
           "Qualification enregistrée avec succès.",
-
         data:
           rows[0],
       });
 
     } catch (error) {
+
       console.error(
         "❌ QUALIFICATION :",
         error
       );
 
+
       res.status(500).json({
         success: false,
-
         message:
           "Erreur lors de l'enregistrement de la qualification.",
-
         error:
           error.message,
       });
     }
   }
 );
+
 
 // ============================================================
 // EMAIL - ENVOYER PDF
@@ -3004,7 +3315,9 @@ app.put(
 app.post(
   "/api/email/send",
   async (req, res) => {
+
     try {
+
       const {
         visitorId,
         visiteurId,
@@ -3013,8 +3326,8 @@ app.post(
         reference,
         toEmail,
         pdfHtml,
-      } =
-        req.body || {};
+      } = req.body || {};
+
 
       const id =
         Number(
@@ -3022,35 +3335,37 @@ app.post(
           visiteurId
         );
 
+
       if (
         !Number.isInteger(id) ||
         id <= 0
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Identifiant visiteur manquant ou invalide.",
         });
       }
 
+
       if (
         !pdfHtml ||
-        typeof pdfHtml !==
-          "string" ||
-        pdfHtml.trim().length <
-          100
+        typeof pdfHtml !== "string" ||
+        pdfHtml.trim().length < 100
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Le contenu HTML du PDF est manquant ou invalide.",
         });
       }
 
+
       const visitor =
         await getVisitorById(id);
+
 
       let finalReference =
         cleanString(
@@ -3060,14 +3375,15 @@ app.post(
           visitor.reference
         );
 
-      if (
-        !finalReference
-      ) {
+
+      if (!finalReference) {
+
         finalReference =
           generateReference(
             visitor.id,
             visitor.type_commande
           );
+
 
         await pool.execute(
           `
@@ -3082,6 +3398,7 @@ app.post(
         );
       }
 
+
       const recipient =
         cleanString(
           toEmail
@@ -3094,15 +3411,16 @@ app.post(
         ) ||
         "Contact@olived.tn";
 
+
       const pdfBuffer =
         await generatePdfFromHtml(
           pdfHtml
         );
 
+
       const transporter =
         createEmailTransporter();
 
-      await transporter.verify();
 
       const finalNomComplet =
         cleanString(
@@ -3117,8 +3435,10 @@ app.post(
           .trim() ||
         "Client";
 
+
       const mailSubject =
         `Official Price Offer OLIVED - ${finalReference}`;
+
 
       const mailText =
         cleanString(message) ||
@@ -3141,13 +3461,15 @@ Reference: ${finalReference}
 Best regards,
 OLIVED`;
 
+
       const mailHtml = `
         <div
           style="
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
+            font-family:Arial,sans-serif;
+            line-height:1.6;
           "
         >
+
           <p>
             Dear ${finalNomComplet},
           </p>
@@ -3177,20 +3499,28 @@ OLIVED`;
           </p>
 
           <p>
-            <strong>Reference:</strong>
+            <strong>
+              Reference:
+            </strong>
             ${finalReference}
           </p>
 
           <p>
             Best regards,<br>
-            <strong>OLIVED</strong>
+            <strong>
+              OLIVED
+            </strong>
           </p>
+
         </div>
       `;
 
+
       const info =
         await transporter.sendMail({
+
           from:
+            process.env.EMAIL_FROM ||
             process.env.SMTP_USER,
 
           to:
@@ -3219,36 +3549,32 @@ OLIVED`;
           ],
         });
 
+
       res.json({
         success: true,
-
         message:
           "Email envoyé avec succès.",
-
         messageId:
           info.messageId,
-
         reference:
           finalReference,
-
         recipient,
       });
 
     } catch (error) {
+
       console.error(
         "❌ ERREUR EMAIL :",
         error
       );
 
+
       res.status(500).json({
         success: false,
-
         message:
           "Erreur lors de l'envoi de l'email.",
-
         error:
           error.message,
-
         code:
           error.code,
       });
@@ -3256,22 +3582,25 @@ OLIVED`;
   }
 );
 
+
 // ============================================================
-// WHATSAPP - ENVOYER PDF
+// WHATSAPP - ENVOYER PDF VIA META
 // ============================================================
 
 app.post(
   "/api/whatsapp/send",
   async (req, res) => {
+
     try {
+
       const {
         visitorId,
         visiteurId,
         reference,
         telephone,
         pdfHtml,
-      } =
-        req.body || {};
+      } = req.body || {};
+
 
       const id =
         Number(
@@ -3279,35 +3608,50 @@ app.post(
           visiteurId
         );
 
+
       if (
         !Number.isInteger(id) ||
         id <= 0
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Identifiant visiteur invalide.",
         });
       }
 
+
       if (
         !pdfHtml ||
-        typeof pdfHtml !==
-          "string" ||
-        pdfHtml.trim().length <
-          100
+        typeof pdfHtml !== "string" ||
+        pdfHtml.trim().length < 100
       ) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Le contenu HTML du PDF est manquant.",
         });
       }
 
+
+      if (
+        !phoneNumberId ||
+        !accessToken
+      ) {
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Configuration WhatsApp Meta manquante dans .env.",
+        });
+      }
+
+
       const visitor =
         await getVisitorById(id);
+
 
       let finalReference =
         cleanString(
@@ -3317,14 +3661,15 @@ app.post(
           visitor.reference
         );
 
-      if (
-        !finalReference
-      ) {
+
+      if (!finalReference) {
+
         finalReference =
           generateReference(
             visitor.id,
             visitor.type_commande
           );
+
 
         await pool.execute(
           `
@@ -3339,9 +3684,6 @@ app.post(
         );
       }
 
-      // ======================================================
-      // NUMERO WHATSAPP
-      // ======================================================
 
       let whatsappNumber =
         cleanString(
@@ -3351,14 +3693,16 @@ app.post(
           visitor.telephone
         );
 
+
       if (!whatsappNumber) {
+
         return res.status(400).json({
           success: false,
-
           message:
             "Numéro WhatsApp introuvable.",
         });
       }
+
 
       whatsappNumber =
         whatsappNumber.replace(
@@ -3366,47 +3710,59 @@ app.post(
           ""
         );
 
+
       if (
-        whatsappNumber.startsWith(
-          "00"
-        )
+        whatsappNumber.startsWith("00")
       ) {
+
         whatsappNumber =
-          whatsappNumber.substring(
-            2
-          );
+          whatsappNumber.substring(2);
       }
 
-      
 
-      // ======================================================
-      // GENERATION PDF
-      // ======================================================
+      if (
+        (
+          whatsappNumber.startsWith("2") ||
+          whatsappNumber.startsWith("5") ||
+          whatsappNumber.startsWith("9")
+        ) &&
+        whatsappNumber.length === 8
+      ) {
+
+        whatsappNumber =
+          "216" + whatsappNumber;
+      }
+
 
       const pdfBuffer =
         await generatePdfFromHtml(
           pdfHtml
         );
 
-      // ======================================================
-      // UPLOAD MEDIA WHATSAPP
-      // ======================================================
+
+      // ========================================================
+      // UPLOAD MEDIA
+      // ========================================================
 
       const uploadUrl =
         `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`;
 
+
       const form =
         new FormData();
+
 
       form.append(
         "messaging_product",
         "whatsapp"
       );
 
+
       form.append(
         "type",
         "application/pdf"
       );
+
 
       form.append(
         "file",
@@ -3424,6 +3780,7 @@ app.post(
             pdfBuffer.length,
         }
       );
+
 
       const uploadResponse =
         await axios.post(
@@ -3448,23 +3805,29 @@ app.post(
           }
         );
 
+
       const mediaId =
         uploadResponse.data?.id;
 
+
       if (!mediaId) {
+
         throw new Error(
           "WhatsApp n'a pas retourné de media ID."
         );
       }
 
-      // ======================================================
+
+      // ========================================================
       // ENVOI DOCUMENT
-      // ======================================================
+      // ========================================================
 
       const sendUrl =
         `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
 
+
       const payload = {
+
         messaging_product:
           "whatsapp",
 
@@ -3478,6 +3841,7 @@ app.post(
           "document",
 
         document: {
+
           id:
             mediaId,
 
@@ -3488,6 +3852,7 @@ app.post(
             `Official_Price_Offer_${finalReference}.pdf`,
         },
       };
+
 
       const whatsappResponse =
         await axios.post(
@@ -3507,36 +3872,37 @@ app.post(
           }
         );
 
+
       const messageId =
-        whatsappResponse.data
+        whatsappResponse
+          .data
           ?.messages?.[0]?.id;
+
 
       res.json({
         success: true,
-
         message:
           "PDF envoyé avec succès sur WhatsApp.",
-
         reference:
           finalReference,
-
         phone:
           whatsappNumber,
-
         mediaId,
-
         messageId,
       });
 
     } catch (error) {
+
       console.error(
         "❌ ERREUR WHATSAPP :",
         error
       );
 
+
       if (
         error.response
       ) {
+
         console.error(
           "WhatsApp response:",
           JSON.stringify(
@@ -3547,12 +3913,11 @@ app.post(
         );
       }
 
+
       res.status(500).json({
         success: false,
-
         message:
           "Erreur lors de l'envoi du PDF sur WhatsApp.",
-
         error:
           error.response?.data ||
           error.message,
@@ -3561,6 +3926,7 @@ app.post(
   }
 );
 
+
 // ============================================================
 // TUNISIE + VRAC
 // ============================================================
@@ -3568,7 +3934,9 @@ app.post(
 app.get(
   "/api/visiteurs/tunisie/vrac",
   async (req, res) => {
+
     try {
+
       const [rows] =
         await pool.query(
           `
@@ -3579,6 +3947,7 @@ app.get(
             ORDER BY id DESC
           `
         );
+
 
       const data =
         rows.map(
@@ -3593,27 +3962,26 @@ app.get(
           })
         );
 
+
       res.json({
         success: true,
-
         count:
           data.length,
-
         data,
       });
 
     } catch (error) {
+
       console.error(
         "❌ ERREUR TUNISIE VRAC :",
         error
       );
 
+
       res.status(500).json({
         success: false,
-
         message:
           "Erreur lors de la récupération des visiteurs.",
-
         error:
           error.message,
       });
@@ -3621,11 +3989,424 @@ app.get(
   }
 );
 
+
 // ============================================================
-// MIGRATION COMMANDES
+// ADMIN - TOUS LES COMMERCIAUX
+// ============================================================
+
+app.get(
+  "/api/admin/commerciaux",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const [commerciaux] =
+        await pool.query(
+          `
+            SELECT
+              id,
+              nom,
+              prenom,
+              email,
+              role,
+              actif,
+              created_at
+            FROM users
+            WHERE role = 'commercial'
+            ORDER BY id DESC
+          `
+        );
+
+
+      res.json({
+        success: true,
+        commerciaux,
+      });
+
+    } catch (error) {
+
+      console.error(
+        "GET COMMERCIAUX ERROR:",
+        error
+      );
+
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Erreur serveur",
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// ADMIN - AJOUT COMMERCIAL
+// ============================================================
+
+app.post(
+  "/api/admin/commerciaux",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      console.log(
+        "========== AJOUT COMMERCIAL =========="
+      );
+
+      console.log(
+        "BODY :",
+        req.body
+      );
+
+
+      const nom =
+        req.body.nom;
+
+      const prenom =
+        req.body.prenom;
+
+      const email =
+        req.body.email;
+
+      const password =
+        req.body.password;
+
+
+      if (
+        !nom ||
+        !prenom ||
+        !email
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Nom, prénom et email sont obligatoires",
+        });
+      }
+
+
+      const nomValue =
+        nom.trim();
+
+      const prenomValue =
+        prenom.trim();
+
+      const emailValue =
+        email
+          .trim()
+          .toLowerCase();
+
+
+      const [existing] =
+        await pool.query(
+          `
+            SELECT id
+            FROM users
+            WHERE email = ?
+          `,
+          [emailValue]
+        );
+
+
+      if (
+        existing.length > 0
+      ) {
+
+        return res.status(409).json({
+          success: false,
+          message:
+            "Cet email existe déjà",
+        });
+      }
+
+
+      let passwordValue =
+        null;
+
+
+      if (
+        password !== null &&
+        password !== undefined &&
+        String(password).trim() !== ""
+      ) {
+
+        passwordValue =
+          await bcrypt.hash(
+            String(password).trim(),
+            10
+          );
+      }
+
+
+      const [result] =
+        await pool.query(
+          `
+            INSERT INTO users
+            (
+              nom,
+              prenom,
+              email,
+              password,
+              role,
+              actif
+            )
+
+            VALUES (
+              ?, ?, ?, ?,
+              'commercial',
+              0
+            )
+          `,
+          [
+            nomValue,
+            prenomValue,
+            emailValue,
+            passwordValue,
+          ]
+        );
+
+
+      console.log(
+        "✅ COMMERCIAL CRÉÉ ID :",
+        result.insertId
+      );
+
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Commercial créé avec succès",
+        commercialId:
+          result.insertId,
+        actif:
+          0,
+      });
+
+    } catch (error) {
+
+      console.error(
+        "❌ ERREUR SQL :",
+        error
+      );
+
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Erreur serveur",
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// ACTIVER COMMERCIAL
+// ============================================================
+
+app.put(
+  "/api/admin/commerciaux/:id/activer",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const { id } =
+        req.params;
+
+
+      const [result] =
+        await pool.query(
+          `
+            UPDATE users
+            SET actif = 1
+            WHERE id = ?
+              AND role = 'commercial'
+          `,
+          [id]
+        );
+
+
+      if (
+        result.affectedRows === 0
+      ) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            "Commercial introuvable.",
+        });
+      }
+
+
+      return res.json({
+        success: true,
+        message:
+          "Commercial activé avec succès.",
+      });
+
+    } catch (error) {
+
+      console.error(
+        "❌ ERREUR ACTIVATION :",
+        error
+      );
+
+
+      return res.status(500).json({
+        success: false,
+        message:
+          error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// DESACTIVER COMMERCIAL
+// ============================================================
+
+app.put(
+  "/api/admin/commerciaux/:id/desactiver",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+
+    try {
+
+      const { id } =
+        req.params;
+
+
+      const [result] =
+        await pool.query(
+          `
+            UPDATE users
+            SET actif = 0
+            WHERE id = ?
+              AND role = 'commercial'
+          `,
+          [id]
+        );
+
+
+      if (
+        result.affectedRows === 0
+      ) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            "Commercial introuvable.",
+        });
+      }
+
+
+      return res.json({
+        success: true,
+        message:
+          "Commercial désactivé avec succès.",
+      });
+
+    } catch (error) {
+
+      console.error(
+        "❌ ERREUR DESACTIVATION :",
+        error
+      );
+
+
+      return res.status(500).json({
+        success: false,
+        message:
+          error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// AUTH ME
+// ============================================================
+
+app.get(
+  "/api/auth/me",
+  authenticateToken,
+  async (req, res) => {
+
+    try {
+
+      const [users] =
+        await pool.query(
+          `
+            SELECT
+              id,
+              nom,
+              prenom,
+              email,
+              role,
+              actif,
+              created_at
+            FROM users
+            WHERE id = ?
+          `,
+          [req.user.id]
+        );
+
+
+      if (
+        users.length === 0
+      ) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            "Utilisateur introuvable",
+        });
+      }
+
+
+      res.json({
+        success: true,
+        user:
+          users[0],
+      });
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Erreur serveur",
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// MIGRATION COLONNE COMMANDES VISITEUR
 // ============================================================
 
 async function ensureCommandesColumn() {
+
   const [columns] =
     await pool.query(
       `
@@ -3637,14 +4418,17 @@ async function ensureCommandesColumn() {
       `
     );
 
+
   if (
     Number(
       columns[0]?.count || 0
     ) === 0
   ) {
+
     console.log(
       "📦 Création de la colonne commandes..."
     );
+
 
     await pool.query(
       `
@@ -3653,24 +4437,31 @@ async function ensureCommandesColumn() {
       `
     );
 
+
     console.log(
       "✅ Colonne commandes créée."
     );
+
   } else {
+
     console.log(
       "✅ Colonne commandes déjà présente."
     );
   }
 }
 
+
 // ============================================================
 // START SERVER
 // ============================================================
 
 async function startServer() {
+
   try {
+
     const connection =
       await pool.getConnection();
+
 
     console.log(
       "======================================="
@@ -3690,22 +4481,26 @@ async function startServer() {
         "visiteurs_db"
     );
 
+
     connection.release();
 
+
     // ========================================================
-    // CREATION AUTOMATIQUE COMMANDES
+    // MIGRATION
     // ========================================================
 
     await ensureCommandesColumn();
 
+
     // ========================================================
-    // START
+    // SERVER
     // ========================================================
 
     app.listen(
       PORT,
       "0.0.0.0",
       () => {
+
         console.log("");
 
         console.log(
@@ -3713,7 +4508,7 @@ async function startServer() {
         );
 
         console.log(
-          "OLIVED SERVER"
+          "🚀 OLIVED SERVER"
         );
 
         console.log(
@@ -3747,6 +4542,7 @@ async function startServer() {
     );
 
   } catch (error) {
+
     console.error(
       "======================================="
     );
@@ -3766,6 +4562,7 @@ async function startServer() {
     process.exit(1);
   }
 }
+
 
 // ============================================================
 // LANCEMENT

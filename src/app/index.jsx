@@ -54,7 +54,11 @@ export default function HomeScreen() {
     piquant: "",
     défaut: "",
   });
-
+  const [demandeEchantillon, setDemandeEchantillon] = useState("non");
+  const [adresseEchantillon, setAdresseEchantillon] = useState("");
+  const [personneReceptionEchantillon, setPersonneReceptionEchantillon] = useState("");
+  const [telReceptionEchantillon, setTelReceptionEchantillon] = useState("");
+  const [certifications, setCertifications] = useState([]);
 
   const handleLogout = () => {
     logout();
@@ -369,6 +373,12 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
   const [marcheCible, setMarcheCible] = useState("");
   const [quantitePrevue, setQuantitePrevue] = useState("");
 
+
+  const [k232Selection, setK232Selection] = useState(false);
+const [k270Selection, setK270Selection] = useState(false);
+
+const [k232Valeur, setK232Valeur] = useState("");
+const [k270Valeur, setK270Valeur] = useState("");
   // =====================================================
   // NOUVELLE MARQUE
   // EMBALLAGE ET FORMATS INDÉPENDANTS
@@ -410,6 +420,8 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
     setFormatLivraison("");
     setFrequenceCommande("");
     setExigencesSpecifiques([]);
+    setCertificationsRequises([]);
+    setAutreCertification("");
     setInformationsComplementaires("");
     setAutreExigence("");
     setProfilAromatique({
@@ -479,181 +491,16 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
       BaginBox: "",
     });
     setNouvelleMarqueAutreEmballage("");
-  };
 
-  const getCommandeCourante = () => {
-    if (!typeCommande) return null;
+    setK232Selection(false);
+setK270Selection(false);
 
-    return {
-      type: typeCommande,
-
-      // VRAC
-      categorie: categorie.trim() || null,
-      qualite_grade: qualiteGrade.trim() || null,
-      volume_estime:
-        volumeEstime.trim() && !isNaN(Number(volumeEstime))
-          ? Number(volumeEstime)
-          : null,
-      destination: destination.trim() || null,
-      destinationport: destinationport.trim() || null,
-      incoterm: incoterm || null,
-      format_livraison: formatLivraison || null,
-      frequence_commande: frequenceCommande || null,
-      exigences_specifiques: [
-        ...exigencesSpecifiques,
-        ...(exigencesSpecifiques.includes("Autre") &&
-        autreExigence.trim()
-          ? [autreExigence.trim()]
-          : []),
-      ],
-      informations_complementaires:
-        informationsComplementaires.trim() || null,
-      profil_aromatique: profilAromatique,
-
-      // CONDITIONNÉ
-      pays_conditionne: paysConditionne || null,
-      canal:
-        canalDistribution === "Autre"
-          ? autreCanalDistribution || null
-          : canalDistribution || null,
-      canal_distribution:
-        canalDistribution === "Autre"
-          ? autreCanalDistribution || null
-          : canalDistribution || null,
-      volumes_estimes: volumesEstimes.trim() || null,
-      volumes_conditionne: volumesEstimes || null,
-      periode_volume: typeVolumeEstime || null,
-
-      type_emballage:
-        emballagesSelectionnes.length > 0
-          ? {
-              emballages: emballagesSelectionnes,
-              autres: {
-                Tin: autresSelectionnes.Tin
-                  ? autresEmballages.Tin?.trim() || ""
-                  : "",
-                PET: autresSelectionnes.PET
-                  ? autresEmballages.PET?.trim() || ""
-                  : "",
-                Glass: autresSelectionnes.Glass
-                  ? autresEmballages.Glass?.trim() || ""
-                  : "",
-                BaginBox: autresSelectionnes.BaginBox
-                  ? autresEmballages.BaginBox?.trim() || ""
-                  : "",
-                Autre: emballagesSelectionnes.includes("Autre")
-                  ? autreEmballage.trim()
-                  : "",
-              },
-            }
-          : null,
-
-      packaging:
-        Object.keys(formatsEmballage).length > 0
-          ? formatsEmballage
-          : null,
-
-      formats_souhaites: formatsSouhaites || null,
-      type_marque: typeMarque || null,
-      nom_label:
-        typeMarque === "Private Label"
-          ? nomLabel.trim() || null
-          : null,
-
-      certifications_requises: [
-        ...certificationsRequises.filter((item) => item !== "Autre"),
-        ...(certificationsRequises.includes("Autre") &&
-        autreCertification.trim()
-          ? [autreCertification.trim()]
-          : []),
-      ],
-
-      nom_entreprise: nomEntreprise.trim() || null,
-      site_web: siteWeb.trim() || null,
-      contact_professionnel: contactProfessionnel.trim() || null,
-
-      type_conteneur:
-        quantiteCommande === "conteneur_20" ||
-        quantiteCommande === "conteneur_40" ||
-        quantiteCommande === "palettes"
-          ? quantiteCommande
-          : null,
-
-      nombre_fcl:
-        (quantiteCommande === "conteneur_20" ||
-          quantiteCommande === "conteneur_40") &&
-        nombreFCL.trim() &&
-        !isNaN(Number(nombreFCL))
-          ? Number(nombreFCL)
-          : null,
-
-      nombre_palettes:
-        quantiteCommande === "palettes" &&
-        nombrePalettes.trim() &&
-        !isNaN(Number(nombrePalettes))
-          ? Number(nombrePalettes)
-          : null,
-
-      marche_cible:
-        typeMarque === "Création de nouvelle marque"
-          ? marcheCible.trim() || null
-          : null,
-
-      quantite_prevue:
-        typeMarque === "Création de nouvelle marque"
-          ? quantitePrevue.trim() || null
-          : null,
-
-      nouvelle_marque_formats:
-        typeMarque === "Création de nouvelle marque" &&
-        nouvelleMarqueEmballagesSelectionnes.length > 0
-          ? {
-              emballages: nouvelleMarqueEmballagesSelectionnes,
-              formats: nouvelleMarqueFormatsEmballage,
-              autres_formats: nouvelleMarqueAutresFormats,
-              autre: nouvelleMarqueAutreEmballage.trim() || null,
-            }
-          : null,
-
-      nouvelle_marque_design_conditionnement:
-        typeMarque === "Création de nouvelle marque" &&
-        nouvelleMarqueEmballagesSelectionnes.length > 0
-          ? {
-              emballages: nouvelleMarqueEmballagesSelectionnes,
-              autre: nouvelleMarqueAutreEmballage.trim() || null,
-            }
-          : null,
-    };
-  };
-
-  const handleAjouterCommande = () => {
-    if (!typeCommande) {
-      Alert.alert(
-        "Type de commande",
-        "Veuillez sélectionner Vrac ou Conditionné avant d'ajouter une commande."
-      );
-      return;
-    }
-
-    const commande = getCommandeCourante();
-
-    if (!commande) return;
-
-    setCommandes((prev) => [...prev, commande]);
-
-    // On garde le type choisi et on vide uniquement
-    // les informations de la commande actuelle.
-    resetCommandeFields();
-
-    Alert.alert(
-      "Commande ajoutée",
-      `Commande ${commandes.length + 1} enregistrée. Vous pouvez maintenant saisir la commande ${
-        commandes.length + 2
-      } (${typeCommande === "vrac" ? "Vrac" : "Conditionné"}).`
-    );
+setK232Valeur("");
+setK270Valeur("");
   };
 
 
+ 
   // =====================================================
   // QUALIFICATION DU VISITEUR
   // =====================================================
@@ -1517,646 +1364,545 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
   // AJOUTER VISITEUR
   // =====================================================
 
-  const handleAjouter = async () => {
+  // =====================================================
+  // CONSTRUCTION DE LA COMMANDE COURANTE
+  // =====================================================
+
+  const construireCommandeCourante = () => {
+    if (!typeCommande) return null;
 
     const exigencesSpecifiquesFinales = [
-      ...exigencesSpecifiques,
-      ...(exigencesSpecifiques.includes("Autre") &&
-      autreExigence.trim() !== ""
+      ...(exigencesSpecifiques || []).filter((item) => item !== "Autre"),
+      ...(exigencesSpecifiques?.includes("Autre") && autreExigence?.trim()
         ? [autreExigence.trim()]
-        : [])
+        : []),
     ];
 
     const certificationsRequisesFinales = [
-      ...certificationsRequises.filter(
+      ...(certificationsRequises || []).filter(
         (item) => item !== "Autre"
       ),
-      ...(certificationsRequises.includes("Autre") &&
-      autreCertification.trim() !== ""
+      ...(certificationsRequises?.includes("Autre") &&
+      autreCertification?.trim()
         ? [autreCertification.trim()]
-        : [])
+        : []),
     ];
 
-    // ===================================================
-    // VÉRIFICATION QUALIFICATION
-    // ===================================================
-
-    if (qualification === 0) {
-      Alert.alert(
-        "Attention",
-        "Veuillez sélectionner une note de 1 à 5 étoiles."
-      );
-      return;
-    }
-
-    // ===================================================
-    // TYPE EMBALLAGE CONDITIONNÉ
-    // ===================================================
-    //
-    // IMPORTANT :
-    // Tin / PET / Glass sont les types principaux.
-    //
-    // Les "Autre" sont maintenant enregistrés
-    // indépendamment pour chaque type.
-    //
-    // ===================================================
     let typeEmballageData = null;
 
     if (
       typeCommande === "conditionné" &&
-      emballagesSelectionnes.length > 0
+      emballagesSelectionnes?.length > 0
     ) {
       typeEmballageData = {
         emballages: emballagesSelectionnes,
         autres: {
-          Tin: autresSelectionnes.Tin
-            ? autresEmballages.Tin?.trim() || ""
+          Tin: autresSelectionnes?.Tin
+            ? autresEmballages?.Tin?.trim() || ""
             : "",
-          PET: autresSelectionnes.PET
-            ? autresEmballages.PET?.trim() || ""
+          PET: autresSelectionnes?.PET
+            ? autresEmballages?.PET?.trim() || ""
             : "",
-          Glass: autresSelectionnes.Glass
-            ? autresEmballages.Glass?.trim() || ""
+          Glass: autresSelectionnes?.Glass
+            ? autresEmballages?.Glass?.trim() || ""
             : "",
-            BaginBox: autresSelectionnes.BaginBox
-            ? autresEmballages.BaginBox?.trim() || ""
-            : "",  
+          BaginBox: autresSelectionnes?.BaginBox
+            ? autresEmballages?.BaginBox?.trim() || ""
+            : "",
           Autre: emballagesSelectionnes.includes("Autre")
-            ? (autreEmballage ?? "").trim()
+            ? autreEmballage?.trim() || ""
             : "",
         },
       };
     }
-    
-    console.log(
-      "TYPE EMBALLAGE FINAL :",
-      JSON.stringify(typeEmballageData)
-    );
-    
-    // Logs à placer après la création de typeEmballageData
-    console.log("AUTRE EMBALLAGE STATE :", JSON.stringify(autreEmballage));
-console.log(
-  "AUTRE EMBALLAGE INCLUS ?",
-  emballagesSelectionnes.includes("Autre")
-);
-    console.log("EMBALLAGES SELECTIONNES :", emballagesSelectionnes);
-    console.log(
-      "TYPE EMBALLAGE FINAL :",
-      JSON.stringify(typeEmballageData, null, 2)
-    );
-    // ===================================================
-    // PACKAGING
-    // ===================================================
-    //
-    // IMPORTANT :
-    // packaging est maintenant séparé de type_emballage.
-    //
-    // Exemple :
-    //
-    // {
-    //   Tin: ["500 ml", "1 L"],
-    //   PET: ["1 L"],
-    //   Glass: {
-    //     MARASCA: ["750 ml"],
-    //     DORICA: ["500 ml"]
-    //   }
-    // }
-    //
-    // ===================================================
 
-    let packagingData = null;
-
-    if (
+    const packagingData =
       typeCommande === "conditionné" &&
+      formatsEmballage &&
       Object.keys(formatsEmballage).length > 0
-    ) {
-      packagingData = formatsEmballage;
-    }
-
-    // ===================================================
-    // FORMAT NOUVELLE MARQUE
-    // ===================================================
+        ? formatsEmballage
+        : null;
 
     let nouvelleMarqueFormatsData = null;
 
     if (
       typeCommande === "conditionné" &&
-      typeMarque === "Création de nouvelle marque" &&
-      nouvelleMarqueEmballagesSelectionnes.length > 0
+      typeMarque === "Création de nouvelle marque"
     ) {
       nouvelleMarqueFormatsData = {
-        emballages: nouvelleMarqueEmballagesSelectionnes,
-    
-        formats: nouvelleMarqueFormatsEmballage,
-    
-        autres_formats: nouvelleMarqueAutresFormats,
-    
-        autre: nouvelleMarqueAutreEmballage.trim() || null,
+        emballages: nouvelleMarqueEmballagesSelectionnes || [],
+        formats: nouvelleMarqueFormatsEmballage || {},
+        autres_formats: nouvelleMarqueAutresFormats || {},
+        autre: nouvelleMarqueAutreEmballage?.trim() || null,
       };
     }
 
-    // ===================================================
-    // TOUTES LES COMMANDES
-    // ===================================================
+    return {
+      type_commande: typeCommande,
 
-    const commandeCouranteFinale = getCommandeCourante();
-
-    const commandesFinales = [
-      ...commandes,
-      ...(commandeCouranteFinale ? [commandeCouranteFinale] : []),
-    ];
-
-    // ===================================================
-    // DONNÉES VISITEUR
-    // ===================================================
-
-    const visitorData = {
-
-      // =================================================
-      // INFORMATIONS GÉNÉRALES
-      // =================================================
-
-      nom:
-        nom.trim() || null,
-
-      prenom:
-        prenom.trim() || null,
-
-      email:
-        email.trim() || null,
-
-      site:
-        site.trim() ||
-          null,
-
-      origine:
-        origine || null,
-
-      indicatif:
-        indicatif || null,
-
-      telephone:
-        telephone.trim() || null,
-
-      societe:
-        societe.trim() || null,
-
-      adresse_societe:
-        adresseSociete.trim() || null,
-
-      fonction:
-        fonction.trim() || null,
-
-        genre:
-        genre.trim() || null,
-
-      langue_communication:
-        langueCommunication || null,
-
-      // =================================================
-      // PROFILE
-      // =================================================
-
-      profile:
-        profile || null,
-
-      // =================================================
-      // TYPE COMMANDE
-      // =================================================
-
-      type_commande:
-        profile === "intermediaire" ||
-        profile === "acheteur"
-          ? typeCommande || null
-          : null,
-
-      // =================================================
-      // PLUSIEURS COMMANDES
-      // =================================================
-      // Le backend doit stocker ce champ dans une colonne JSON
-      // nommée "commandes".
-      commandes: commandesFinales,
-
-      nombre_commandes: commandesFinales.length,
-
-      // =================================================
-      // QUALIFICATION
-      // =================================================
-
-      qualification:
-        qualification > 0
-          ? qualification
-          : null,
-
-      // =================================================
       // VRAC
-      // =================================================
-
       categorie:
-        typeCommande === "vrac"
-          ? categorie.trim() || null
-          : null,
+        typeCommande === "vrac" ? categorie?.trim() || null : null,
 
       qualite_grade:
-        typeCommande === "vrac"
-          ? qualiteGrade.trim() || null
-          : null,
+        typeCommande === "vrac" ? qualiteGrade?.trim() || null : null,
 
       volume_estime:
         typeCommande === "vrac" &&
-        volumeEstime.trim() &&
+        volumeEstime?.trim() &&
         !isNaN(Number(volumeEstime))
           ? Number(volumeEstime)
           : null,
 
       destination:
-        typeCommande === "vrac"
-          ? destination.trim() || null
-          : null,
+        typeCommande === "vrac" ? destination?.trim() || null : null,
 
-          destinationport:
-        typeCommande === "vrac"
-          ? destinationport.trim() || null
-          : null,
+      destinationport:
+        typeCommande === "vrac" ? destinationport?.trim() || null : null,
 
       incoterm:
-        typeCommande === "vrac"
-          ? incoterm || null
-          : null,
+        typeCommande === "vrac" ? incoterm || null : null,
 
       format_livraison:
-        typeCommande === "vrac"
-          ? formatLivraison || null
-          : null,
+        typeCommande === "vrac" ? formatLivraison || null : null,
 
       frequence_commande:
-        typeCommande === "vrac"
-          ? frequenceCommande || null
+        typeCommande === "vrac" ? frequenceCommande || null : null,
+
+      exigences_specifiques:
+        typeCommande === "vrac" && exigencesSpecifiquesFinales.length > 0
+          ? exigencesSpecifiquesFinales
           : null,
-
-          exigences_specifiques:
-          typeCommande === "vrac" &&
-          exigencesSpecifiquesFinales.length > 0
-            ? JSON.stringify(exigencesSpecifiquesFinales)
-            : null,
-
-            
 
       informations_complementaires:
         typeCommande === "vrac"
-          ? informationsComplementaires.trim() || null
+          ? informationsComplementaires?.trim() || null
           : null,
 
-      // =================================================
+      profil_aromatique:
+        typeCommande === "vrac" ? profilAromatique || null : null,
+
+        /*certifications_requises:
+        typeCommande === "vrac" 
+          ? certificationsRequisesFinales.length > 0
+            ? certificationsRequisesFinales
+            : null
+          : certifications.length > 0
+            ? certifications
+            : null,*/
+            certifications_requises:
+            certificationsRequisesFinales.length > 0
+              ? certificationsRequisesFinales
+              : certifications.length > 0
+                ? certifications
+                : null,    
+      
+      informations_complementaires:
+        typeCommande === "vrac"
+          ? informationsComplementaires?.trim() || null
+          : null,
+      
+      profil_aromatique:
+        typeCommande === "vrac" ? profilAromatique || null : null,
+
       // CONDITIONNÉ
-      // =================================================
-
       pays_conditionne:
-        typeCommande === "conditionné"
-          ? paysConditionne || null
-          : null,
+        typeCommande === "conditionné" ? paysConditionne || null : null,
 
-          canal:
-          typeCommande === "conditionné"
-            ? canalDistribution || null
-            : null,
-        
-        canal_distribution:
-          typeCommande === "conditionné"
-            ? (
-                canalDistribution === "Autre"
-                  ? autreCanalDistribution || null
-                  : canalDistribution || null
-              )
-            : null,
+      canal_distribution:
+        typeCommande === "conditionné"
+          ? canalDistribution === "Autre"
+            ? autreCanalDistribution?.trim() || null
+            : canalDistribution || null
+          : null,
 
       volumes_estimes:
         typeCommande === "conditionné"
-          ? volumesEstimes.trim() || null
+          ? volumesEstimes?.trim() || null
           : null,
 
-          volumes_conditionne:
-  typeCommande === "conditionné"
-    ? volumesEstimes || null
-    : null,
+      periode_volume:
+        typeCommande === "conditionné" ? typeVolumeEstime || null : null,
 
-    periode_volume: typeVolumeEstime || null,
-
-      // =================================================
-      // TYPE D'EMBALLAGE
-      // =================================================
-      //
-      // NOUVEAU FORMAT
-      //
-      // {
-      //   emballages: ["Tin","PET","Glass"],
-      //   autres: {
-      //      Tin: "400 ml",
-      //      PET: "500 ml",
-      //      Glass: "750 ml"
-      //   }
-      // }
-      //
-      // =================================================
-
-      
-type_emballage:
-typeCommande === "conditionné" &&
-typeEmballageData
-  ? JSON.stringify(typeEmballageData)
-  : null,
-
-      // =================================================
-      // PACKAGING
-      // =================================================
-      //
-      // IMPORTANT :
-      // ce champ n'est PLUS null.
-      //
-      // =================================================
-
-      packaging:
-        typeCommande === "conditionné" &&
-        packagingData
-          ? packagingData
-          : null,
-
-      // =================================================
-      // FORMATS SOUHAITÉS
-      // =================================================
+      // EMBALLAGES
+      type_emballage: typeEmballageData,
+      packaging: packagingData,
 
       formats_souhaites:
-        typeCommande === "conditionné"
-          ? formatsSouhaites || null
-          : null,
+        typeCommande === "conditionné" ? formatsSouhaites || null : null,
 
-      // =================================================
-      // TYPE MARQUE
-      // =================================================
-
+      // MARQUE
       type_marque:
-        typeCommande === "conditionné"
-          ? typeMarque || null
+        typeCommande === "conditionné" ? typeMarque || null : null,
+
+      nom_label:
+        typeCommande === "conditionné" && typeMarque === "Private Label"
+          ? nomLabel?.trim() || null
           : null,
 
-          nom_label:
-  typeCommande === "conditionné" &&
-  typeMarque === "Private Label"
-    ? nomLabel.trim() || null
-    : null,
-
-      // =================================================
-      // CERTIFICATIONS
-      // =================================================
-
-      certifications_requises:
-        typeCommande === "conditionné" &&
-        certificationsRequisesFinales.length > 0
-          ? JSON.stringify(
-            certificationsRequisesFinales
-            )
-          : null,
-
-      // =================================================
-      // ENTREPRISE
-      // =================================================
+      //certifications_requises:
+       // typeCommande === "conditionné" && certificationsRequisesFinales.length > 0
+         // ? certificationsRequisesFinales
+         // : null,
 
       nom_entreprise:
-        typeCommande === "conditionné"
-          ? nomEntreprise.trim() || null
-          : null,
+        typeCommande === "conditionné" ? nomEntreprise?.trim() || null : null,
 
       site_web:
-        typeCommande === "conditionné"
-          ? siteWeb.trim() || null
-          : null,
+        typeCommande === "conditionné" ? siteWeb?.trim() || null : null,
 
       contact_professionnel:
         typeCommande === "conditionné"
-          ? contactProfessionnel.trim() || null
+          ? contactProfessionnel?.trim() || null
           : null,
 
-      // =================================================
-      // QUANTITÉ COMMANDE
-      // =================================================
+      // QUANTITÉ
+      quantite_commande:
+        typeCommande === "conditionné" ? quantiteCommande || null : null,
 
-      type_conteneur:
-  typeCommande === "conditionné" &&
-  (
-    quantiteCommande === "conteneur_20" ||
-    quantiteCommande === "conteneur_40" ||
-    quantiteCommande === "palettes"
-  )
-    ? quantiteCommande
-    : null,
+      nombre_fcl:
+        typeCommande === "conditionné" &&
+        (quantiteCommande === "conteneur_20" ||
+          quantiteCommande === "conteneur_40") &&
+        nombreFCL?.trim() &&
+        !isNaN(Number(nombreFCL))
+          ? Number(nombreFCL)
+          : null,
 
-nombre_fcl:
-  typeCommande === "conditionné" &&
-  (
-    quantiteCommande === "conteneur_20" ||
-    quantiteCommande === "conteneur_40"
-  ) &&
-  nombreFCL.trim() &&
-  !isNaN(Number(nombreFCL))
-    ? Number(nombreFCL)
-    : null,
+      nombre_palettes:
+        typeCommande === "conditionné" &&
+        quantiteCommande === "palettes" &&
+        nombrePalettes?.trim() &&
+        !isNaN(Number(nombrePalettes))
+          ? Number(nombrePalettes)
+          : null,
 
-nombre_palettes:
-  typeCommande === "conditionné" &&
-  quantiteCommande === "palettes" &&
-  nombrePalettes.trim() &&
-  !isNaN(Number(nombrePalettes))
-    ? Number(nombrePalettes)
-    : null,
-
-      // =================================================
       // NOUVELLE MARQUE
-      // =================================================
-
       marche_cible:
         typeCommande === "conditionné" &&
-        typeMarque ===
-          "Création de nouvelle marque"
-          ? marcheCible.trim() || null
+        typeMarque === "Création de nouvelle marque"
+          ? marcheCible?.trim() || null
           : null,
 
       quantite_prevue:
         typeCommande === "conditionné" &&
-        typeMarque ===
-          "Création de nouvelle marque"
-          ? quantitePrevue.trim() || null
+        typeMarque === "Création de nouvelle marque"
+          ? quantitePrevue?.trim() || null
           : null,
-
-      // =================================================
-      // NOUVELLE MARQUE - FORMATS
-      // =================================================
 
       nouvelle_marque_formats:
         typeCommande === "conditionné" &&
-        typeMarque ===
-          "Création de nouvelle marque" &&
-        nouvelleMarqueFormatsData
-          ? JSON.stringify(
-              nouvelleMarqueFormatsData
-            )
+        typeMarque === "Création de nouvelle marque"
+          ? nouvelleMarqueFormatsData
           : null,
-
-      // =================================================
-      // NOUVELLE MARQUE - DESIGN
-      // =================================================
 
       nouvelle_marque_design_conditionnement:
         typeCommande === "conditionné" &&
-        typeMarque ===
-          "Création de nouvelle marque" &&
-        nouvelleMarqueEmballagesSelectionnes.length > 0
-          ? JSON.stringify({
-              emballages:
-                nouvelleMarqueEmballagesSelectionnes,
-
-              autre:
-                nouvelleMarqueAutreEmballage.trim() ||
-                null,
-            })
+        typeMarque === "Création de nouvelle marque"
+          ? {
+              emballages: nouvelleMarqueEmballagesSelectionnes || [],
+              autre: nouvelleMarqueAutreEmballage?.trim() || null,
+            }
           : null,
+
+      // ÉCHANTILLON
+      demande_echantillon: demandeEchantillon === "oui" ? 1 : 0,
+
+      adresse_echantillon:
+        demandeEchantillon === "oui"
+          ? adresseEchantillon?.trim() || null
+          : null,
+
+      personne_reception_echantillon:
+        demandeEchantillon === "oui"
+          ? personneReceptionEchantillon?.trim() || null
+          : null,
+
+      tel_reception_echantillon:
+        demandeEchantillon === "oui"
+          ? telReceptionEchantillon?.trim() || null
+          : null,
+
+      // K232 / K270
+      k232_demande: k232Selection ? 1 : 0,
+      k232_valeur: k232Selection ? k232Valeur || null : null,
+      k270_demande: k270Selection ? 1 : 0,
+      k270_valeur: k270Selection ? k270Valeur || null : null,
     };
+  };
 
-    // ===================================================
-    // LOG
-    // ===================================================
+  /*const commandeCouranteEstRenseignee = () => {
+    if (!typeCommande) return false;
 
-    console.log(
-      "======================================="
-    );
-
-    console.log(
-      "DONNÉES ENVOYÉES AU BACKEND"
-    );
-
-    console.log(
-      JSON.stringify(
-        visitorData,
-        null,
-        2
-      )
-    );
-
-    console.log(
-      "======================================="
-    );
-
-    // ===================================================
-    // LOG SPÉCIFIQUE EMBALLAGE
-    // ===================================================
-
-    console.log(
-      "TYPE EMBALLAGE :",
-      JSON.stringify(
-        typeEmballageData,
-        null,
-        2
-      )
-    );
-
-    console.log(
-      "PACKAGING :",
-      JSON.stringify(
-        packagingData,
-        null,
-        2
-      )
-    );
-
-    // ===================================================
-    // ENVOI BACKEND
-    // ===================================================
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-    
-      console.log(
-        "TOKEN :",
-        token ? "PRÉSENT" : "ABSENT"
+    if (typeCommande === "vrac") {
+      return Boolean(
+        categorie?.trim() ||
+        qualiteGrade?.trim() ||
+        volumeEstime?.trim() ||
+        destination?.trim() ||
+        destinationport?.trim() ||
+        incoterm ||
+        formatLivraison ||
+        frequenceCommande ||
+        exigencesSpecifiques?.length ||
+        informationsComplementaires?.trim() ||
+        demandeEchantillon === "oui" ||
+        k232Selection ||
+        k270Selection
       );
-    
+    }
+
+    return Boolean(
+      paysConditionne ||
+      canalDistribution ||
+      autreCanalDistribution?.trim() ||
+      volumesEstimes?.trim() ||
+      typeVolumeEstime ||
+      emballagesSelectionnes?.length ||
+      formatsSouhaites ||
+      typeMarque ||
+      certificationsRequises?.length ||
+      nomEntreprise?.trim() ||
+      siteWeb?.trim() ||
+      contactProfessionnel?.trim() ||
+      quantiteCommande ||
+      nombreFCL?.trim() ||
+      nombrePalettes?.trim() ||
+      marcheCible?.trim() ||
+      quantitePrevue?.trim() ||
+      demandeEchantillon === "oui" ||
+      k232Selection ||
+      k270Selection
+    );
+  };*/
+  const commandeCouranteEstRenseignee = () => {
+    // Le choix du type de commande suffit pour considérer
+    // la commande comme créée.
+    if (!typeCommande) return false;
+  
+    return true;
+  };
+
+  // =====================================================
+  // AJOUTER UNE COMMANDE
+  // =====================================================
+
+  const handleAjouterCommande = () => {
+    if (!typeCommande) {
+      Alert.alert(
+        "Attention",
+        "Veuillez sélectionner un type de commande."
+      );
+      return;
+    }
+
+    if (!commandeCouranteEstRenseignee()) {
+      Alert.alert(
+        "Attention",
+        "Veuillez renseigner les informations de la commande avant de l'ajouter."
+      );
+      return;
+    }
+
+    if (commandes.length > 0) {
+      const typeExistant = commandes[0]?.type_commande;
+
+      if (typeExistant && typeExistant !== typeCommande) {
+        Alert.alert(
+          "Type de commande incompatible",
+          "Vous ne pouvez pas mélanger les commandes Vrac et Conditionné dans la même fiche visiteur."
+        );
+        return;
+      }
+    }
+
+    const nouvelleCommande = construireCommandeCourante();
+
+    if (!nouvelleCommande) {
+      Alert.alert("Erreur", "Impossible de construire la commande.");
+      return;
+    }
+
+    console.log("=======================================");
+    console.log("📦 COMMANDE AJOUTÉE");
+    console.log(JSON.stringify(nouvelleCommande, null, 2));
+    console.log("=======================================");
+
+    setCommandes((prev) => [...(prev || []), nouvelleCommande]);
+
+    // IMPORTANT : on garde typeCommande pour permettre d'ajouter
+    // une deuxième commande du même type.
+    resetCommandeFields();
+
+    Alert.alert(
+      "Commande ajoutée",
+      `Commande ${commandes.length + 1} ajoutée. Vous pouvez saisir une autre commande ${
+        typeCommande === "vrac" ? "Vrac" : "Conditionnée"
+      } ou cliquer sur « Traitement de commande ».`
+    );
+  };
+
+  // =====================================================
+  // AJOUTER VISITEUR
+  // =====================================================
+
+  const handleAjouter = async () => {
+    try {
+      if (qualification === 0) {
+        Alert.alert(
+          "Attention",
+          "Veuillez sélectionner une note de 1 à 5 étoiles."
+        );
+        return;
+      }
+
+      const commandesFinales = [...(commandes || [])];
+
+      // Si une commande est encore en cours de saisie, on l'ajoute
+      // automatiquement. Si l'utilisateur a déjà cliqué sur
+      // « Ajouter une commande », les champs sont vides et les
+      // commandes déjà enregistrées sont utilisées telles quelles.
+      console.log("TYPE COMMANDE :", typeCommande);
+console.log("COMMANDE RENSEIGNEE :", commandeCouranteEstRenseignee());
+console.log("K232 :", k232Selection, k232Valeur);
+console.log("K270 :", k270Selection, k270Valeur);
+
+      if (typeCommande && commandeCouranteEstRenseignee()) {
+        const commandeCourante = construireCommandeCourante();
+        console.log(
+          "COMMANDE COURANTE :",
+          JSON.stringify(commandeCourante, null, 2)
+        );
+        if (commandeCourante) {
+          if (commandesFinales.length > 0) {
+            const typeExistant = commandesFinales[0]?.type_commande;
+
+            if (
+              typeExistant &&
+              typeExistant !== commandeCourante.type_commande
+            ) {
+              Alert.alert(
+                "Type de commande incompatible",
+                "Vous ne pouvez pas mélanger les commandes Vrac et Conditionné."
+              );
+              return;
+            }
+          }
+
+          commandesFinales.push(commandeCourante);
+        }
+      }
+
+      if (commandesFinales.length === 0) {
+        Alert.alert(
+          "Attention",
+          "Veuillez ajouter au moins une commande."
+        );
+        return;
+      }
+
+      if (
+        commandesFinales.some(
+          (commande) => !commande?.type_commande
+        )
+      ) {
+        Alert.alert(
+          "Erreur",
+          "Une commande ne possède pas de type valide."
+        );
+        return;
+      }
+
+      const typeCommandeFinal =
+        commandesFinales[0]?.type_commande || null;
+
+      const typesCommandes = [
+        ...new Set(
+          commandesFinales.map(
+            (commande) => commande.type_commande
+          )
+        ),
+      ];
+
+      if (typesCommandes.length > 1) {
+        Alert.alert(
+          "Erreur",
+          "Les commandes Vrac et Conditionné ne peuvent pas être mélangées."
+        );
+        return;
+      }
+
+      const visitorData = {
+        nom: nom?.trim() || null,
+        prenom: prenom?.trim() || null,
+        email: email?.trim() || null,
+        site: site?.trim() || null,
+        origine: origine || null,
+        indicatif: indicatif || null,
+        telephone: telephone?.trim() || null,
+        societe: societe?.trim() || null,
+        adresse_societe: adresseSociete?.trim() || null,
+        fonction: fonction?.trim() || null,
+        genre: genre?.trim() || null,
+        langue_communication: langueCommunication || null,
+        profile: profile || null,
+        type_commande: typeCommandeFinal,
+        commandes: commandesFinales,
+        nombre_commandes: commandesFinales.length,
+        qualification,
+      };
+
+      console.log("=======================================");
+      console.log("📤 ENVOI VISITEUR + COMMANDES");
+      console.log("NOMBRE COMMANDES :", commandesFinales.length);
+      console.log(JSON.stringify(visitorData, null, 2));
+      console.log("=======================================");
+
+      const token = await AsyncStorage.getItem("token");
+
       if (!token) {
         throw new Error("Authentification requise");
       }
-    
+
       const response = await fetch(
         `${API_URL}/api/visiteurs`,
         {
           method: "POST",
-    
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-    
           body: JSON.stringify(visitorData),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
-      console.log(
-        "STATUS HTTP :",
-        response.status
-      );
+      console.log("STATUS HTTP :", response.status);
+      console.log("RÉPONSE BACKEND :", data);
 
-      console.log(
-        "RÉPONSE BACKEND :",
-        data
-      );
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      if (!response.ok || !data.success) {
         throw new Error(
           data.message ||
-            data.error ||
-            "Erreur serveur"
+          data.error ||
+          "Erreur serveur"
         );
       }
 
-      console.log(
-        "VISITEUR AJOUTÉ AVEC SUCCÈS"
-      );
-
-      console.log(
-        "ID :",
-        data.id
-      );
-
-      console.log(
-        "QUALIFICATION :",
-        qualification
-      );
-
-      console.log(
-        "NAVIGATION VERS /pdf"
-      );
-
-      // =================================================
-      // NAVIGATION
-      // =================================================
+      console.log("=======================================");
+      console.log("✅ VISITEUR AJOUTÉ AVEC SUCCÈS");
+      console.log("VISITEUR ID :", data.id);
+      console.log("COMMANDES ENREGISTRÉES :", data.nombre_commandes);
+      console.log("=======================================");
 
       router.push({
         pathname: "/pdf",
-
         params: {
-          id: String(
-            data.id
-          ),
+          id: String(data.id),
         },
       });
 
-      // =================================================
-      // RESET INFORMATIONS GÉNÉRALES
-      // =================================================
-
+      // RESET VISITEUR
       setNom("");
       setPrenom("");
       setTelephone("");
@@ -2168,101 +1914,17 @@ nombre_palettes:
       setAdresseSociete("");
       setFonction("");
       setLangueCommunication("");
-
-      // =================================================
-      // RESET PROFILE
-      // =================================================
-
+      setGenre("");
       setProfile("");
       setTypeCommande("");
-
-      // =================================================
-      // RESET VRAC
-      // =================================================
-
-      setCategorie("");
-      setQualiteGrade("");
-      setVolumeEstime("");
-      setDestination("");
-      setIncoterm("");
-      setFormatLivraison("");
-      setFrequenceCommande("");
-      setExigencesSpecifiques([]);
-      setInformationsComplementaires("");
-
-      // =================================================
-      // RESET CONDITIONNÉ
-      // =================================================
-
-      setPaysConditionne("");
-      setCanalDistribution("");
-      setVolumesEstimes("");
-
-      setTypeEmballage("");
-      setFormatsSouhaites("");
-
-      setEmballagesSelectionnes([]);
-      setFormatsEmballage({});
-      setAutreEmballage("");
-
-      // RESET AUTRE PAR TYPE
-      setAutresSelectionnes({
-        Tin: false,
-        PET: false,
-        Glass: false,
-        BaginBox: false,
-      });
-
-      setAutresEmballages({
-        Tin: "",
-        PET: "",
-        Glass: "",
-        BaginBox: "",
-      });
-
-      setTypeMarque("");
-      setCertificationsRequises([]);
-      setNomEntreprise("");
-      setSiteWeb("");
-      setContactProfessionnel("");
-
-      // =================================================
-      // RESET QUANTITÉ
-      // =================================================
-
-      setQuantiteCommande("");
-      setNombrePalettes("");
-
-      // =================================================
-      // RESET NOUVELLE MARQUE
-      // =================================================
-
-      setMarcheCible("");
-      setQuantitePrevue("");
-
-      setNouvelleMarqueEmballagesSelectionnes(
-        []
-      );
-
-      setNouvelleMarqueFormatsEmballage(
-        {}
-      );
-
-      setNouvelleMarqueAutreEmballage(
-        ""
-      );
-
-      // =================================================
-      // RESET QUALIFICATION
-      // =================================================
-
+      setCommandes([]);
       setQualification(0);
 
+      resetCommandeFields();
     } catch (error) {
-      console.error(
-        "ERREUR POST :",
-        error
-      );
+      console.error("=======================================");
+      console.error("❌ ERREUR POST :", error);
+      console.error("=======================================");
 
       Alert.alert(
         "Erreur",
@@ -2775,7 +2437,118 @@ return (
         </Picker>
 
       </View>
+       {/* ==========================================
+    DEMANDE D'ÉCHANTILLON
+========================================== */}
 
+<View style={styles.section}>
+
+<Text style={styles.sectionTitle}>
+  Demande d'échantillon
+</Text>
+
+<Text style={styles.label}>
+  Le client demande-t-il un échantillon ?
+</Text>
+
+{/* ================================
+    CHOIX OUI / NON
+================================= */}
+
+<View style={styles.checkboxContainer}>
+
+  {/* OUI */}
+  <TouchableOpacity
+    onPress={() => {
+      console.log("ÉCHANTILLON : OUI");
+      setDemandeEchantillon("oui");
+    }}
+    activeOpacity={0.7}
+    style={styles.checkboxOption}
+  >
+    <Text style={styles.checkboxSymbol}>
+      {demandeEchantillon === "oui" ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxText}>
+      Oui
+    </Text>
+  </TouchableOpacity>
+
+
+  {/* NON */}
+  <TouchableOpacity
+    onPress={() => {
+      console.log("ÉCHANTILLON : NON");
+
+      setDemandeEchantillon("non");
+      setAdresseEchantillon("");
+      setPersonneReceptionEchantillon("");
+      setTelReceptionEchantillon("");
+    }}
+    activeOpacity={0.7}
+    style={styles.checkboxOption}
+  >
+    <Text style={styles.checkboxSymbol}>
+      {demandeEchantillon === "non" ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxText}>
+      Non
+    </Text>
+  </TouchableOpacity>
+
+</View>
+
+
+{/* ================================
+    INFORMATIONS ÉCHANTILLON
+    AFFICHÉES UNIQUEMENT SI OUI
+================================= */}
+
+{demandeEchantillon === "oui" && (
+  <View style={styles.echantillonContainer}>
+
+    <Text style={styles.label}>
+      Adresse de réception *
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir l'adresse de réception"
+      value={adresseEchantillon}
+      onChangeText={setAdresseEchantillon}
+    />
+
+
+    <Text style={styles.label}>
+      Personne en charge de la réception *
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nom et prénom"
+      value={personneReceptionEchantillon}
+      onChangeText={setPersonneReceptionEchantillon}
+    />
+
+
+    <Text style={styles.label}>
+      Téléphone de la personne en charge *
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Ex : +216 XX XXX XXX"
+      value={telReceptionEchantillon}
+      onChangeText={setTelReceptionEchantillon}
+      keyboardType="phone-pad"
+    />
+
+  </View>
+)}
+
+</View>
       {/* =================================================
           TYPE COMMANDE
       ================================================= */}
@@ -2934,30 +2707,202 @@ Catégorie
 </Picker>
 </View>
 
-            {/* ACIDITÉ */}
+           {/* ACIDITÉ */}
 
 <Text style={styles.label}>
-Acidité
+  Acidité
 </Text>
 
 <View style={styles.pickerContainer}>
-<Picker
-  selectedValue={qualiteGrade}
-  onValueChange={setQualiteGrade}
->
-  <Picker.Item
-    label="Sélectionner"
-    value=""
-  />
+  <Picker
+    selectedValue={qualiteGrade}
+    onValueChange={setQualiteGrade}
+  >
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
 
-  <Picker.Item label="< 0.3" value="<0.3" />
-  <Picker.Item label="< 0.5" value="<0.5" />
-  <Picker.Item label="< 0.8" value="<0.8" />
-  <Picker.Item label="< 2" value="<2" />
-  <Picker.Item label="K232" value="K232" />
-  <Picker.Item label="K270" value="K270" />
-</Picker>
+    <Picker.Item label="< 0.3" value="<0.3" />
+    <Picker.Item label="< 0.5" value="<0.5" />
+    <Picker.Item label="< 0.8" value="<0.8" />
+    <Picker.Item label="< 2" value="<2" />
+  </Picker>
 </View>
+
+
+{/* ==========================================
+    PARAMÈTRES UV - FACULTATIFS
+========================================== */}
+
+<Text style={styles.label}>
+  Paramètres UV
+</Text>
+
+<View style={styles.checkboxContainer}>
+
+  {/* K232 */}
+  <TouchableOpacity
+    style={styles.checkboxOption}
+    onPress={() => {
+      const nouvelleSelection = !k232Selection;
+      setK232Selection(nouvelleSelection);
+    
+      if (!nouvelleSelection) {
+        setK232Valeur("");
+      }
+    }}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.checkboxSymbol}>
+      {k232Selection ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxText}>
+      K232
+    </Text>
+  </TouchableOpacity>
+
+
+  {/* K270 */}
+  <TouchableOpacity
+    style={styles.checkboxOption}
+    onPress={() => {
+      const nouvelleSelection = !k270Selection;
+      setK270Selection(nouvelleSelection);
+    
+      if (!nouvelleSelection) {
+        setK270Valeur("");
+      }
+    }}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.checkboxSymbol}>
+      {k270Selection ? "☑" : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxText}>
+      K270
+    </Text>
+  </TouchableOpacity>
+
+</View>
+
+
+{/* ==========================================
+    VALEUR K232 - FACULTATIVE
+========================================== */}
+
+{k232Selection && (
+  <View style={styles.kValueContainer}>
+
+    <Text style={styles.label}>
+      Valeur K232
+    </Text>
+
+    <View style={styles.checkboxContainer}>
+
+      {/* ≤ 2.5 */}
+      <TouchableOpacity
+        style={styles.checkboxOption}
+        onPress={() =>
+          setK232Valeur(
+            k232Valeur === "<=2.5" ? "" : "<=2.5"
+          )
+        }
+        activeOpacity={0.7}
+      >
+        <Text style={styles.checkboxSymbol}>
+          {k232Valeur === "<=2.5" ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.checkboxText}>
+          ≤ 2.5
+        </Text>
+      </TouchableOpacity>
+
+
+      {/* ≥ 2.5 */}
+      <TouchableOpacity
+        style={styles.checkboxOption}
+        onPress={() =>
+          setK232Valeur(
+            k232Valeur === ">=2.5" ? "" : ">=2.5"
+          )
+        }
+        activeOpacity={0.7}
+      >
+        <Text style={styles.checkboxSymbol}>
+          {k232Valeur === ">=2.5" ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.checkboxText}>
+          ≥ 2.5
+        </Text>
+      </TouchableOpacity>
+
+    </View>
+
+  </View>
+)}
+
+
+{/* ==========================================
+    VALEUR K270 - FACULTATIVE
+========================================== */}
+
+{k270Selection && (
+  <View style={styles.kValueContainer}>
+
+    <Text style={styles.label}>
+      Valeur K270
+    </Text>
+
+    <View style={styles.checkboxContainer}>
+
+      {/* ≤ 0.22 */}
+      <TouchableOpacity
+        style={styles.checkboxOption}
+        onPress={() =>
+          setK270Valeur(
+            k270Valeur === "<=0.22" ? "" : "<=0.22"
+          )
+        }
+        activeOpacity={0.7}
+      >
+        <Text style={styles.checkboxSymbol}>
+          {k270Valeur === "<=0.22" ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.checkboxText}>
+          ≤ 0.22
+        </Text>
+      </TouchableOpacity>
+
+
+      {/* > 0.22 */}
+      <TouchableOpacity
+        style={styles.checkboxOption}
+        onPress={() =>
+          setK270Valeur(
+            k270Valeur === ">0.22" ? "" : ">0.22"
+          )
+        }
+        activeOpacity={0.7}
+      >
+        <Text style={styles.checkboxSymbol}>
+          {k270Valeur === ">0.22" ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.checkboxText}>
+          &gt; 0.22
+        </Text>
+      </TouchableOpacity>
+
+    </View>
+
+  </View>
+)}
 
 {/* GENRE */}
 
@@ -3125,6 +3070,8 @@ Acidité
   </View>
 
 </View>
+
+
 
             {/* VOLUME */}
 
@@ -5903,6 +5850,34 @@ contactText: {
     color: "#c62828",
     fontSize: 14,
     fontWeight: "600",
+  },
+
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 15,
+  },
+  
+  checkboxOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 40,
+  },
+  
+  checkboxSymbol: {
+    fontSize: 24,
+    color: "#000",
+    marginRight: 7,
+  },
+  
+  checkboxText: {
+    fontSize: 16,
+    color: "#000",
+  },
+  kValueContainer: {
+    marginTop: 5,
+    marginBottom: 10,
   },
 
 });

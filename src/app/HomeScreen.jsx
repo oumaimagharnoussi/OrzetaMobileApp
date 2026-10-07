@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useRouter } from "expo-router";
 import {
   View,
   Text,
@@ -11,7 +10,11 @@ import {
 } from "react-native";
 
 import { Picker } from "@react-native-picker/picker";
-
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // =====================================================
 // URL BACKEND
 // =====================================================
@@ -19,71 +22,302 @@ import { Picker } from "@react-native-picker/picker";
 const API_URL = "http://192.168.1.146:5000";
 
 // =====================================================
-// LISTE DES PAYS
-// =====================================================
-
-const pays = [
-  { name: "Tunisie", dialCode: "+216" },
-  { name: "France", dialCode: "+33" },
-  { name: "Algérie", dialCode: "+213" },
-  { name: "Maroc", dialCode: "+212" },
-  { name: "Italie", dialCode: "+39" },
-  { name: "Allemagne", dialCode: "+49" },
-  { name: "Espagne", dialCode: "+34" },
-  { name: "Belgique", dialCode: "+32" },
-  { name: "Suisse", dialCode: "+41" },
-  { name: "Royaume-Uni", dialCode: "+44" },
-  { name: "États-Unis", dialCode: "+1" },
-  { name: "Canada", dialCode: "+1" },
-  { name: "Arabie Saoudite", dialCode: "+966" },
-  { name: "Émirats Arabes Unis", dialCode: "+971" },
-  { name: "Qatar", dialCode: "+974" },
-  { name: "Koweït", dialCode: "+965" },
-  { name: "Égypte", dialCode: "+20" },
-  { name: "Autre", dialCode: "" },
-];
-
-// =====================================================
 // COMPOSANT
 // =====================================================
 
 export default function HomeScreen() {
-  
-  // ===================================================
-  // INFORMATIONS GÉNÉRALES
-  // ===================================================
   const router = useRouter();
+
+  // =====================================================
+  // INFORMATIONS GÉNÉRALES
+  // =====================================================
+  const { logout } = useAuth();
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [indicatif, setIndicatif] = useState("+216");
   const [email, setEmail] = useState("");
-  const [age, setAge] = useState("");
+  const [site, setSite] = useState("");
   const [origine, setOrigine] = useState("");
   const [societe, setSociete] = useState("");
   const [adresseSociete, setAdresseSociete] = useState("");
   const [fonction, setFonction] = useState("");
   const [langueCommunication, setLangueCommunication] = useState("");
+  const [genre, setGenre] = useState("");
+  const [autreExigence, setAutreExigence] = useState("");
+  const [nombreFCL, setNombreFCL] = useState("");
+  const [nomLabel, setNomLabel] = useState("");
+  const [profilAromatique, setProfilAromatique] = useState({
+    fruité: "",
+    amer: "",
+    piquant: "",
+    défaut: "",
+  });
 
-  // ===================================================
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/auth/login");
+  };
+  // =====================================================
+  // AUTRE EMBALLAGE PAR TYPE
+  // =====================================================
+
+  const [autresSelectionnes, setAutresSelectionnes] = useState({
+    Tin: false,
+    PET: false,
+    Glass: false,
+    BaginBox: false,
+  });
+
+  const [autresEmballages, setAutresEmballages] = useState({
+    Tin: "",
+    PET: "",
+    Glass: "",
+    BaginBox: "",
+  });
+
+  const [nouvelleMarqueAutresFormats, setNouvelleMarqueAutresFormats] =
+  useState({
+    Tin: "",
+    PET: "",
+    Glass: "",
+    BaginBox: "",
+  });
+
+  const toggleFormatEmballage = (type, format) => {
+    setNouvelleMarqueFormatsEmballage((prev) => {
+      const formatsActuels = Array.isArray(prev[type])
+        ? prev[type]
+        : [];
+  
+      const dejaSelectionne = formatsActuels.includes(format);
+  
+      return {
+        ...prev,
+        [type]: dejaSelectionne
+          ? formatsActuels.filter((item) => item !== format)
+          : [...formatsActuels, format],
+      };
+    });
+  };
+const toggleFormatNouvelleMarque = (
+  type,
+  format,
+  sousType = null
+) => {
+  setNouvelleMarqueFormatsEmballage((prev) => {
+    // CAS GLASS : formats classés par marque
+    if (type === "Glass" && sousType) {
+      const formatsGlass = prev.Glass || {};
+      const formatsMarque = formatsGlass[sousType] || [];
+
+      const nouveauxFormats = formatsMarque.includes(format)
+        ? formatsMarque.filter((item) => item !== format)
+        : [...formatsMarque, format];
+
+      return {
+        ...prev,
+        Glass: {
+          ...formatsGlass,
+          [sousType]: nouveauxFormats,
+        },
+      };
+    }
+
+    // CAS TIN, PET et autres formats simples
+    const formats = Array.isArray(prev[type])
+      ? prev[type]
+      : [];
+
+    const nouveauxFormats = formats.includes(format)
+      ? formats.filter((item) => item !== format)
+      : [...formats, format];
+
+    return {
+      ...prev,
+      [type]: nouveauxFormats,
+    };
+  });
+};
+
+const renderFormatCheckbox = (type, format, sousType = null) => {
+  const formatsType = nouvelleMarqueFormatsEmballage?.[type];
+
+  let selected = false;
+
+  // =================================================
+  // GLASS > MARASCA / DORICA
+  // =================================================
+  if (sousType) {
+    selected =
+      formatsType &&
+      typeof formatsType === "object" &&
+      !Array.isArray(formatsType) &&
+      Array.isArray(formatsType[sousType])
+        ? formatsType[sousType].includes(format)
+        : false;
+  }
+
+  // =================================================
+  // GLASS > AUTRE
+  // =================================================
+  else if (type === "Glass") {
+    const formatsGeneraux =
+      formatsType &&
+      typeof formatsType === "object" &&
+      !Array.isArray(formatsType) &&
+      Array.isArray(formatsType.formats)
+        ? formatsType.formats
+        : [];
+
+    selected = formatsGeneraux.includes(format);
+  }
+
+  // =================================================
+  // TIN / PET
+  // =================================================
+  else {
+    const formatsGeneraux = Array.isArray(formatsType)
+      ? formatsType
+      : [];
+
+    selected = formatsGeneraux.includes(format);
+  }
+
+  // =================================================
+  // TOGGLE
+  // =================================================
+  const toggleFormat = () => {
+    setNouvelleMarqueFormatsEmballage((prev) => {
+      const current = prev?.[type];
+
+      // =================================================
+      // MARASCA / DORICA
+      // =================================================
+      if (sousType) {
+        const currentObject =
+          current &&
+          typeof current === "object" &&
+          !Array.isArray(current)
+            ? current
+            : {};
+
+        const currentSousType = Array.isArray(
+          currentObject[sousType]
+        )
+          ? currentObject[sousType]
+          : [];
+
+        const updatedSousType = currentSousType.includes(format)
+          ? currentSousType.filter(
+              (item) => item !== format
+            )
+          : [...currentSousType, format];
+
+        return {
+          ...prev,
+          [type]: {
+            ...currentObject,
+            [sousType]: updatedSousType,
+          },
+        };
+      }
+
+      // =================================================
+      // GLASS > AUTRE
+      // =================================================
+      if (type === "Glass") {
+        const currentObject =
+          current &&
+          typeof current === "object" &&
+          !Array.isArray(current)
+            ? current
+            : {};
+
+        const currentFormats = Array.isArray(
+          currentObject.formats
+        )
+          ? currentObject.formats
+          : [];
+
+        const updatedFormats = currentFormats.includes(format)
+          ? currentFormats.filter(
+              (item) => item !== format
+            )
+          : [...currentFormats, format];
+
+        return {
+          ...prev,
+          [type]: {
+            ...currentObject,
+            formats: updatedFormats,
+          },
+        };
+      }
+
+      // =================================================
+      // TIN / PET
+      // =================================================
+      const currentFormats = Array.isArray(current)
+        ? current
+        : [];
+
+      const updatedFormats = currentFormats.includes(format)
+        ? currentFormats.filter(
+            (item) => item !== format
+          )
+        : [...currentFormats, format];
+
+      return {
+        ...prev,
+        [type]: updatedFormats,
+      };
+    });
+  };
+
+  return (
+    <TouchableOpacity
+      key={`${type}-${sousType || "general"}-${format}`}
+      style={styles.formatCheckboxContainer}
+      onPress={toggleFormat}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.formatCheckbox}>
+        {selected ? "☑" : "☐"}
+      </Text>
+
+      <Text style={styles.formatCheckboxLabel}>
+        {format}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+  // =====================================================
   // PROFILE
-  // ===================================================
+  // =====================================================
 
   const [profile, setProfile] = useState("");
 
-  // ===================================================
+  // =====================================================
   // TYPE COMMANDE
-  // ===================================================
+  // =====================================================
 
   const [typeCommande, setTypeCommande] = useState("");
 
-  // ===================================================
-  // VRAC
-  // ===================================================
+  // Commandes déjà enregistrées dans la fiche du visiteur.
+  // Toutes les commandes gardent le même type (vrac OU conditionné).
+  const [commandes, setCommandes] = useState([]);
 
+  // =====================================================
+  // VRAC
+  // =====================================================
+
+  const [categorie, setCategorie] = useState("");
   const [qualiteGrade, setQualiteGrade] = useState("");
   const [volumeEstime, setVolumeEstime] = useState("");
   const [destination, setDestination] = useState("");
+  const [destinationport, setDestinationport] = useState("");
   const [incoterm, setIncoterm] = useState("");
   const [formatLivraison, setFormatLivraison] = useState("");
   const [frequenceCommande, setFrequenceCommande] = useState("");
@@ -91,611 +325,1375 @@ export default function HomeScreen() {
   const [informationsComplementaires, setInformationsComplementaires] =
     useState("");
 
-  // ===================================================
+  // =====================================================
   // CONDITIONNÉ
-  // ===================================================
+  // =====================================================
 
   const [paysConditionne, setPaysConditionne] = useState("");
   const [canalDistribution, setCanalDistribution] = useState("");
-  const [volumesEstimes, setVolumesEstimes] = useState("");
+  const [autreCanalDistribution, setAutreCanalDistribution] = useState("");
+  const [typeVolumeEstime, setTypeVolumeEstime] = useState("");
+const [volumesEstimes, setVolumesEstimes] = useState("");
+const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
 
-  // MULTI-SELECT CONDITIONNÉ
+  // Type d'emballage CONDITIONNÉ
+  const [typeEmballage, setTypeEmballage] = useState("");
+  const [formatsSouhaites, setFormatsSouhaites] = useState("");
+
+  // Sélection multiple des emballages CONDITIONNÉ
   const [emballagesSelectionnes, setEmballagesSelectionnes] = useState([]);
   const [formatsEmballage, setFormatsEmballage] = useState({});
+
+  // Ancien Autre global conservé pour compatibilité
   const [autreEmballage, setAutreEmballage] = useState("");
 
   const [typeMarque, setTypeMarque] = useState("");
   const [certificationsRequises, setCertificationsRequises] = useState([]);
+  const [autreCertification, setAutreCertification] = useState("");
   const [nomEntreprise, setNomEntreprise] = useState("");
   const [siteWeb, setSiteWeb] = useState("");
   const [contactProfessionnel, setContactProfessionnel] = useState("");
 
-  // ===================================================
+  // =====================================================
+  // QUANTITÉ DE LA COMMANDE
+  // =====================================================
+
+  const [quantiteCommande, setQuantiteCommande] = useState("");
+  const [nombrePalettes, setNombrePalettes] = useState("");
+
+  // =====================================================
   // NOUVELLE MARQUE
-  // ===================================================
+  // =====================================================
 
   const [marcheCible, setMarcheCible] = useState("");
   const [quantitePrevue, setQuantitePrevue] = useState("");
 
-  // ---------------------------------------------------
-  // IMPORTANT :
-  // Ces états sont DIFFÉRENTS de CONDITIONNÉ.
-  // ---------------------------------------------------
+  // =====================================================
+  // NOUVELLE MARQUE
+  // EMBALLAGE ET FORMATS INDÉPENDANTS
+  // =====================================================
 
-  const [nouvelleMarqueEmballagesSelectionnes, setNouvelleMarqueEmballagesSelectionnes] =
-    useState([]);
+  const [
+    nouvelleMarqueEmballagesSelectionnes,
+    setNouvelleMarqueEmballagesSelectionnes,
+  ] = useState([]);
 
   const [nouvelleMarqueFormatsEmballage, setNouvelleMarqueFormatsEmballage] =
-    useState({});
+  useState({
+    Tin: [],
+    PET: [],
+    Glass: {
+      MARASCA: [],
+      DORICA: [],
+      formats: [],
+    },
+    BaginBox: [],
+    Autre: [],
+  });
 
   const [nouvelleMarqueAutreEmballage, setNouvelleMarqueAutreEmballage] =
     useState("");
 
-  // ===================================================
-  // CHANGEMENT PAYS
-  // ===================================================
+  // =====================================================
+  // GESTION DE PLUSIEURS COMMANDES
+  // =====================================================
 
-  const handlePaysChange = (value) => {
-    setOrigine(value);
-
-    const country = pays.find((item) => item.name === value);
-
-    if (country) {
-      setIndicatif(country.dialCode);
-    } else {
-      setIndicatif("");
-    }
-  };
-
-  // ===================================================
-  // RESET CONDITIONNÉ
-  // ===================================================
-
-  const resetConditionne = () => {
-    setPaysConditionne("");
-    setCanalDistribution("");
-    setVolumesEstimes("");
-
-    setEmballagesSelectionnes([]);
-    setFormatsEmballage({});
-    setAutreEmballage("");
-
-    setTypeMarque("");
-    setCertificationsRequises([]);
-    setNomEntreprise("");
-    setSiteWeb("");
-    setContactProfessionnel("");
-  };
-
-  // ===================================================
-  // RESET NOUVELLE MARQUE
-  // ===================================================
-
-  const resetNouvelleMarque = () => {
-    setMarcheCible("");
-    setQuantitePrevue("");
-
-    setNouvelleMarqueEmballagesSelectionnes([]);
-    setNouvelleMarqueFormatsEmballage({});
-    setNouvelleMarqueAutreEmballage("");
-  };
-
-  // ===================================================
-  // RESET VRAC
-  // ===================================================
-
-  const resetVrac = () => {
+  const resetCommandeFields = () => {
+    // VRAC
+    setCategorie("");
     setQualiteGrade("");
     setVolumeEstime("");
     setDestination("");
+    setDestinationport("");
     setIncoterm("");
     setFormatLivraison("");
     setFrequenceCommande("");
     setExigencesSpecifiques([]);
     setInformationsComplementaires("");
+    setAutreExigence("");
+    setProfilAromatique({
+      fruité: "",
+      amer: "",
+      piquant: "",
+      défaut: "",
+    });
+
+    // CONDITIONNÉ
+    setPaysConditionne("");
+    setCanalDistribution("");
+    setAutreCanalDistribution("");
+    setTypeVolumeEstime("");
+    setVolumesEstimes("");
+    setAutreVolumeEstime("");
+    setTypeEmballage("");
+    setFormatsSouhaites("");
+    setEmballagesSelectionnes([]);
+    setFormatsEmballage({});
+    setAutreEmballage("");
+    setAutresSelectionnes({
+      Tin: false,
+      PET: false,
+      Glass: false,
+      BaginBox: false,
+    });
+    setAutresEmballages({
+      Tin: "",
+      PET: "",
+      Glass: "",
+      BaginBox: "",
+    });
+
+    setTypeMarque("");
+    setNomLabel("");
+    setCertificationsRequises([]);
+    setAutreCertification("");
+    setNomEntreprise("");
+    setSiteWeb("");
+    setContactProfessionnel("");
+
+    // QUANTITÉ
+    setQuantiteCommande("");
+    setNombreFCL("");
+    setNombrePalettes("");
+
+    // NOUVELLE MARQUE
+    setMarcheCible("");
+    setQuantitePrevue("");
+    setNouvelleMarqueEmballagesSelectionnes([]);
+    setNouvelleMarqueFormatsEmballage({
+      Tin: [],
+      PET: [],
+      Glass: {
+        MARASCA: [],
+        DORICA: [],
+        formats: [],
+      },
+      BaginBox: [],
+      Autre: [],
+    });
+    setNouvelleMarqueAutresFormats({
+      Tin: "",
+      PET: "",
+      Glass: "",
+      BaginBox: "",
+    });
+    setNouvelleMarqueAutreEmballage("");
+
+    // ÉCHANTILLON / K232 / K270
+    setDemandeEchantillon("non");
+    setAdresseEchantillon("");
+    setPersonneReceptionEchantillon("");
+    setTelReceptionEchantillon("");
+    setK232Selection(false);
+    setK270Selection(false);
+    setK232Valeur("");
+    setK270Valeur("");
   };
 
-  // ===================================================
-  // RESET COMMANDE
-  // ===================================================
+  const buildCurrentCommande = () => {
+    if (!typeCommande) return null;
 
-  const resetCommande = () => {
-    resetVrac();
-    resetConditionne();
-    resetNouvelleMarque();
+    const exigencesSpecifiquesFinales = [
+      ...(exigencesSpecifiques || []).filter((item) => item !== "Autre"),
+      ...(exigencesSpecifiques?.includes("Autre") && autreExigence?.trim()
+        ? [autreExigence.trim()]
+        : []),
+    ];
+
+    const certificationsRequisesFinales = [
+      ...(certificationsRequises || []).filter((item) => item !== "Autre"),
+      ...(certificationsRequises?.includes("Autre") && autreCertification?.trim()
+        ? [autreCertification.trim()]
+        : []),
+    ];
+
+    let typeEmballageData = null;
+    if (typeCommande === "conditionné" && emballagesSelectionnes?.length > 0) {
+      typeEmballageData = {
+        emballages: emballagesSelectionnes,
+        autres: {
+          Tin: autresSelectionnes?.Tin ? autresEmballages?.Tin?.trim() || "" : "",
+          PET: autresSelectionnes?.PET ? autresEmballages?.PET?.trim() || "" : "",
+          Glass: autresSelectionnes?.Glass ? autresEmballages?.Glass?.trim() || "" : "",
+          BaginBox: autresSelectionnes?.BaginBox ? autresEmballages?.BaginBox?.trim() || "" : "",
+          Autre: emballagesSelectionnes.includes("Autre") ? autreEmballage?.trim() || "" : "",
+        },
+      };
+    }
+
+    const packagingData =
+      typeCommande === "conditionné" && formatsEmballage && Object.keys(formatsEmballage).length > 0
+        ? formatsEmballage
+        : null;
+
+    let nouvelleMarqueFormatsData = null;
+    if (typeCommande === "conditionné" && typeMarque === "Création de nouvelle marque") {
+      nouvelleMarqueFormatsData = {
+        emballages: nouvelleMarqueEmballagesSelectionnes || [],
+        formats: nouvelleMarqueFormatsEmballage || {},
+        autres_formats: nouvelleMarqueAutresFormats || {},
+        autre: nouvelleMarqueAutreEmballage?.trim() || null,
+      };
+    }
+
+    return {
+      type_commande: typeCommande,
+
+      // VRAC
+      categorie: typeCommande === "vrac" ? categorie?.trim() || null : null,
+      qualite_grade: typeCommande === "vrac" ? qualiteGrade?.trim() || null : null,
+      volume_estime:
+        typeCommande === "vrac" && volumeEstime?.trim() && !isNaN(Number(volumeEstime))
+          ? Number(volumeEstime)
+          : null,
+      destination: typeCommande === "vrac" ? destination?.trim() || null : null,
+      destinationport: typeCommande === "vrac" ? destinationport?.trim() || null : null,
+      incoterm: typeCommande === "vrac" ? incoterm || null : null,
+      format_livraison: typeCommande === "vrac" ? formatLivraison || null : null,
+      frequence_commande: typeCommande === "vrac" ? frequenceCommande || null : null,
+      exigences_specifiques:
+        typeCommande === "vrac" && exigencesSpecifiquesFinales.length > 0
+          ? exigencesSpecifiquesFinales
+          : null,
+      informations_complementaires:
+        typeCommande === "vrac" ? informationsComplementaires?.trim() || null : null,
+      profil_aromatique: typeCommande === "vrac" ? profilAromatique || null : null,
+
+      // CONDITIONNÉ
+      pays_conditionne: typeCommande === "conditionné" ? paysConditionne || null : null,
+      canal_distribution:
+        typeCommande === "conditionné"
+          ? canalDistribution === "Autre"
+            ? autreCanalDistribution?.trim() || null
+            : canalDistribution || null
+          : null,
+      volumes_estimes: typeCommande === "conditionné" ? volumesEstimes?.trim() || null : null,
+      periode_volume: typeCommande === "conditionné" ? typeVolumeEstime || null : null,
+      type_emballage: typeEmballageData,
+      packaging: packagingData,
+      formats_souhaites: typeCommande === "conditionné" ? formatsSouhaites || null : null,
+      type_marque: typeCommande === "conditionné" ? typeMarque || null : null,
+      nom_label:
+        typeCommande === "conditionné" && typeMarque === "Private Label"
+          ? nomLabel?.trim() || null
+          : null,
+      certifications_requises:
+        typeCommande === "conditionné" && certificationsRequisesFinales.length > 0
+          ? certificationsRequisesFinales
+          : null,
+      nom_entreprise: typeCommande === "conditionné" ? nomEntreprise?.trim() || null : null,
+      site_web: typeCommande === "conditionné" ? siteWeb?.trim() || null : null,
+      contact_professionnel:
+        typeCommande === "conditionné" ? contactProfessionnel?.trim() || null : null,
+      quantite_commande: typeCommande === "conditionné" ? quantiteCommande || null : null,
+      nombre_fcl:
+        typeCommande === "conditionné" &&
+        (quantiteCommande === "conteneur_20" || quantiteCommande === "conteneur_40") &&
+        nombreFCL?.trim() && !isNaN(Number(nombreFCL))
+          ? Number(nombreFCL)
+          : null,
+      nombre_palettes:
+        typeCommande === "conditionné" &&
+        quantiteCommande === "palettes" &&
+        nombrePalettes?.trim() && !isNaN(Number(nombrePalettes))
+          ? Number(nombrePalettes)
+          : null,
+      marche_cible:
+        typeCommande === "conditionné" && typeMarque === "Création de nouvelle marque"
+          ? marcheCible?.trim() || null
+          : null,
+      quantite_prevue:
+        typeCommande === "conditionné" && typeMarque === "Création de nouvelle marque"
+          ? quantitePrevue?.trim() || null
+          : null,
+      nouvelle_marque_formats: nouvelleMarqueFormatsData,
+      nouvelle_marque_design_conditionnement:
+        typeCommande === "conditionné" && typeMarque === "Création de nouvelle marque"
+          ? {
+              emballages: nouvelleMarqueEmballagesSelectionnes || [],
+              autre: nouvelleMarqueAutreEmballage?.trim() || null,
+            }
+          : null,
+
+      // ÉCHANTILLON
+      demande_echantillon: demandeEchantillon === "oui" ? 1 : 0,
+      adresse_echantillon:
+        demandeEchantillon === "oui" ? adresseEchantillon?.trim() || null : null,
+      personne_reception_echantillon:
+        demandeEchantillon === "oui" ? personneReceptionEchantillon?.trim() || null : null,
+      tel_reception_echantillon:
+        demandeEchantillon === "oui" ? telReceptionEchantillon?.trim() || null : null,
+
+      // K232 / K270
+      k232_demande: k232Selection ? 1 : 0,
+      k232_valeur: k232Selection ? k232Valeur || null : null,
+      k270_demande: k270Selection ? 1 : 0,
+      k270_valeur: k270Selection ? k270Valeur || null : null,
+    };
   };
 
-  // ===================================================
+  const handleAjouterCommande = () => {
+    if (!typeCommande) {
+      Alert.alert("Attention", "Veuillez sélectionner un type de commande.");
+      return;
+    }
+
+    const commande = buildCurrentCommande();
+    if (!commande) return;
+
+    // Empêcher de mélanger Vrac et Conditionné.
+    if (commandes.length > 0 && commandes[0].type_commande !== typeCommande) {
+      Alert.alert(
+        "Type de commande invalide",
+        "Toutes les commandes d'une même fiche doivent être du même type : Vrac ou Conditionné."
+      );
+      return;
+    }
+
+    const nouveauNombre = commandes.length + 1;
+    setCommandes((prev) => [...(prev || []), commande]);
+
+    // On garde le type Vrac/Conditionné sélectionné pour faciliter
+    // la saisie de la commande suivante.
+    resetCommandeFields();
+
+    Alert.alert(
+      "Commande ajoutée",
+      `Commande ${nouveauNombre} ajoutée. Vous pouvez saisir une autre commande du même type.`
+    );
+  };
+
+  // =====================================================
+  // QUALIFICATION DU VISITEUR
+  // =====================================================
+
+  const [qualification, setQualification] = useState(0);
+
+  // =====================================================
+  // DEMANDE D'ÉCHANTILLON
+  // =====================================================
+  const [demandeEchantillon, setDemandeEchantillon] = useState("non");
+  const [adresseEchantillon, setAdresseEchantillon] = useState("");
+  const [personneReceptionEchantillon, setPersonneReceptionEchantillon] = useState("");
+  const [telReceptionEchantillon, setTelReceptionEchantillon] = useState("");
+
+  // =====================================================
+  // K232 / K270
+  // =====================================================
+  const [k232Selection, setK232Selection] = useState(false);
+  const [k270Selection, setK270Selection] = useState(false);
+  const [k232Valeur, setK232Valeur] = useState("");
+  const [k270Valeur, setK270Valeur] = useState("");
+
+  // =====================================================
+  // PAYS
+  // =====================================================
+
+  const pays = [
+    "Afghanistan",
+    "Afrique du Sud",
+    "Albanie",
+    "Algérie",
+    "Allemagne",
+    "Andorre",
+    "Angola",
+    "Antigua-et-Barbuda",
+    "Arabie Saoudite",
+    "Argentine",
+    "Arménie",
+    "Australie",
+    "Autriche",
+    "Azerbaïdjan",
+    "Bahamas",
+    "Bahreïn",
+    "Bangladesh",
+    "Barbade",
+    "Belgique",
+    "Belize",
+    "Bénin",
+    "Bhoutan",
+    "Biélorussie",
+    "Bolivie",
+    "Bosnie-Herzégovine",
+    "Botswana",
+    "Brésil",
+    "Brunei",
+    "Bulgarie",
+    "Burkina Faso",
+    "Burundi",
+    "Cambodge",
+    "Cameroun",
+    "Canada",
+    "Cap-Vert",
+    "Chili",
+    "Chine",
+    "Chypre",
+    "Colombie",
+    "Comores",
+    "Congo",
+    "Costa Rica",
+    "Côte d'Ivoire",
+    "Croatie",
+    "Cuba",
+    "Danemark",
+    "Djibouti",
+    "Dominique",
+    "Égypte",
+    "Émirats Arabes Unis",
+    "Équateur",
+    "Érythrée",
+    "Espagne",
+    "Estonie",
+    "Eswatini",
+    "Éthiopie",
+    "Fidji",
+    "Finlande",
+    "France",
+    "Gabon",
+    "Gambie",
+    "Géorgie",
+    "Ghana",
+    "Grèce",
+    "Grenade",
+    "Guatemala",
+    "Guinée",
+    "Guinée-Bissau",
+    "Guinée équatoriale",
+    "Guyana",
+    "Haïti",
+    "Honduras",
+    "Hongrie",
+    "Inde",
+    "Indonésie",
+    "Irak",
+    "Iran",
+    "Irlande",
+    "Islande",
+    "Israël",
+    "Italie",
+    "Jamaïque",
+    "Japon",
+    "Jordanie",
+    "Kazakhstan",
+    "Kenya",
+    "Kirghizistan",
+    "Koweït",
+    "Laos",
+    "Lettonie",
+    "Liban",
+    "Lesotho",
+    "Liberia",
+    "Libye",
+    "Liechtenstein",
+    "Lituanie",
+    "Luxembourg",
+    "Macédoine du Nord",
+    "Madagascar",
+    "Malaisie",
+    "Malawi",
+    "Maldives",
+    "Mali",
+    "Malte",
+    "Maroc",
+    "Maurice",
+    "Mauritanie",
+    "Mexique",
+    "Moldavie",
+    "Monaco",
+    "Mongolie",
+    "Monténégro",
+    "Mozambique",
+    "Myanmar",
+    "Namibie",
+    "Népal",
+    "Nicaragua",
+    "Niger",
+    "Nigeria",
+    "Norvège",
+    "Nouvelle-Zélande",
+    "Oman",
+    "Ouganda",
+    "Ouzbékistan",
+    "Pakistan",
+    "Panama",
+    "Papouasie-Nouvelle-Guinée",
+    "Paraguay",
+    "Pays-Bas",
+    "Pérou",
+    "Philippines",
+    "Pologne",
+    "Portugal",
+    "Qatar",
+    "République démocratique du Congo",
+    "République dominicaine",
+    "République tchèque",
+    "Roumanie",
+    "Royaume-Uni",
+    "Russie",
+    "Rwanda",
+    "Saint-Kitts-et-Nevis",
+    "Sainte-Lucie",
+    "Saint-Marin",
+    "Saint-Vincent-et-les-Grenadines",
+    "Salvador",
+    "Samoa",
+    "Sénégal",
+    "Serbie",
+    "Seychelles",
+    "Sierra Leone",
+    "Singapour",
+    "Slovaquie",
+    "Slovénie",
+    "Somalie",
+    "Soudan",
+    "Soudan du Sud",
+    "Sri Lanka",
+    "Suède",
+    "Suisse",
+    "Suriname",
+    "Tadjikistan",
+    "Tanzanie",
+    "Thaïlande",
+    "Timor oriental",
+    "Togo",
+    "Tonga",
+    "Trinité-et-Tobago",
+    "Tunisie",
+    "Turkménistan",
+    "Turquie",
+    "Ukraine",
+    "Uruguay",
+    "Vanuatu",
+    "Vatican",
+    "Venezuela",
+    "Viêt Nam",
+    "Yémen",
+    "Zambie",
+    "Zimbabwe",
+    "États-Unis",
+    "Autre",
+  ];
+
+  // =====================================================
+  // CHANGEMENT PAYS
+  // =====================================================
+
+  const handlePaysChange = (value) => {
+    setOrigine(value);
+
+    if (value === "Afghanistan") {
+      setIndicatif("+93");
+    } else if (value === "Afrique du Sud") {
+      setIndicatif("+27");
+    } else if (value === "Albanie") {
+      setIndicatif("+355");
+    } else if (value === "Algérie") {
+      setIndicatif("+213");
+    } else if (value === "Allemagne") {
+      setIndicatif("+49");
+    } else if (value === "Andorre") {
+      setIndicatif("+376");
+    } else if (value === "Angola") {
+      setIndicatif("+244");
+    } else if (value === "Antigua-et-Barbuda") {
+      setIndicatif("+1");
+    } else if (value === "Arabie Saoudite") {
+      setIndicatif("+966");
+    } else if (value === "Argentine") {
+      setIndicatif("+54");
+    } else if (value === "Arménie") {
+      setIndicatif("+374");
+    } else if (value === "Australie") {
+      setIndicatif("+61");
+    } else if (value === "Autriche") {
+      setIndicatif("+43");
+    } else if (value === "Azerbaïdjan") {
+      setIndicatif("+994");
+    } else if (value === "Bahamas") {
+      setIndicatif("+1");
+    } else if (value === "Bahreïn") {
+      setIndicatif("+973");
+    } else if (value === "Bangladesh") {
+      setIndicatif("+880");
+    } else if (value === "Barbade") {
+      setIndicatif("+1");
+    } else if (value === "Belgique") {
+      setIndicatif("+32");
+    } else if (value === "Belize") {
+      setIndicatif("+501");
+    } else if (value === "Bénin") {
+      setIndicatif("+229");
+    } else if (value === "Bhoutan") {
+      setIndicatif("+975");
+    } else if (value === "Biélorussie") {
+      setIndicatif("+375");
+    } else if (value === "Bolivie") {
+      setIndicatif("+591");
+    } else if (value === "Bosnie-Herzégovine") {
+      setIndicatif("+387");
+    } else if (value === "Botswana") {
+      setIndicatif("+267");
+    } else if (value === "Brésil") {
+      setIndicatif("+55");
+    } else if (value === "Brunei") {
+      setIndicatif("+673");
+    } else if (value === "Bulgarie") {
+      setIndicatif("+359");
+    } else if (value === "Burkina Faso") {
+      setIndicatif("+226");
+    } else if (value === "Burundi") {
+      setIndicatif("+257");
+    } else if (value === "Cambodge") {
+      setIndicatif("+855");
+    } else if (value === "Cameroun") {
+      setIndicatif("+237");
+    } else if (value === "Canada") {
+      setIndicatif("+1");
+    } else if (value === "Cap-Vert") {
+      setIndicatif("+238");
+    } else if (value === "Chili") {
+      setIndicatif("+56");
+    } else if (value === "Chine") {
+      setIndicatif("+86");
+    } else if (value === "Chypre") {
+      setIndicatif("+357");
+    } else if (value === "Colombie") {
+      setIndicatif("+57");
+    } else if (value === "Comores") {
+      setIndicatif("+269");
+    } else if (value === "Congo") {
+      setIndicatif("+242");
+    } else if (value === "Costa Rica") {
+      setIndicatif("+506");
+    } else if (value === "Côte d'Ivoire") {
+      setIndicatif("+225");
+    } else if (value === "Croatie") {
+      setIndicatif("+385");
+    } else if (value === "Cuba") {
+      setIndicatif("+53");
+    } else if (value === "Danemark") {
+      setIndicatif("+45");
+    } else if (value === "Djibouti") {
+      setIndicatif("+253");
+    } else if (value === "Dominique") {
+      setIndicatif("+1");
+    } else if (value === "Égypte") {
+      setIndicatif("+20");
+    } else if (value === "Émirats Arabes Unis") {
+      setIndicatif("+971");
+    } else if (value === "Équateur") {
+      setIndicatif("+593");
+    } else if (value === "Érythrée") {
+      setIndicatif("+291");
+    } else if (value === "Espagne") {
+      setIndicatif("+34");
+    } else if (value === "Estonie") {
+      setIndicatif("+372");
+    } else if (value === "Eswatini") {
+      setIndicatif("+268");
+    } else if (value === "Éthiopie") {
+      setIndicatif("+251");
+    } else if (value === "Fidji") {
+      setIndicatif("+679");
+    } else if (value === "Finlande") {
+      setIndicatif("+358");
+    } else if (value === "France") {
+      setIndicatif("+33");
+    } else if (value === "Gabon") {
+      setIndicatif("+241");
+    } else if (value === "Gambie") {
+      setIndicatif("+220");
+    } else if (value === "Géorgie") {
+      setIndicatif("+995");
+    } else if (value === "Ghana") {
+      setIndicatif("+233");
+    } else if (value === "Grèce") {
+      setIndicatif("+30");
+    } else if (value === "Grenade") {
+      setIndicatif("+1");
+    } else if (value === "Guatemala") {
+      setIndicatif("+502");
+    } else if (value === "Guinée") {
+      setIndicatif("+224");
+    } else if (value === "Guinée-Bissau") {
+      setIndicatif("+245");
+    } else if (value === "Guinée équatoriale") {
+      setIndicatif("+240");
+    } else if (value === "Guyana") {
+      setIndicatif("+592");
+    } else if (value === "Haïti") {
+      setIndicatif("+509");
+    } else if (value === "Honduras") {
+      setIndicatif("+504");
+    } else if (value === "Hongrie") {
+      setIndicatif("+36");
+    } else if (value === "Inde") {
+      setIndicatif("+91");
+    } else if (value === "Indonésie") {
+      setIndicatif("+62");
+    } else if (value === "Irak") {
+      setIndicatif("+964");
+    } else if (value === "Iran") {
+      setIndicatif("+98");
+    } else if (value === "Irlande") {
+      setIndicatif("+353");
+    } else if (value === "Islande") {
+      setIndicatif("+354");
+    } else if (value === "Israël") {
+      setIndicatif("+972");
+    } else if (value === "Italie") {
+      setIndicatif("+39");
+    } else if (value === "Jamaïque") {
+      setIndicatif("+1");
+    } else if (value === "Japon") {
+      setIndicatif("+81");
+    } else if (value === "Jordanie") {
+      setIndicatif("+962");
+    } else if (value === "Kazakhstan") {
+      setIndicatif("+7");
+    } else if (value === "Kenya") {
+      setIndicatif("+254");
+    } else if (value === "Kirghizistan") {
+      setIndicatif("+996");
+    } else if (value === "Koweït") {
+      setIndicatif("+965");
+    } else if (value === "Laos") {
+      setIndicatif("+856");
+    } else if (value === "Lettonie") {
+      setIndicatif("+371");
+    } else if (value === "Liban") {
+      setIndicatif("+961");
+    } else if (value === "Lesotho") {
+      setIndicatif("+266");
+    } else if (value === "Liberia") {
+      setIndicatif("+231");
+    } else if (value === "Libye") {
+      setIndicatif("+218");
+    } else if (value === "Liechtenstein") {
+      setIndicatif("+423");
+    } else if (value === "Lituanie") {
+      setIndicatif("+370");
+    } else if (value === "Luxembourg") {
+      setIndicatif("+352");
+    } else if (value === "Macédoine du Nord") {
+      setIndicatif("+389");
+    } else if (value === "Madagascar") {
+      setIndicatif("+261");
+    } else if (value === "Malaisie") {
+      setIndicatif("+60");
+    } else if (value === "Malawi") {
+      setIndicatif("+265");
+    } else if (value === "Maldives") {
+      setIndicatif("+960");
+    } else if (value === "Mali") {
+      setIndicatif("+223");
+    } else if (value === "Malte") {
+      setIndicatif("+356");
+    } else if (value === "Maroc") {
+      setIndicatif("+212");
+    } else if (value === "Maurice") {
+      setIndicatif("+230");
+    } else if (value === "Mauritanie") {
+      setIndicatif("+222");
+    } else if (value === "Mexique") {
+      setIndicatif("+52");
+    } else if (value === "Moldavie") {
+      setIndicatif("+373");
+    } else if (value === "Monaco") {
+      setIndicatif("+377");
+    } else if (value === "Mongolie") {
+      setIndicatif("+976");
+    } else if (value === "Monténégro") {
+      setIndicatif("+382");
+    } else if (value === "Mozambique") {
+      setIndicatif("+258");
+    } else if (value === "Myanmar") {
+      setIndicatif("+95");
+    } else if (value === "Namibie") {
+      setIndicatif("+264");
+    } else if (value === "Népal") {
+      setIndicatif("+977");
+    } else if (value === "Nicaragua") {
+      setIndicatif("+505");
+    } else if (value === "Niger") {
+      setIndicatif("+227");
+    } else if (value === "Nigeria") {
+      setIndicatif("+234");
+    } else if (value === "Norvège") {
+      setIndicatif("+47");
+    } else if (value === "Nouvelle-Zélande") {
+      setIndicatif("+64");
+    } else if (value === "Oman") {
+      setIndicatif("+968");
+    } else if (value === "Ouganda") {
+      setIndicatif("+256");
+    } else if (value === "Ouzbékistan") {
+      setIndicatif("+998");
+    } else if (value === "Pakistan") {
+      setIndicatif("+92");
+    } else if (value === "Panama") {
+      setIndicatif("+507");
+    } else if (value === "Papouasie-Nouvelle-Guinée") {
+      setIndicatif("+675");
+    } else if (value === "Paraguay") {
+      setIndicatif("+595");
+    } else if (value === "Pays-Bas") {
+      setIndicatif("+31");
+    } else if (value === "Pérou") {
+      setIndicatif("+51");
+    } else if (value === "Philippines") {
+      setIndicatif("+63");
+    } else if (value === "Pologne") {
+      setIndicatif("+48");
+    } else if (value === "Portugal") {
+      setIndicatif("+351");
+    } else if (value === "Qatar") {
+      setIndicatif("+974");
+    } else if (value === "République démocratique du Congo") {
+      setIndicatif("+243");
+    } else if (value === "République dominicaine") {
+      setIndicatif("+1");
+    } else if (value === "République tchèque") {
+      setIndicatif("+420");
+    } else if (value === "Roumanie") {
+      setIndicatif("+40");
+    } else if (value === "Royaume-Uni") {
+      setIndicatif("+44");
+    } else if (value === "Russie") {
+      setIndicatif("+7");
+    } else if (value === "Rwanda") {
+      setIndicatif("+250");
+    } else if (value === "Saint-Kitts-et-Nevis") {
+      setIndicatif("+1");
+    } else if (value === "Sainte-Lucie") {
+      setIndicatif("+1");
+    } else if (value === "Saint-Marin") {
+      setIndicatif("+378");
+    } else if (value === "Saint-Vincent-et-les-Grenadines") {
+      setIndicatif("+1");
+    } else if (value === "Salvador") {
+      setIndicatif("+503");
+    } else if (value === "Samoa") {
+      setIndicatif("+685");
+    } else if (value === "Sénégal") {
+      setIndicatif("+221");
+    } else if (value === "Serbie") {
+      setIndicatif("+381");
+    } else if (value === "Seychelles") {
+      setIndicatif("+248");
+    } else if (value === "Sierra Leone") {
+      setIndicatif("+232");
+    } else if (value === "Singapour") {
+      setIndicatif("+65");
+    } else if (value === "Slovaquie") {
+      setIndicatif("+421");
+    } else if (value === "Slovénie") {
+      setIndicatif("+386");
+    } else if (value === "Somalie") {
+      setIndicatif("+252");
+    } else if (value === "Soudan") {
+      setIndicatif("+249");
+    } else if (value === "Soudan du Sud") {
+      setIndicatif("+211");
+    } else if (value === "Sri Lanka") {
+      setIndicatif("+94");
+    } else if (value === "Suède") {
+      setIndicatif("+46");
+    } else if (value === "Suisse") {
+      setIndicatif("+41");
+    } else if (value === "Suriname") {
+      setIndicatif("+597");
+    } else if (value === "Tadjikistan") {
+      setIndicatif("+992");
+    } else if (value === "Tanzanie") {
+      setIndicatif("+255");
+    } else if (value === "Thaïlande") {
+      setIndicatif("+66");
+    } else if (value === "Timor oriental") {
+      setIndicatif("+670");
+    } else if (value === "Togo") {
+      setIndicatif("+228");
+    } else if (value === "Tonga") {
+      setIndicatif("+676");
+    } else if (value === "Trinité-et-Tobago") {
+      setIndicatif("+1");
+    } else if (value === "Tunisie") {
+      setIndicatif("+216");
+    } else if (value === "Turkménistan") {
+      setIndicatif("+993");
+    } else if (value === "Turquie") {
+      setIndicatif("+90");
+    } else if (value === "Ukraine") {
+      setIndicatif("+380");
+    } else if (value === "Uruguay") {
+      setIndicatif("+598");
+    } else if (value === "Vanuatu") {
+      setIndicatif("+678");
+    } else if (value === "Vatican") {
+      setIndicatif("+39");
+    } else if (value === "Venezuela") {
+      setIndicatif("+58");
+    } else if (value === "Viêt Nam") {
+      setIndicatif("+84");
+    } else if (value === "Yémen") {
+      setIndicatif("+967");
+    } else if (value === "Zambie") {
+      setIndicatif("+260");
+    } else if (value === "Zimbabwe") {
+      setIndicatif("+263");
+    } else if (value === "États-Unis") {
+      setIndicatif("+1");
+    } else {
+      setIndicatif("");
+    }
+  };
+
+  // =====================================================
   // CHANGEMENT PROFILE
-  // ===================================================
+  // =====================================================
 
   const handleProfileChange = (value) => {
     setProfile(value);
 
     if (value !== "intermediaire" && value !== "acheteur") {
       setTypeCommande("");
-      resetCommande();
-    }
-  };
+      setCommandes([]);
 
-  // ===================================================
-  // CHANGEMENT TYPE COMMANDE
-  // ===================================================
+      // VRAC
+      setCategorie("");
+      setQualiteGrade("");
+      setVolumeEstime("");
+      setDestination("");
+      setIncoterm("");
+      setFormatLivraison("");
+      setFrequenceCommande("");
+      setExigencesSpecifiques([]);
+      setInformationsComplementaires("");
 
-  const handleTypeCommandeChange = (value) => {
-    setTypeCommande(value);
-
-    if (value === "vrac") {
-      resetConditionne();
-      resetNouvelleMarque();
-    }
-
-    if (value === "conditionné") {
-      resetVrac();
-    }
-
-    if (value === "") {
-      resetCommande();
-    }
-  };
-
-  // ===================================================
-  // TOGGLE EMBALLAGE CONDITIONNÉ
-  // ===================================================
-
-  const toggleEmballage = (type) => {
-    setEmballagesSelectionnes((prev) => {
-      if (prev.includes(type)) {
-        return prev.filter((item) => item !== type);
-      }
-
-      return [...prev, type];
-    });
-
-    // Si Autre est retiré
-    if (
-      type === "Autre" &&
-      emballagesSelectionnes.includes("Autre")
-    ) {
+      // CONDITIONNÉ
+      setPaysConditionne("");
+      setCanalDistribution("");
+      setVolumesEstimes("");
+      setTypeEmballage("");
+      setFormatsSouhaites("");
+      setEmballagesSelectionnes([]);
+      setFormatsEmballage({});
       setAutreEmballage("");
-    }
-  };
 
-  // ===================================================
-  // TOGGLE FORMAT CONDITIONNÉ
-  // ===================================================
+      // AUTRES PAR TYPE
+      setAutresSelectionnes({
+        Tin: false,
+        PET: false,
+        Glass: false,
+        BaginBox: false,
+      });
 
-  const toggleFormat = (type, format) => {
-    setFormatsEmballage((prev) => {
-      const current = prev[type] || [];
+      setAutresEmballages({
+        Tin: "",
+        PET: "",
+        Glass: "",
+        BaginBox: "",
+      });
 
-      if (current.includes(format)) {
-        return {
-          ...prev,
-          [type]: current.filter((item) => item !== format),
-        };
-      }
+      setTypeMarque("");
+      setCertificationsRequises([]);
+      setNomEntreprise("");
+      setSiteWeb("");
+      setContactProfessionnel("");
 
-      return {
-        ...prev,
-        [type]: [...current, format],
-      };
-    });
-  };
+      // QUANTITÉ
+      setQuantiteCommande("");
+      setNombrePalettes("");
 
-  // ===================================================
-  // TOGGLE EMBALLAGE NOUVELLE MARQUE
-  // ===================================================
-
-  const toggleNouvelleMarqueEmballage = (type) => {
-    setNouvelleMarqueEmballagesSelectionnes((prev) => {
-      if (prev.includes(type)) {
-        return prev.filter((item) => item !== type);
-      }
-
-      return [...prev, type];
-    });
-
-    if (
-      type === "Autre" &&
-      nouvelleMarqueEmballagesSelectionnes.includes("Autre")
-    ) {
+      // NOUVELLE MARQUE
+      setMarcheCible("");
+      setQuantitePrevue("");
+      setNouvelleMarqueEmballagesSelectionnes([]);
+      setNouvelleMarqueFormatsEmballage({});
       setNouvelleMarqueAutreEmballage("");
     }
   };
 
-  // ===================================================
-  // TOGGLE FORMAT NOUVELLE MARQUE
-  // ===================================================
+  // =====================================================
+  // CHANGEMENT TYPE COMMANDE
+  // =====================================================
 
-  const toggleNouvelleMarqueFormat = (type, format) => {
-    setNouvelleMarqueFormatsEmballage((prev) => {
-      const current = prev[type] || [];
-
-      if (current.includes(format)) {
-        return {
-          ...prev,
-          [type]: current.filter((item) => item !== format),
-        };
-      }
-
-      return {
-        ...prev,
-        [type]: [...current, format],
-      };
-    });
+  const handleTypeCommandeChange = (value) => {
+    setTypeCommande(value);
+    // Un changement de type démarre une nouvelle série de commandes.
+    // Il est donc impossible de mélanger Vrac et Conditionné.
+    setCommandes([]);
+    resetCommandeFields();
+  
+    // ======================================================
+    // Si on choisit CONDITIONNÉ
+    // → on nettoie tous les champs VRAC
+    // ======================================================
+    if (value === "conditionné") {
+      setCategorie("");
+      setQualiteGrade("");
+      setVolumeEstime("");
+      setDestination("");
+      setIncoterm("");
+      setFormatLivraison("");
+      setFrequenceCommande("");
+      setExigencesSpecifiques([]);
+      setInformationsComplementaires("");
+    }
+  
+    // ======================================================
+    // Si on choisit VRAC
+    // → on nettoie tous les champs CONDITIONNÉ
+    // ======================================================
+    if (value === "vrac") {
+      setPaysConditionne("");
+      setCanalDistribution("");
+      setVolumesEstimes("");
+      setTypeEmballage("");
+      setFormatsSouhaites("");
+  
+      setEmballagesSelectionnes([]);
+      setFormatsEmballage({});
+      setAutreEmballage("");
+  
+      setAutresSelectionnes({
+        Tin: false,
+        PET: false,
+        Glass: false,
+        BaginBox: false,
+      });
+  
+      setAutresEmballages({
+        Tin: "",
+        PET: "",
+        Glass: "",
+        BaginBox: "",
+      });
+  
+      setTypeMarque("");
+      setCertificationsRequises([]);
+      setNomEntreprise("");
+      setSiteWeb("");
+      setContactProfessionnel("");
+  
+      setQuantiteCommande("");
+      setNombrePalettes("");
+  
+      setMarcheCible("");
+      setQuantitePrevue("");
+  
+      setNouvelleMarqueEmballagesSelectionnes([]);
+      setNouvelleMarqueFormatsEmballage({});
+      setNouvelleMarqueAutreEmballage("");
+    }
   };
 
-  // ===================================================
-  // TEST BACKEND
-  // ===================================================
+  // =====================================================
+  // AJOUT / SUPPRESSION EMBALLAGE CONDITIONNÉ
+  // =====================================================
+
+
+  const toggleEmballageConditionne = (type) => {
+    setEmballagesSelectionnes((prev) => {
+      const isSelected = prev.includes(type);
+  
+      if (isSelected) {
+        return prev.filter((item) => item !== type);
+      }
+  
+      return [...prev, type];
+    });
+  
+    setFormatsEmballage((prev) => {
+      const updated = { ...prev };
+      delete updated[type];
+      return updated;
+    });
+  
+    if (type === "Tin") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        Tin: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        Tin: "",
+      }));
+    }
+  
+    if (type === "PET") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        PET: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        PET: "",
+      }));
+    }
+  
+    if (type === "Glass") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        Glass: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        Glass: "",
+      }));
+    }
+
+    if (type === "BaginBox") {
+      setAutresSelectionnes((prev) => ({
+        ...prev,
+        BaginBox: false,
+      }));
+  
+      setAutresEmballages((prev) => ({
+        ...prev,
+        BaginBox: "",
+      }));
+    }
+  
+    if (type === "Autre") {
+      setAutreEmballage((prev) => {
+        // On efface la valeur uniquement
+        // si le type Autre est décoché.
+        return prev;
+      });
+    }
+  };
+  // =====================================================
+  // AJOUT / SUPPRESSION EMBALLAGE NOUVELLE MARQUE
+  // =====================================================
+
+  const toggleEmballageNouvelleMarque = (type) => {
+    if (nouvelleMarqueEmballagesSelectionnes.includes(type)) {
+      setNouvelleMarqueEmballagesSelectionnes(
+        nouvelleMarqueEmballagesSelectionnes.filter(
+          (item) => item !== type
+        )
+      );
+
+      setNouvelleMarqueFormatsEmballage((prev) => {
+        const updated = { ...prev };
+        delete updated[type];
+        return updated;
+      });
+
+      if (type === "Autre") {
+        setNouvelleMarqueAutreEmballage("");
+      }
+    } else {
+      setNouvelleMarqueEmballagesSelectionnes([
+        ...nouvelleMarqueEmballagesSelectionnes,
+        type,
+      ]);
+    }
+  };
+
+  // =====================================================
+  // TEST CONNEXION BACKEND
+  // =====================================================
 
   const testerConnexion = async () => {
     try {
-      const response = await fetch(`${API_URL}/`);
+      console.log(
+        "Test connexion vers :",
+        `${API_URL}/`
+      );
 
+      const response = await fetch(`${API_URL}/`);
       const data = await response.json();
 
-      console.log("TEST BACKEND :", data);
-
-      if (!response.ok) {
-        throw new Error(data.message || "Erreur serveur.");
-      }
-
-      Alert.alert(
-        "Connexion réussie",
-        "React Native communique correctement avec Node.js."
+      console.log(
+        "Réponse backend :",
+        data
       );
+
+      if (response.ok) {
+        Alert.alert(
+          "Connexion réussie",
+          "Le frontend communique correctement avec le backend."
+        );
+      } else {
+        Alert.alert(
+          "Erreur",
+          "Le backend a répondu avec une erreur."
+        );
+      }
     } catch (error) {
-      console.error("ERREUR CONNEXION :", error);
+      console.error(
+        "Erreur connexion :",
+        error
+      );
 
       Alert.alert(
         "Backend inaccessible",
-        `${API_URL}\n\n${error.message}`
+        `Impossible de contacter le serveur.\n\n${API_URL}\n\nVérifie que le backend est démarré et que le téléphone est sur le même Wi-Fi que le PC.`
       );
     }
   };
 
-  // ===================================================
+  // =====================================================
   // AJOUTER VISITEUR
-  // ===================================================
+  // =====================================================
 
   const handleAjouter = async () => {
     try {
-      console.log("");
-      console.log("=================================");
-      console.log("DÉBUT AJOUT VISITEUR");
-      console.log("=================================");
+      // ================================================
+      // QUALIFICATION
+      // ================================================
+      if (!qualification || qualification < 1 || qualification > 5) {
+        Alert.alert("Attention", "Veuillez sélectionner une note de 1 à 5 étoiles.");
+        return;
+      }
 
-      // =================================================
-      // DONNÉES NOUVELLE MARQUE
-      // =================================================
+      // ================================================
+      // COMMANDES À ENREGISTRER
+      // ================================================
+      const commandeCourante = typeCommande ? buildCurrentCommande() : null;
+      const commandesFinales = [
+        ...(commandes || []),
+        ...(commandeCourante ? [commandeCourante] : []),
+      ];
 
-      const nouvelleMarqueDesign =
-        typeCommande === "conditionné" &&
-        typeMarque === "Création de nouvelle marque" &&
-        nouvelleMarqueEmballagesSelectionnes.length > 0
-          ? JSON.stringify({
-              emballages: nouvelleMarqueEmballagesSelectionnes,
-              autre: nouvelleMarqueAutreEmballage || null,
-            })
-          : null;
+      if (commandesFinales.length === 0) {
+        Alert.alert("Attention", "Veuillez ajouter au moins une commande.");
+        return;
+      }
 
-      const nouvelleMarqueFormats =
-        typeCommande === "conditionné" &&
-        typeMarque === "Création de nouvelle marque" &&
-        Object.keys(nouvelleMarqueFormatsEmballage).length > 0
-          ? JSON.stringify(nouvelleMarqueFormatsEmballage)
-          : null;
-
-      // =================================================
-      // FORMATS CONDITIONNÉ
-      // =================================================
-
-      const formatsConditionne =
-        typeCommande === "conditionné" &&
-        Object.keys(formatsEmballage).length > 0
-          ? JSON.stringify(formatsEmballage)
-          : null;
-
-      // =================================================
-      // OBJET VISITEUR
-      // =================================================
-
-      const visiteur = {
-        // -----------------------------------------------
-        // INFORMATIONS GÉNÉRALES
-        // -----------------------------------------------
-
-        nom: nom.trim() || null,
-
-        prenom: prenom.trim() || null,
-
-        email: email.trim() || null,
-
-        age:
-          age.trim() !== ""
-            ? Number(age)
-            : null,
-
-        origine: origine || null,
-
-        indicatif: indicatif || null,
-
-        telephone: telephone.trim() || null,
-
-        societe: societe.trim() || null,
-
-        adresse_societe:
-          adresseSociete.trim() || null,
-
-        fonction:
-          fonction.trim() || null,
-
-        langue_communication:
-          langueCommunication || null,
-
-        // -----------------------------------------------
-        // PROFILE
-        // -----------------------------------------------
-
-        profile: profile || null,
-
-        // -----------------------------------------------
-        // TYPE COMMANDE
-        // -----------------------------------------------
-
-        type_commande:
-          profile === "intermediaire" ||
-          profile === "acheteur"
-            ? typeCommande || null
-            : null,
-
-        // -----------------------------------------------
-        // VRAC
-        // -----------------------------------------------
-
-        qualite_grade:
-          typeCommande === "vrac"
-            ? qualiteGrade.trim() || null
-            : null,
-
-        volume_estime:
-          typeCommande === "vrac" &&
-          volumeEstime.trim() !== ""
-            ? Number(volumeEstime)
-            : null,
-
-        destination:
-          typeCommande === "vrac"
-            ? destination.trim() || null
-            : null,
-
-        incoterm:
-          typeCommande === "vrac"
-            ? incoterm || null
-            : null,
-
-        format_livraison:
-          typeCommande === "vrac"
-            ? formatLivraison || null
-            : null,
-
-        frequence_commande:
-          typeCommande === "vrac"
-            ? frequenceCommande || null
-            : null,
-
-        exigences_specifiques:
-          typeCommande === "vrac" &&
-          exigencesSpecifiques.length > 0
-            ? JSON.stringify(exigencesSpecifiques)
-            : null,
-
-        informations_complementaires:
-          typeCommande === "vrac"
-            ? informationsComplementaires.trim() || null
-            : null,
-
-        // -----------------------------------------------
-        // CONDITIONNÉ
-        // -----------------------------------------------
-
-        pays_conditionne:
-          typeCommande === "conditionné"
-            ? paysConditionne || null
-            : null,
-
-        canal_distribution:
-          typeCommande === "conditionné"
-            ? canalDistribution || null
-            : null,
-
-        volumes_estimes:
-          typeCommande === "conditionné"
-            ? volumesEstimes.trim() || null
-            : null,
-
-        // Stockage des emballages CONDITIONNÉ
-        // séparément de la nouvelle marque.
-        type_emballage:
-          typeCommande === "conditionné" &&
-          emballagesSelectionnes.length > 0
-            ? JSON.stringify({
-                emballages: emballagesSelectionnes,
-                autre: autreEmballage || null,
-              })
-            : null,
-
-        // Stockage des formats CONDITIONNÉ
-        formats_souhaites:
-          typeCommande === "conditionné"
-            ? formatsConditionne
-            : null,
-
-        type_marque:
-          typeCommande === "conditionné"
-            ? typeMarque || null
-            : null,
-
-        certifications_requises:
-          typeCommande === "conditionné" &&
-          certificationsRequises.length > 0
-            ? JSON.stringify(certificationsRequises)
-            : null,
-
-        nom_entreprise:
-          typeCommande === "conditionné"
-            ? nomEntreprise.trim() || null
-            : null,
-
-        site_web:
-          typeCommande === "conditionné"
-            ? siteWeb.trim() || null
-            : null,
-
-        contact_professionnel:
-          typeCommande === "conditionné"
-            ? contactProfessionnel.trim() || null
-            : null,
-
-        // -----------------------------------------------
-        // NOUVELLE MARQUE
-        // -----------------------------------------------
-
-        marche_cible:
-          typeCommande === "conditionné" &&
-          typeMarque === "Création de nouvelle marque"
-            ? marcheCible.trim() || null
-            : null,
-
-        quantite_prevue:
-          typeCommande === "conditionné" &&
-          typeMarque === "Création de nouvelle marque"
-            ? quantitePrevue.trim() || null
-            : null,
-
-        // IMPORTANT :
-        // Ces deux champs sont UNIQUEMENT pour
-        // la nouvelle marque.
-
-        nouvelle_marque_formats:
-          nouvelleMarqueFormats,
-
-        nouvelle_marque_design_conditionnement:
-          nouvelleMarqueDesign,
-      };
-
-      // =================================================
-      // DEBUG
-      // =================================================
-
-      console.log("DONNÉES ENVOYÉES :");
-
-      console.log(
-        JSON.stringify(
-          visiteur,
-          null,
-          2
-        )
+      const typePrincipal = commandesFinales[0]?.type_commande || null;
+      const typesDifferents = commandesFinales.some(
+        (commande) => commande?.type_commande !== typePrincipal
       );
 
-      // =================================================
-      // ENVOI AU BACKEND
-      // =================================================
+      if (typesDifferents) {
+        Alert.alert(
+          "Erreur",
+          "Les commandes ne peuvent pas mélanger Vrac et Conditionné."
+        );
+        return;
+      }
 
+      // ================================================
+      // DONNÉES VISITEUR UNIQUEMENT
+      // ================================================
+      const visitorData = {
+        nom: nom?.trim() || null,
+        prenom: prenom?.trim() || null,
+        email: email?.trim() || null,
+        site: site?.trim() || null,
+        origine: origine || null,
+        indicatif: indicatif || null,
+        telephone: telephone?.trim() || null,
+        societe: societe?.trim() || null,
+        adresse_societe: adresseSociete?.trim() || null,
+        fonction: fonction?.trim() || null,
+        genre: genre?.trim() || null,
+        langue_communication: langueCommunication || null,
+        profile: profile || null,
+        type_commande: typePrincipal,
+        qualification: Number(qualification),
+        commandes: commandesFinales,
+        nombre_commandes: commandesFinales.length,
+      };
+
+      // ================================================
+      // AUTHENTIFICATION
+      // ================================================
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Authentification requise");
+      }
+
+      console.log("=======================================");
+      console.log("📤 ENVOI VISITEUR + COMMANDES");
+      console.log("NOMBRE COMMANDES :", commandesFinales.length);
+      console.log("TYPE :", typePrincipal);
+      console.log("DONNÉES :", JSON.stringify(visitorData, null, 2));
+      console.log("=======================================");
+
+      // ================================================
+      // POST BACKEND
+      // ================================================
       const response = await fetch(`${API_URL}/api/visiteurs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(visitorData),
       });
-      
-      const data = await response.json();
-      
+
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        data = {};
+      }
+
       console.log("STATUS HTTP :", response.status);
       console.log("RÉPONSE BACKEND :", data);
-      
+
       if (!response.ok || !data.success) {
         throw new Error(
-          data.message ||
-            data.error ||
-            "Erreur serveur"
+          data.message || data.error || "Erreur lors de l'enregistrement du visiteur."
         );
       }
-      
-      console.log("=======================================");
-      console.log("VISITEUR AJOUTÉ AVEC SUCCÈS");
-      console.log("ID :", data.id);
-      console.log("NAVIGATION VERS /pdf");
-      console.log("=======================================");
-      
-      // Navigation après insertion réussie
-      router.replace("/pdft");
 
-      // =================================================
-      // RÉPONSE
-      // =================================================
+      const visitorId = data.id || data.visitor_id;
 
-      
+      if (!visitorId) {
+        throw new Error("Le backend n'a pas retourné l'identifiant du visiteur.");
+      }
 
-console.log("STATUS HTTP :", response.status);
-console.log("RÉPONSE BACKEND :", data);
+      console.log("✅ VISITEUR AJOUTÉ :", visitorId);
 
-if (!response.ok || !data.success) {
-  throw new Error(
-    data.message || "Impossible d'ajouter le visiteur."
-  );
-}
+      // ================================================
+      // NAVIGATION UNIQUE VERS PDF
+      // ================================================
+      router.push({
+        pathname: "/pdf",
+        params: {
+          id: String(visitorId),
+        },
+      });
 
-console.log("ÉTAPE 1 : VISITEUR AJOUTÉ");
-
-Alert.alert(
-  "TEST",
-  "Le visiteur est ajouté. Navigation vers traitement..."
-);
-
-setTimeout(() => {
-  console.log("ÉTAPE 2 : NAVIGATION");
-  console.log("NAVIGATION VERS /pdf");
-
-router.push("/pdf");
-}, 1000);
-      // =================================================
-      // RESET FORMULAIRE
-      // =================================================
-
+      // ================================================
+      // RESET VISITEUR
+      // ================================================
       setNom("");
       setPrenom("");
       setTelephone("");
-      setIndicatif("+216");
       setEmail("");
-      setAge("");
+      setSite("");
       setOrigine("");
+      setIndicatif("+216");
       setSociete("");
       setAdresseSociete("");
       setFonction("");
       setLangueCommunication("");
-
+      setGenre("");
       setProfile("");
+      setCommandes([]);
       setTypeCommande("");
-
-      resetCommande();
-
+      setQualification(0);
+      resetCommandeFields();
+      setDemandeEchantillon("non");
+      setAdresseEchantillon("");
+      setPersonneReceptionEchantillon("");
+      setTelReceptionEchantillon("");
+      setK232Selection(false);
+      setK270Selection(false);
+      setK232Valeur("");
+      setK270Valeur("");
     } catch (error) {
-      console.error("");
-      console.error(
-        "================================="
-      );
-      console.error(
-        "ERREUR AJOUT VISITEUR"
-      );
-      console.error(
-        "================================="
-      );
-
-      console.error(error);
+      console.error("❌ ERREUR POST :", error);
 
       Alert.alert(
         "Erreur",
@@ -704,47 +1702,50 @@ router.push("/pdf");
     }
   };
 
-  // ===================================================
-  // INTERFACE
-  // ===================================================
+  // =====================================================
+// INTERFACE
+// =====================================================
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+return (
+  <ScrollView
+    style={styles.container}
+    contentContainerStyle={styles.content}
+    keyboardShouldPersistTaps="handled"
+  >
+
+    {/* =================================================
+        DÉCONNEXION
+    ================================================= */}
+
+    <TouchableOpacity
+      style={styles.logoutButton}
+      onPress={handleLogout}
     >
-      {/* ==============================================
-          TITRE
-      =============================================== */}
+      <Ionicons
+        name="log-out-outline"
+        size={20}
+        color="#c62828"
+      />
 
-      <Text style={styles.title}>
-        Formulaire Visiteur
+      <Text style={styles.logoutText}>
+        Déconnexion
       </Text>
+    </TouchableOpacity>
 
-      <Text style={styles.subtitle}>
-        Enregistrement d'un nouveau visiteur
-      </Text>
+    {/* =================================================
+        TITRE
+    ================================================= */}
 
-      {/* ==============================================
-          TEST SERVEUR
-      =============================================== */}
+    <Text style={styles.title}>
+      Formulaire Visiteur
+    </Text>
 
-      <TouchableOpacity
-        style={styles.testButton}
-        onPress={testerConnexion}
-      >
-        <Text style={styles.buttonText}>
-          TESTER LA CONNEXION AU SERVEUR
-        </Text>
-      </TouchableOpacity>
-
-      {/* ==============================================
+      {/* =================================================
           NOM
-      =============================================== */}
+      ================================================= */}
 
       <Text style={styles.label}>
-        Nom
+        Nom et Prénom
       </Text>
 
       <TextInput
@@ -754,39 +1755,9 @@ router.push("/pdf");
         onChangeText={setNom}
       />
 
-      {/* ==============================================
-          SOCIÉTÉ
-      =============================================== */}
-
-      <Text style={styles.label}>
-        Société
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Nom de la société"
-        value={societe}
-        onChangeText={setSociete}
-      />
-
-      {/* ==============================================
-          ADRESSE
-      =============================================== */}
-
-      <Text style={styles.label}>
-        Adresse société
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Adresse de la société"
-        value={adresseSociete}
-        onChangeText={setAdresseSociete}
-      />
-
-      {/* ==============================================
+      {/* =================================================
           FONCTION
-      =============================================== */}
+      ================================================= */}
 
       <Text style={styles.label}>
         Fonction
@@ -799,24 +1770,54 @@ router.push("/pdf");
         onChangeText={setFonction}
       />
 
-      {/* ==============================================
-          PRÉNOM
-      =============================================== */}
+      {/* =================================================
+          SOCIÉTÉ
+      ================================================= */}
 
       <Text style={styles.label}>
-        Prénom
+        Société
       </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Entrez le prénom"
-        value={prenom}
-        onChangeText={setPrenom}
+        placeholder="Nom de la société"
+        value={societe}
+        onChangeText={setSociete}
       />
 
-      {/* ==============================================
-          ORIGINE
-      =============================================== */}
+      {/* =================================================
+          ADRESSE SOCIÉTÉ
+      ================================================= */}
+
+      <Text style={styles.label}>
+        Adresse société
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Adresse de la société"
+        value={adresseSociete}
+        onChangeText={setAdresseSociete}
+      />
+
+      {/* =================================================
+          ADRESSE SITE EMAIL
+      ================================================= 
+
+      <Text style={styles.label}>
+        Adresse Site Email
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Adresse Site Email"
+        value={prenom}
+        onChangeText={setPrenom}
+      />*/}
+
+      {/* =================================================
+          ORIGINE / PAYS
+      ================================================= */}
 
       <Text style={styles.label}>
         Origine / Pays
@@ -825,7 +1826,9 @@ router.push("/pdf");
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={origine}
-          onValueChange={handlePaysChange}
+          onValueChange={
+            handlePaysChange
+          }
         >
           <Picker.Item
             label="Sélectionner un pays"
@@ -834,23 +1837,24 @@ router.push("/pdf");
 
           {pays.map((item) => (
             <Picker.Item
-              key={item.name}
-              label={item.name}
-              value={item.name}
+              key={item}
+              label={item}
+              value={item}
             />
           ))}
         </Picker>
       </View>
 
-      {/* ==============================================
-          TÉLÉPHONE
-      =============================================== */}
+      {/* =================================================
+          TELEPHONE
+      ================================================= */}
 
       <Text style={styles.label}>
         Téléphone / WhatsApp
       </Text>
 
       <View style={styles.phoneContainer}>
+
         <TextInput
           style={styles.indicatif}
           value={indicatif}
@@ -864,11 +1868,12 @@ router.push("/pdf");
           onChangeText={setTelephone}
           keyboardType="phone-pad"
         />
+
       </View>
 
-      {/* ==============================================
+      {/* =================================================
           EMAIL
-      =============================================== */}
+      ================================================= */}
 
       <Text style={styles.label}>
         Email
@@ -883,25 +1888,25 @@ router.push("/pdf");
         autoCapitalize="none"
       />
 
-      {/* ==============================================
-          AGE
-      =============================================== */}
+      {/* =================================================
+          SITE WEB
+      ================================================= */}
 
       <Text style={styles.label}>
-        Âge
+        Site Web
       </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Âge"
-        value={age}
-        onChangeText={setAge}
-        keyboardType="numeric"
+        placeholder="www..."
+        value={site}
+        onChangeText={setSite}
+        autoCapitalize="none"
       />
 
-      {/* ==============================================
+      {/* =================================================
           LANGUE
-      =============================================== */}
+      ================================================= */}
 
       <Text style={styles.label}>
         Langue de communication
@@ -909,14 +1914,23 @@ router.push("/pdf");
 
       <View style={styles.pickerContainer}>
         <Picker
-          selectedValue={langueCommunication}
-          onValueChange={
-            setLangueCommunication
+          selectedValue={
+            langueCommunication
+          }
+          onValueChange={(value) =>
+            setLangueCommunication(
+              value
+            )
           }
         >
           <Picker.Item
             label="Sélectionner"
             value=""
+          />
+
+          <Picker.Item
+            label="Arabe"
+            value="Arabe"
           />
 
           <Picker.Item
@@ -930,8 +1944,8 @@ router.push("/pdf");
           />
 
           <Picker.Item
-            label="Arabe"
-            value="Arabe"
+            label="Espagnol"
+            value="Espagnol"
           />
 
           <Picker.Item
@@ -940,27 +1954,225 @@ router.push("/pdf");
           />
 
           <Picker.Item
-            label="Espagnol"
-            value="Espagnol"
+            label="Allemand"
+            value="Allemand"
           />
+
+          <Picker.Item
+            label="Portugais"
+            value="Portugais"
+          />
+
+          <Picker.Item
+            label="Néerlandais"
+            value="Néerlandais"
+          />
+
+          <Picker.Item
+            label="Russe"
+            value="Russe"
+          />
+
+          <Picker.Item
+            label="Chinois (Mandarin)"
+            value="Chinois (Mandarin)"
+          />
+
+          <Picker.Item
+            label="Japonais"
+            value="Japonais"
+          />
+
+          <Picker.Item
+            label="Coréen"
+            value="Coréen"
+          />
+
+          <Picker.Item
+            label="Turc"
+            value="Turc"
+          />
+
+          <Picker.Item
+            label="Grec"
+            value="Grec"
+          />
+
+          <Picker.Item
+            label="Polonais"
+            value="Polonais"
+          />
+
+          <Picker.Item
+            label="Roumain"
+            value="Roumain"
+          />
+
+          <Picker.Item
+            label="Tchèque"
+            value="Tchèque"
+          />
+
+          <Picker.Item
+            label="Hongrois"
+            value="Hongrois"
+          />
+
+          <Picker.Item
+            label="Suédois"
+            value="Suédois"
+          />
+
+          <Picker.Item
+            label="Norvégien"
+            value="Norvégien"
+          />
+
+          <Picker.Item
+            label="Danois"
+            value="Danois"
+          />
+
+          <Picker.Item
+            label="Finnois"
+            value="Finnois"
+          />
+
+          <Picker.Item
+            label="Hébreu"
+            value="Hébreu"
+          />
+
+          <Picker.Item
+            label="Persan"
+            value="Persan"
+          />
+
+          <Picker.Item
+            label="Hindi"
+            value="Hindi"
+          />
+
+          <Picker.Item
+            label="Indonésien"
+            value="Indonésien"
+          />
+
+          <Picker.Item
+            label="Malais"
+            value="Malais"
+          />
+
+          <Picker.Item
+            label="Vietnamien"
+            value="Vietnamien"
+          />
+
+          <Picker.Item
+            label="Thaï"
+            value="Thaï"
+          />
+
+          <Picker.Item
+            label="Ukrainien"
+            value="Ukrainien"
+          />
+
+          <Picker.Item
+            label="Bulgare"
+            value="Bulgare"
+          />
+
+          <Picker.Item
+            label="Croate"
+            value="Croate"
+          />
+
+          <Picker.Item
+            label="Serbe"
+            value="Serbe"
+          />
+
+          <Picker.Item
+            label="Slovaque"
+            value="Slovaque"
+          />
+
+          <Picker.Item
+            label="Slovène"
+            value="Slovène"
+          />
+
+          <Picker.Item
+            label="Lituanien"
+            value="Lituanien"
+          />
+
+          <Picker.Item
+            label="Letton"
+            value="Letton"
+          />
+
+          <Picker.Item
+            label="Estonien"
+            value="Estonien"
+          />
+
+          <Picker.Item
+            label="Swahili"
+            value="Swahili"
+          />
+
+          <Picker.Item
+            label="Afrikaans"
+            value="Afrikaans"
+          />
+
+          <Picker.Item
+            label="Bengali"
+            value="Bengali"
+          />
+
+          <Picker.Item
+            label="Ourdou"
+            value="Ourdou"
+          />
+
+          <Picker.Item
+            label="Tamoul"
+            value="Tamoul"
+          />
+
+          <Picker.Item
+            label="Persan (Farsi)"
+            value="Persan (Farsi)"
+          />
+
+          <Picker.Item
+            label="Autre"
+            value="Autre"
+          />
+
         </Picker>
       </View>
 
-      {/* ==============================================
+      {/* =================================================
           PROFILE
-      =============================================== */}
+      ================================================= */}
 
       <Text style={styles.label}>
         Profile
       </Text>
 
       <View style={styles.pickerContainer}>
+
         <Picker
           selectedValue={profile}
           onValueChange={
             handleProfileChange
           }
         >
+
           <Picker.Item
             label="Sélectionner un profil"
             value=""
@@ -982,35 +2194,42 @@ router.push("/pdf");
           />
 
           <Picker.Item
-            label="Institut"
-            value="institut"
+            label="Institution"
+            value="institution"
           />
 
           <Picker.Item
             label="Autre"
             value="autre"
           />
+
         </Picker>
+
       </View>
 
-      {/* ==============================================
+      {/* =================================================
           TYPE COMMANDE
-      =============================================== */}
+      ================================================= */}
 
       {(profile === "intermediaire" ||
         profile === "acheteur") && (
         <>
+
           <Text style={styles.label}>
             Type de commande
           </Text>
 
           <View style={styles.pickerContainer}>
+
             <Picker
-              selectedValue={typeCommande}
+              selectedValue={
+                typeCommande
+              }
               onValueChange={
                 handleTypeCommandeChange
               }
             >
+
               <Picker.Item
                 label="Sélectionner"
                 value=""
@@ -1025,498 +2244,984 @@ router.push("/pdf");
                 label="Conditionné"
                 value="conditionné"
               />
+
             </Picker>
+
           </View>
+
         </>
       )}
 
-      {/* ==============================================
-          VRAC
-      =============================================== */}
-
-      {typeCommande === "vrac" && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Informations commande en vrac
-          </Text>
-
-          <Text style={styles.label}>
-            Qualité / Grade
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Qualité / Grade"
-            value={qualiteGrade}
-            onChangeText={setQualiteGrade}
-          />
-
-          <Text style={styles.label}>
-            Volume estimé
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Volume estimé"
-            value={volumeEstime}
-            onChangeText={setVolumeEstime}
-            keyboardType="numeric"
-          />
-
-          <Text style={styles.label}>
-            Destination pays / port
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Destination"
-            value={destination}
-            onChangeText={setDestination}
-          />
-
-          <Text style={styles.label}>
-            Incoterm
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={incoterm}
-              onValueChange={setIncoterm}
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
-
-              <Picker.Item
-                label="EXW"
-                value="EXW"
-              />
-
-              <Picker.Item
-                label="FOB"
-                value="FOB"
-              />
-
-              <Picker.Item
-                label="CFR"
-                value="CFR"
-              />
-
-              <Picker.Item
-                label="CIF"
-                value="CIF"
-              />
-
-              <Picker.Item
-                label="DAP"
-                value="DAP"
-              />
-
-              <Picker.Item
-                label="DDP"
-                value="DDP"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Format livraison
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formatLivraison}
-              onValueChange={
-                setFormatLivraison
-              }
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
-
-              <Picker.Item
-                label="Flexitank"
-                value="Flexitank"
-              />
-
-              <Picker.Item
-                label="IBC"
-                value="IBC"
-              />
-
-              <Picker.Item
-                label="Camion-citerne"
-                value="Camion-citerne"
-              />
-
-              <Picker.Item
-                label="Fûts"
-                value="Fûts"
-              />
-
-              <Picker.Item
-                label="Autre"
-                value="Autre"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Fréquence
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={frequenceCommande}
-              onValueChange={
-                setFrequenceCommande
-              }
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
-
-              <Picker.Item
-                label="Commande unique"
-                value="unique"
-              />
-
-              <Picker.Item
-                label="Commandes régulières"
-                value="régulières"
-              />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Exigences spécifiques
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Bio, certifications, analyses/COA, échantillons..."
-            value={exigencesSpecifiques.join(", ")}
-            onChangeText={(text) =>
-              setExigencesSpecifiques(
-                text
-                  .split(",")
-                  .map((item) =>
-                    item.trim()
-                  )
-                  .filter(Boolean)
-              )
-            }
-          />
-
-          <Text style={styles.label}>
-            Informations complémentaires
-          </Text>
-
-          <TextInput
-            style={[
-              styles.input,
-              styles.textArea,
-            ]}
-            placeholder="Informations complémentaires"
-            value={
-              informationsComplementaires
-            }
-            onChangeText={
-              setInformationsComplementaires
-            }
-            multiline
-          />
-        </View>
-      )}
-
-      {/* ==============================================
-          CONDITIONNÉ
-      =============================================== */}
-
-      {typeCommande === "conditionné" && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Informations commande conditionnée
-          </Text>
-
-          {/* PAYS */}
-
-          <Text style={styles.label}>
-            Pays
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={paysConditionne}
-              onValueChange={
-                setPaysConditionne
-              }
-            >
-              <Picker.Item
-                label="Sélectionner un pays"
-                value=""
-              />
-
-              {pays.map((item) => (
-                <Picker.Item
-                  key={item.name}
-                  label={item.name}
-                  value={item.name}
-                />
-              ))}
-            </Picker>
-          </View>
-
-          {/* CANAL */}
-
-          <Text style={styles.label}>
-            Canal de distribution
-          </Text>
-
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={
-                canalDistribution
-              }
-              onValueChange={
-                setCanalDistribution
-              }
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
-
-              <Picker.Item
-                label="Retail"
-                value="Retail"
-              />
-
-              <Picker.Item
-                label="HoReCa"
-                value="HoReCa"
-              />
-
-              <Picker.Item
-                label="E-commerce"
-                value="E-commerce"
-              />
-
-              <Picker.Item
-                label="Grossiste"
-                value="Grossiste"
-              />
-            </Picker>
-          </View>
-
-          {/* VOLUMES */}
-
-          <Text style={styles.label}>
-            Volumes estimés
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Quantité par mois ou par an"
-            value={volumesEstimes}
-            onChangeText={
-              setVolumesEstimes
-            }
-          />
-
-          {/* ==========================================
-              TYPE EMBALLAGE CONDITIONNÉ
-          =========================================== */}
-
-          <Text style={styles.label}>
-            Type d'emballage
-          </Text>
-
-          <View style={styles.multiSelectContainer}>
-            {/* TIN */}
-
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() =>
-                toggleEmballage("Tin")
-              }
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  emballagesSelectionnes.includes(
-                    "Tin"
-                  ) &&
-                    styles.checkboxSelected,
-                ]}
-              >
-                {emballagesSelectionnes.includes(
-                  "Tin"
-                ) && (
-                  <Text
-                    style={
-                      styles.checkboxCheck
-                    }
-                  >
-                    ✓
-                  </Text>
-                )}
-              </View>
-
-              <Text style={styles.checkboxText}>
-                Tin
-              </Text>
-            </TouchableOpacity>
-
-            {/* PET */}
-
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() =>
-                toggleEmballage("PET")
-              }
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  emballagesSelectionnes.includes(
-                    "PET"
-                  ) &&
-                    styles.checkboxSelected,
-                ]}
-              >
-                {emballagesSelectionnes.includes(
-                  "PET"
-                ) && (
-                  <Text
-                    style={
-                      styles.checkboxCheck
-                    }
-                  >
-                    ✓
-                  </Text>
-                )}
-              </View>
-
-              <Text style={styles.checkboxText}>
-                PET
-              </Text>
-            </TouchableOpacity>
-
-            {/* GLASS */}
-
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() =>
-                toggleEmballage("Glass")
-              }
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  emballagesSelectionnes.includes(
-                    "Glass"
-                  ) &&
-                    styles.checkboxSelected,
-                ]}
-              >
-                {emballagesSelectionnes.includes(
-                  "Glass"
-                ) && (
-                  <Text
-                    style={
-                      styles.checkboxCheck
-                    }
-                  >
-                    ✓
-                  </Text>
-                )}
-              </View>
-
-              <Text style={styles.checkboxText}>
-                Glass
-              </Text>
-            </TouchableOpacity>
-
-            {/* AUTRE */}
-
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() =>
-                toggleEmballage("Autre")
-              }
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  emballagesSelectionnes.includes(
-                    "Autre"
-                  ) &&
-                    styles.checkboxSelected,
-                ]}
-              >
-                {emballagesSelectionnes.includes(
-                  "Autre"
-                ) && (
-                  <Text
-                    style={
-                      styles.checkboxCheck
-                    }
-                  >
-                    ✓
-                  </Text>
-                )}
-              </View>
-
-              <Text style={styles.checkboxText}>
-                Autre
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* AUTRE */}
-
-          {emballagesSelectionnes.includes(
-            "Autre"
-          ) && (
-            <TextInput
-              style={styles.input}
-              placeholder="Préciser l'emballage"
-              value={autreEmballage}
-              onChangeText={
-                setAutreEmballage
-              }
-            />
-          )}
-
-          {/* ==========================================
-              FORMATS CONDITIONNÉ
-          =========================================== */}
-
-          {emballagesSelectionnes.map(
-            (type) => (
-              <View
-                key={type}
-                style={
-                  styles.formatBlock
-                }
-              >
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Formats souhaités -{" "}
-                  {type}
+      {/* =================================================
+          SECTION VRAC
+      ================================================= */}
+      
+
+      {typeCommande === "vrac" &&
+        (profile === "intermediaire" ||
+          profile === "acheteur") && (
+
+          <View style={styles.section}>
+
+            <Text style={styles.sectionTitle}>
+              Informations commande en vrac
+            </Text>
+
+            {commandes.length > 0 && (
+              <View style={styles.savedCommandsContainer}>
+                <Text style={styles.savedCommandsTitle}>
+                  Commandes déjà ajoutées : {commandes.length}
                 </Text>
 
-                {/* TIN */}
+                {commandes.map((commande, index) => (
+                  <View key={`saved-vrac-${index}`} style={styles.savedCommandCard}>
+                    <Text style={styles.savedCommandTitle}>
+                      Commande {index + 1} → Vrac
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Catégorie : {commande.categorie || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Volume : {commande.volume_estime ?? "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Destination : {commande.destination || "—"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
-                {type === "Tin" &&
-                  [
+            <Text style={styles.currentCommandTitle}>
+              Commande {commandes.length + 1} → Vrac
+            </Text>
+
+                        {/* FREQUENCE */}
+
+                        <Text style={styles.label}>
+                        Fréquence
+                      </Text>
+          
+                      <View style={styles.pickerContainer}>
+          
+                        <Picker
+                          selectedValue={
+                            frequenceCommande
+                          }
+                          onValueChange={
+                            setFrequenceCommande
+                          }
+                        >
+          
+                          <Picker.Item
+                            label="Sélectionner"
+                            value=""
+                          />
+          
+                          <Picker.Item
+                            label="Commande unique"
+                            value="unique"
+                          />
+          
+                          <Picker.Item
+                            label="Commandes contrat cadre"
+                            value="contrat-cadre"
+                          />
+          
+                        </Picker>
+          
+                      </View>
+
+           {/* CATÉGORIE */}
+
+<Text style={styles.label}>
+Catégorie
+</Text>
+
+<View style={styles.pickerContainer}>
+<Picker
+  selectedValue={categorie}
+  onValueChange={setCategorie}
+>
+  <Picker.Item
+    label="Sélectionner une catégorie"
+    value=""
+  />
+
+  <Picker.Item
+    label="Extra Virgin Olive Oil – EVOO"
+    value="Extra Virgin Olive Oil – EVOO"
+  />
+
+  <Picker.Item
+    label="Virgin Olive Oil – VOO"
+    value="Virgin Olive Oil – VOO"
+  />
+
+  <Picker.Item
+    label="Lampante Olive Oil"
+    value="Lampante Olive Oil"
+  />
+</Picker>
+</View>
+
+            {/* ACIDITÉ */}
+
+<Text style={styles.label}>
+Acidité
+</Text>
+
+<View style={styles.pickerContainer}>
+<Picker
+  selectedValue={qualiteGrade}
+  onValueChange={setQualiteGrade}
+>
+  <Picker.Item
+    label="Sélectionner"
+    value=""
+  />
+
+  <Picker.Item label="< 0.3" value="<0.3" />
+  <Picker.Item label="< 0.5" value="<0.5" />
+  <Picker.Item label="< 0.8" value="<0.8" />
+  <Picker.Item label="< 2" value="<2" />
+</Picker>
+</View>
+
+{/* K232 / K270 */}
+<View style={styles.uvSelectionContainer}>
+  <TouchableOpacity
+    style={styles.uvOption}
+    onPress={() => {
+      setK232Selection(true);
+      setK270Selection(false);
+      setK270Valeur("");
+    }}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.checkboxSymbol}>
+      {k232Selection ? "☑" : "☐"}
+    </Text>
+    <Text style={styles.checkboxText}>K232</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity
+    style={styles.uvOption}
+    onPress={() => {
+      setK270Selection(true);
+      setK232Selection(false);
+      setK232Valeur("");
+    }}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.checkboxSymbol}>
+      {k270Selection ? "☑" : "☐"}
+    </Text>
+    <Text style={styles.checkboxText}>K270</Text>
+  </TouchableOpacity>
+</View>
+
+{k232Selection && (
+  <View style={styles.uvValuesContainer}>
+    <TouchableOpacity
+      style={styles.uvValueOption}
+      onPress={() => setK232Valeur("≤2.5")}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {k232Valeur === "≤2.5" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>≤ 2.5</Text>
+    </TouchableOpacity>
+    <TouchableOpacity
+      style={styles.uvValueOption}
+      onPress={() => setK232Valeur("≥2.5")}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {k232Valeur === "≥2.5" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>≥ 2.5</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+{k270Selection && (
+  <View style={styles.uvValuesContainer}>
+    <TouchableOpacity
+      style={styles.uvValueOption}
+      onPress={() => setK270Valeur("≤0.22")}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {k270Valeur === "≤0.22" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>≤ 0.22</Text>
+    </TouchableOpacity>
+    <TouchableOpacity
+      style={styles.uvValueOption}
+      onPress={() => setK270Valeur(">0.22")}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {k270Valeur === ">0.22" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>&gt; 0.22</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+{/* GENRE */}
+
+<Text style={styles.label}>
+  Genre
+</Text>
+
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={genre}
+    onValueChange={setGenre}
+  >
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="Conventionnelle"
+      value="Conventionnelle"
+    />
+
+    <Picker.Item
+      label="Biologique"
+      value="Biologique"
+    />
+  </Picker>
+</View>
+
+{/* =================================================
+    PROFIL AROMATIQUE
+================================================= */}
+
+<View style={styles.aromatiqueContainer}>
+
+  <Text style={styles.aromatiqueTitle}>
+    Profil aromatique
+  </Text>
+
+  {/* FRUITÉ */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Fruité
+    </Text>
+
+    {["0 – 3", "3 – 6"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            fruité:
+              profilAromatique.fruité === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.fruité === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+
+  {/* AMER */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Amer
+    </Text>
+
+    {["0 – 3", "3 – 6"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            amer:
+              profilAromatique.amer === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.amer === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+
+  {/* PIQUANT */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Piquant
+    </Text>
+
+    {["0 – 3", "3 – 6"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            piquant:
+              profilAromatique.piquant === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.piquant === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+
+  {/* DÉFAUT */}
+  <View style={styles.aromatiqueRow}>
+    <Text style={styles.aromatiqueLabel}>
+      Défaut
+    </Text>
+
+    {["0", "≠ 0"].map((item) => (
+      <TouchableOpacity
+        key={item}
+        style={styles.aromatiqueOption}
+        onPress={() =>
+          setProfilAromatique({
+            ...profilAromatique,
+            défaut:
+              profilAromatique.défaut === item
+                ? ""
+                : item,
+          })
+        }
+      >
+        <Text style={styles.aromatiqueCheckbox}>
+          {profilAromatique.défaut === item ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.aromatiqueOptionText}>
+          {item}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+</View>
+
+            {/* VOLUME */}
+
+            <Text style={styles.label}>
+  Volume estimé en tonne
+</Text>
+
+<View style={styles.inputWithUnit}>
+  <TextInput
+    style={styles.inputVolume}
+    placeholder="Volume estimé"
+    value={volumeEstime}
+    onChangeText={setVolumeEstime}
+    keyboardType="numeric"
+  />
+
+  <Text style={styles.unitText}>T</Text>
+</View>
+
+            {/* DESTINATION */}
+
+            <Text style={styles.label}>
+              Destination pays
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Destination"
+              value={destination}
+              onChangeText={
+                setDestination
+              }
+            />
+            {/* DESTINATION */}
+
+            <Text style={styles.label}>
+              Destination port
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Destination"
+              value={destinationport}
+              onChangeText={
+                setDestinationport
+              }
+            />
+
+            {/* INCOTERM */}
+
+            <Text style={styles.label}>
+              Incoterm
+            </Text>
+
+            <View style={styles.pickerContainer}>
+
+              <Picker
+                selectedValue={incoterm}
+                onValueChange={
+                  setIncoterm
+                }
+              >
+
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="EXW"
+                  value="EXW"
+                />
+
+                <Picker.Item
+                  label="FOB"
+                  value="FOB"
+                />
+
+                <Picker.Item
+                  label="CFR"
+                  value="CFR"
+                />
+
+                <Picker.Item
+                  label="CIF"
+                  value="CIF"
+                />
+
+                <Picker.Item
+                  label="DAP"
+                  value="DAP"
+                />
+
+                <Picker.Item
+                  label="DDP"
+                  value="DDP"
+                />
+
+              </Picker>
+
+            </View>
+
+            {/* FORMAT LIVRAISON */}
+
+            <Text style={styles.label}>
+              Format livraison
+            </Text>
+
+            <View style={styles.pickerContainer}>
+
+              <Picker
+                selectedValue={
+                  formatLivraison
+                }
+                onValueChange={
+                  setFormatLivraison
+                }
+              >
+
+                <Picker.Item
+                  label="Sélectionner"
+                  value=""
+                />
+
+                <Picker.Item
+                  label="Flexitank"
+                  value="Flexitank"
+                />
+
+                <Picker.Item
+                  label="IBC"
+                  value="IBC"
+                />
+
+                <Picker.Item
+                  label="Camion-citerne"
+                  value="Camion-citerne"
+                />
+
+                <Picker.Item
+                  label="Fûts"
+                  value="Fûts"
+                />
+
+                <Picker.Item
+                  label="Autre"
+                  value="Autre"
+                />
+
+              </Picker>
+
+            </View>
+
+
+
+{/* =================================================
+    CERTIFICATIONS REQUISES
+================================================= */}
+
+<Text style={styles.label}>
+  Certifications requises
+</Text>
+
+<View style={styles.exigencesContainer}>
+
+  {[
+    "ISO 22000",
+    "HACCP",
+    "IFS Food",
+    "BRCGS",
+    "ISO 9001",
+    "BIO / Organic",
+    "Halal",
+    "Kosher",
+    "JAS",
+    "Analyses COI / IOC",
+    "Certificat d’analyse (COA)",
+    "Certificat d’analyse ONH",
+    "Autre",
+  ].map((item) => {
+
+    const selected =
+      certificationsRequises.includes(item);
+
+    return (
+      <TouchableOpacity
+        key={item}
+        style={styles.exigenceOption}
+        onPress={() => {
+
+          if (selected) {
+
+            setCertificationsRequises(
+              certificationsRequises.filter(
+                (certification) =>
+                  certification !== item
+              )
+            );
+
+            if (item === "Autre") {
+              setAutreCertification("");
+            }
+
+          } else {
+
+            setCertificationsRequises([
+              ...certificationsRequises,
+              item,
+            ]);
+
+          }
+
+        }}
+      >
+
+        <Text style={styles.exigenceCheckbox}>
+          {selected ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.exigenceText}>
+          {item}
+        </Text>
+
+      </TouchableOpacity>
+    );
+  })}
+
+  {/* CHAMP AUTRE CERTIFICATION */}
+  {certificationsRequises.includes("Autre") && (
+    <TextInput
+      style={styles.input}
+      placeholder="Préciser la certification"
+      value={autreCertification}
+      onChangeText={setAutreCertification}
+    />
+  )}
+
+</View>
+
+            {/* INFORMATIONS */}
+
+            <Text style={styles.label}>
+              Informations complémentaires
+            </Text>
+
+            <TextInput
+              style={[
+                styles.input,
+                styles.textArea,
+              ]}
+              placeholder="Informations complémentaires"
+              value={
+                informationsComplementaires
+              }
+              onChangeText={
+                setInformationsComplementaires
+              }
+              multiline
+              numberOfLines={4}
+            />
+
+{/* DEMANDE D'ÉCHANTILLON */}
+<View style={styles.sectionInline}>
+  <Text style={styles.label}>Demande d'échantillon</Text>
+  <Text style={styles.sampleQuestion}>Le client demande-t-il un échantillon ?</Text>
+
+  <View style={styles.checkboxContainer}>
+    <TouchableOpacity
+      onPress={() => setDemandeEchantillon("oui")}
+      activeOpacity={0.7}
+      style={styles.checkboxOption}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {demandeEchantillon === "oui" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>Oui</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={() => {
+        setDemandeEchantillon("non");
+        setAdresseEchantillon("");
+        setPersonneReceptionEchantillon("");
+        setTelReceptionEchantillon("");
+      }}
+      activeOpacity={0.7}
+      style={styles.checkboxOption}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {demandeEchantillon === "non" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>Non</Text>
+    </TouchableOpacity>
+  </View>
+
+  {demandeEchantillon === "oui" && (
+    <View style={styles.echantillonContainer}>
+      <Text style={styles.label}>Adresse de réception *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Saisir l'adresse de réception"
+        value={adresseEchantillon}
+        onChangeText={setAdresseEchantillon}
+      />
+      <Text style={styles.label}>Personne en charge de la réception *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Nom et prénom"
+        value={personneReceptionEchantillon}
+        onChangeText={setPersonneReceptionEchantillon}
+      />
+      <Text style={styles.label}>Téléphone de la personne en charge *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ex : +216 XX XXX XXX"
+        value={telReceptionEchantillon}
+        onChangeText={setTelReceptionEchantillon}
+        keyboardType="phone-pad"
+      />
+    </View>
+  )}
+</View>
+<TouchableOpacity
+  style={styles.addCommandButton}
+  onPress={handleAjouterCommande}
+  activeOpacity={0.8}
+>
+  <Text style={styles.addCommandButtonText}>
+    + Ajouter une commande Vrac
+  </Text>
+</TouchableOpacity>
+
+          </View>
+        )}
+
+      {/* =================================================
+          SECTION CONDITIONNÉ
+      ================================================= */}
+
+      {typeCommande === "conditionné" &&
+        (profile === "intermediaire" ||
+          profile === "acheteur") && (
+
+          <View style={styles.section}>
+
+            <Text style={styles.sectionTitle}>
+              Informations commande conditionnée
+            </Text>
+
+            {commandes.length > 0 && (
+              <View style={styles.savedCommandsContainer}>
+                <Text style={styles.savedCommandsTitle}>
+                  Commandes déjà ajoutées : {commandes.length}
+                </Text>
+
+                {commandes.map((commande, index) => (
+                  <View key={`saved-conditionne-${index}`} style={styles.savedCommandCard}>
+                    <Text style={styles.savedCommandTitle}>
+                      Commande {index + 1} → Conditionné
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Pays : {commande.pays_conditionne || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Canal : {commande.canal_distribution || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
+                      Volume : {commande.volumes_conditionne || "—"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={styles.currentCommandTitle}>
+              Commande {commandes.length + 1} → Conditionné
+            </Text>
+
+            {/* PAYS */}
+
+            <Text style={styles.label}>
+              Pays
+            </Text>
+
+            <View style={styles.pickerContainer}>
+
+              <Picker
+                selectedValue={
+                  paysConditionne
+                }
+                onValueChange={
+                  setPaysConditionne
+                }
+              >
+
+                <Picker.Item
+                  label="Sélectionner un pays"
+                  value=""
+                />
+
+                {pays.map((item) => (
+                  <Picker.Item
+                    key={item}
+                    label={item}
+                    value={item}
+                  />
+                ))}
+
+              </Picker>
+
+            </View>
+
+{/* CANAL */}
+
+<Text style={styles.label}>
+  Canal de distribution
+</Text>
+
+<View style={styles.pickerContainer}>
+
+  <Picker
+    selectedValue={canalDistribution}
+    onValueChange={setCanalDistribution}
+  >
+
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="Retail"
+      value="Retail"
+    />
+
+    <Picker.Item
+      label="HoReCa"
+      value="HoReCa"
+    />
+
+    <Picker.Item
+      label="E-commerce"
+      value="E-commerce"
+    />
+
+    <Picker.Item
+      label="Grossiste"
+      value="Grossiste"
+    />
+
+    {/* AUTRE */}
+    <Picker.Item
+      label="Autre"
+      value="Autre"
+    />
+
+  </Picker>
+
+</View>
+
+{/* CHAMP AUTRE */}
+
+{canalDistribution === "Autre" && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      Préciser le canal de distribution
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le canal de distribution"
+      value={autreCanalDistribution}
+      onChangeText={setAutreCanalDistribution}
+    />
+
+  </View>
+)}
+
+            {/* VOLUMES ESTIMÉS */}
+
+<Text style={styles.label}>
+  Volumes estimés
+</Text>
+
+{/* CHOIX DU TYPE DE VOLUME */}
+
+<View style={styles.pickerContainer}>
+<Picker
+  selectedValue={typeVolumeEstime}
+  onValueChange={(value) => {
+    setTypeVolumeEstime(value);
+    setVolumesEstimes("");
+    setAutreVolumeEstime("");
+  }}
+>
+  <Picker.Item label="Sélectionner" value="" />
+  <Picker.Item label="Volume par mois" value="Par mois" />
+  <Picker.Item label="Volume par an" value="Par an" />
+  <Picker.Item label="Autre" value="Autre" />
+</Picker>
+</View>
+
+{/* VOLUME PAR MOIS OU PAR AN */}
+
+{(typeVolumeEstime === "Par mois" ||
+  typeVolumeEstime === "Par an") && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      {typeVolumeEstime === "Par mois"
+        ? "Volume estimé par mois"
+        : "Volume estimé par an"}
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le volume"
+      value={volumesEstimes}
+      onChangeText={setVolumesEstimes}
+      keyboardType="numeric"
+    />
+
+  </View>
+)}
+
+{/* AUTRE */}
+
+{typeVolumeEstime === "Autre" && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      Préciser le volume estimé
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Préciser le volume"
+      value={autreVolumeEstime}
+      onChangeText={setAutreVolumeEstime}
+    />
+
+  </View>
+)}
+
+            {/* =================================================
+                TYPE D'EMBALLAGE CONDITIONNÉ
+            ================================================= */}
+
+            <Text style={styles.label}>
+              Type d'emballage
+            </Text>
+
+            {/* =================================================
+                TIN
+            ================================================= */}
+
+            <View style={styles.packagingRow}>
+
+              <TouchableOpacity
+                style={styles.typeContainer}
+                onPress={() =>
+                  toggleEmballageConditionne(
+                    "Tin"
+                  )
+                }
+              >
+
+                <Text style={styles.checkbox}>
+                  {emballagesSelectionnes.includes(
+                    "Tin"
+                  )
+                    ? "☑"
+                    : "☐"}
+                </Text>
+
+                <Text style={styles.checkboxLabel}>
+                  Tin
+                </Text>
+
+              </TouchableOpacity>
+
+              {emballagesSelectionnes.includes(
+                "Tin"
+              ) && (
+
+                <View style={styles.formatsRow}>
+
+                  {[
                     "250 ml",
                     "500 ml",
                     "1 L",
@@ -1526,1037 +3231,1825 @@ router.push("/pdf");
                     "5 L",
                     "16 L",
                     "20 L",
-                  ].map(
-                    (format) => (
+                  ].map((format) => {
+
+                    const selected =
+                      formatsEmballage.Tin?.includes(
+                        format
+                      ) || false;
+
+                    return (
                       <TouchableOpacity
-                        key={format}
+                        key={`Tin-${format}`}
                         style={
-                          styles.checkboxRow
+                          styles.formatItem
                         }
-                        onPress={() =>
-                          toggleFormat(
-                            type,
-                            format
-                          )
-                        }
+                        onPress={() => {
+
+                          setFormatsEmballage(
+                            (prev) => {
+
+                              const current =
+                                prev.Tin || [];
+
+                              const updated =
+                                current.includes(
+                                  format
+                                )
+                                  ? current.filter(
+                                      (item) =>
+                                        item !==
+                                        format
+                                    )
+                                  : [
+                                      ...current,
+                                      format,
+                                    ];
+
+                              return {
+                                ...prev,
+                                Tin: updated,
+                              };
+                            }
+                          );
+
+                        }}
                       >
-                        <View
-                          style={[
-                            styles.checkbox,
-                            (
-                              formatsEmballage[
-                                type
-                              ] || []
-                            ).includes(
-                              format
-                            ) &&
-                              styles.checkboxSelected,
-                          ]}
-                        >
-                          {(
-                            formatsEmballage[
-                              type
-                            ] || []
-                          ).includes(
-                            format
-                          ) && (
-                            <Text
-                              style={
-                                styles.checkboxCheck
-                              }
-                            >
-                              ✓
-                            </Text>
-                          )}
-                        </View>
 
                         <Text
                           style={
-                            styles.checkboxText
+                            styles.checkbox
+                          }
+                        >
+                          {selected
+                            ? "☑"
+                            : "☐"}
+                        </Text>
+
+                        <Text
+                          style={
+                            styles.checkboxLabel
                           }
                         >
                           {format}
                         </Text>
+
                       </TouchableOpacity>
-                    )
+                    );
+                  })}
+
+                  {/* AUTRE TIN */}
+
+                  <TouchableOpacity
+                    style={
+                      styles.formatItem
+                    }
+                    onPress={() => {
+
+                      setAutresSelectionnes(
+                        (prev) => ({
+                          ...prev,
+                          Tin:
+                            !prev.Tin,
+                        })
+                      );
+
+                      if (
+                        autresSelectionnes.Tin
+                      ) {
+
+                        setAutresEmballages(
+                          (prev) => ({
+                            ...prev,
+                            Tin: "",
+                          })
+                        );
+
+                      }
+
+                    }}
+                  >
+
+                    <Text
+                      style={
+                        styles.checkbox
+                      }
+                    >
+                      {autresSelectionnes.Tin
+                        ? "☑"
+                        : "☐"}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.checkboxLabel
+                      }
+                    >
+                      Autre
+                    </Text>
+
+                  </TouchableOpacity>
+
+                  {autresSelectionnes.Tin && (
+
+                    <View
+                      style={{
+                        width: "100%",
+                      }}
+                    >
+
+                      <Text
+                        style={
+                          styles.label
+                        }
+                      >
+                        Préciser l'emballage
+                      </Text>
+
+                      <TextInput
+                        style={
+                          styles.input
+                        }
+                        placeholder="Saisir le type d'emballage"
+                        value={
+                          autresEmballages.Tin
+                        }
+                        onChangeText={(text) =>
+                          setAutresEmballages(
+                            (prev) => ({
+                              ...prev,
+                              Tin: text,
+                            })
+                          )
+                        }
+                      />
+
+                    </View>
+
                   )}
 
-                {/* PET */}
+                </View>
 
-                {type === "PET" &&
-                  [
+              )}
+
+            </View>
+
+            {/* =================================================
+                PET
+            ================================================= */}
+
+            <View style={styles.packagingRow}>
+
+              <TouchableOpacity
+                style={styles.typeContainer}
+                onPress={() =>
+                  toggleEmballageConditionne(
+                    "PET"
+                  )
+                }
+              >
+
+                <Text style={styles.checkbox}>
+                  {emballagesSelectionnes.includes(
+                    "PET"
+                  )
+                    ? "☑"
+                    : "☐"}
+                </Text>
+
+                <Text style={styles.checkboxLabel}>
+                  PET
+                </Text>
+
+              </TouchableOpacity>
+
+              {emballagesSelectionnes.includes(
+                "PET"
+              ) && (
+
+                <View style={styles.formatsRow}>
+
+                  {[
                     "250 ml",
                     "500 ml",
                     "1 L",
                     "3 L",
                     "5 L",
-                  ].map(
-                    (format) => (
+                  ].map((format) => {
+
+                    const selected =
+                      formatsEmballage.PET?.includes(
+                        format
+                      ) || false;
+
+                    return (
                       <TouchableOpacity
-                        key={format}
+                        key={`PET-${format}`}
                         style={
-                          styles.checkboxRow
+                          styles.formatItem
                         }
-                        onPress={() =>
-                          toggleFormat(
-                            type,
-                            format
-                          )
-                        }
+                        onPress={() => {
+
+                          setFormatsEmballage(
+                            (prev) => {
+
+                              const current =
+                                prev.PET || [];
+
+                              const updated =
+                                current.includes(
+                                  format
+                                )
+                                  ? current.filter(
+                                      (item) =>
+                                        item !==
+                                        format
+                                    )
+                                  : [
+                                      ...current,
+                                      format,
+                                    ];
+
+                              return {
+                                ...prev,
+                                PET: updated,
+                              };
+                            }
+                          );
+
+                        }}
                       >
-                        <View
-                          style={[
-                            styles.checkbox,
-                            (
-                              formatsEmballage[
-                                type
-                              ] || []
-                            ).includes(
-                              format
-                            ) &&
-                              styles.checkboxSelected,
-                          ]}
-                        >
-                          {(
-                            formatsEmballage[
-                              type
-                            ] || []
-                          ).includes(
-                            format
-                          ) && (
-                            <Text
-                              style={
-                                styles.checkboxCheck
-                              }
-                            >
-                              ✓
-                            </Text>
-                          )}
-                        </View>
 
                         <Text
                           style={
-                            styles.checkboxText
+                            styles.checkbox
+                          }
+                        >
+                          {selected
+                            ? "☑"
+                            : "☐"}
+                        </Text>
+
+                        <Text
+                          style={
+                            styles.checkboxLabel
                           }
                         >
                           {format}
                         </Text>
+
                       </TouchableOpacity>
-                    )
-                  )}
+                    );
+                  })}
 
-                {/* GLASS */}
+                  {/* AUTRE PET */}
 
-                {type === "Glass" && (
-                  <>
+                  <TouchableOpacity
+                    style={
+                      styles.formatItem
+                    }
+                    onPress={() => {
+
+                      setAutresSelectionnes(
+                        (prev) => ({
+                          ...prev,
+                          PET:
+                            !prev.PET,
+                        })
+                      );
+
+                      if (
+                        autresSelectionnes.PET
+                      ) {
+
+                        setAutresEmballages(
+                          (prev) => ({
+                            ...prev,
+                            PET: "",
+                          })
+                        );
+
+                      }
+
+                    }}
+                  >
+
                     <Text
                       style={
-                        styles.subLabel
+                        styles.checkbox
+                      }
+                    >
+                      {autresSelectionnes.PET
+                        ? "☑"
+                        : "☐"}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.checkboxLabel
+                      }
+                    >
+                      Autre
+                    </Text>
+
+                  </TouchableOpacity>
+
+                  {autresSelectionnes.PET && (
+
+                    <View
+                      style={{
+                        width: "100%",
+                      }}
+                    >
+
+                      <Text
+                        style={
+                          styles.label
+                        }
+                      >
+                        Préciser l'emballage
+                      </Text>
+
+                      <TextInput
+                        style={
+                          styles.input
+                        }
+                        placeholder="Saisir le type d'emballage"
+                        value={
+                          autresEmballages.PET
+                        }
+                        onChangeText={(text) =>
+                          setAutresEmballages(
+                            (prev) => ({
+                              ...prev,
+                              PET: text,
+                            })
+                          )
+                        }
+                      />
+
+                    </View>
+
+                  )}
+
+                </View>
+
+              )}
+
+            </View>
+
+            
+
+            {/* =================================================
+                GLASS
+            ================================================= */}
+
+            <View style={styles.packagingRowGlass}>
+
+              <TouchableOpacity
+                style={styles.typeContainer}
+                onPress={() =>
+                  toggleEmballageConditionne(
+                    "Glass"
+                  )
+                }
+              >
+
+                <Text style={styles.checkbox}>
+                  {emballagesSelectionnes.includes(
+                    "Glass"
+                  )
+                    ? "☑"
+                    : "☐"}
+                </Text>
+
+                <Text style={styles.checkboxLabel}>
+                  Glass
+                </Text>
+
+              </TouchableOpacity>
+
+              {emballagesSelectionnes.includes(
+                "Glass"
+              ) && (
+
+                <View
+                  style={
+                    styles.glassFormatsContainer
+                  }
+                >
+
+                  {/* MARASCA */}
+
+                  <View style={styles.glassRow}>
+
+                    <Text
+                      style={
+                        styles.subTypeLabel
                       }
                     >
                       MARASCA
                     </Text>
 
-                    {[
-                      "250 ml",
-                      "500 ml",
-                      "750 ml",
-                      "1 L",
-                    ].map(
-                      (format) => {
-                        const value =
-                          `MARASCA - ${format}`;
+                    <View
+                      style={
+                        styles.formatsRow
+                      }
+                    >
+
+                      {[
+                        "250 ml",
+                        "500 ml",
+                        "750 ml",
+                        "1 L",
+                      ].map((format) => {
+
+                        const selected =
+                          formatsEmballage.Glass
+                            ?.MARASCA
+                            ?.includes(
+                              format
+                            ) || false;
 
                         return (
                           <TouchableOpacity
-                            key={value}
+                            key={`MARASCA-${format}`}
                             style={
-                              styles.checkboxRow
+                              styles.formatItem
                             }
-                            onPress={() =>
-                              toggleFormat(
-                                type,
-                                value
-                              )
-                            }
+                            onPress={() => {
+
+                              setFormatsEmballage(
+                                (prev) => {
+
+                                  const current =
+                                    prev.Glass
+                                      ?.MARASCA ||
+                                    [];
+
+                                  const updated =
+                                    current.includes(
+                                      format
+                                    )
+                                      ? current.filter(
+                                          (
+                                            item
+                                          ) =>
+                                            item !==
+                                            format
+                                        )
+                                      : [
+                                          ...current,
+                                          format,
+                                        ];
+
+                                  return {
+                                    ...prev,
+
+                                    Glass: {
+                                      ...(prev.Glass ||
+                                        {}),
+
+                                      MARASCA:
+                                        updated,
+                                    },
+                                  };
+                                }
+                              );
+
+                            }}
                           >
-                            <View
-                              style={[
-                                styles.checkbox,
-                                (
-                                  formatsEmballage[
-                                    type
-                                  ] || []
-                                ).includes(
-                                  value
-                                ) &&
-                                  styles.checkboxSelected,
-                              ]}
-                            >
-                              {(
-                                formatsEmballage[
-                                  type
-                                ] || []
-                              ).includes(
-                                value
-                              ) && (
-                                <Text
-                                  style={
-                                    styles.checkboxCheck
-                                  }
-                                >
-                                  ✓
-                                </Text>
-                              )}
-                            </View>
 
                             <Text
                               style={
-                                styles.checkboxText
+                                styles.checkbox
+                              }
+                            >
+                              {selected
+                                ? "☑"
+                                : "☐"}
+                            </Text>
+
+                            <Text
+                              style={
+                                styles.checkboxLabel
                               }
                             >
                               {format}
                             </Text>
+
                           </TouchableOpacity>
                         );
-                      }
-                    )}
+                      })}
+
+                    </View>
+
+                  </View>
+
+                  {/* DORICA */}
+
+                  <View style={styles.glassRow}>
 
                     <Text
                       style={
-                        styles.subLabel
+                        styles.subTypeLabel
                       }
                     >
                       DORICA
                     </Text>
 
-                    {[
-                      "250 ml",
-                      "500 ml",
-                      "750 ml",
-                    ].map(
-                      (format) => {
-                        const value =
-                          `DORICA - ${format}`;
+                    <View
+                      style={
+                        styles.formatsRow
+                      }
+                    >
+
+                      {[
+                        "250 ml",
+                        "500 ml",
+                        "750 ml",
+                      ].map((format) => {
+
+                        const selected =
+                          formatsEmballage.Glass
+                            ?.DORICA
+                            ?.includes(
+                              format
+                            ) || false;
 
                         return (
                           <TouchableOpacity
-                            key={value}
+                            key={`DORICA-${format}`}
                             style={
-                              styles.checkboxRow
+                              styles.formatItem
                             }
-                            onPress={() =>
-                              toggleFormat(
-                                type,
-                                value
-                              )
-                            }
+                            onPress={() => {
+
+                              setFormatsEmballage(
+                                (prev) => {
+
+                                  const current =
+                                    prev.Glass
+                                      ?.DORICA ||
+                                    [];
+
+                                  const updated =
+                                    current.includes(
+                                      format
+                                    )
+                                      ? current.filter(
+                                          (
+                                            item
+                                          ) =>
+                                            item !==
+                                            format
+                                        )
+                                      : [
+                                          ...current,
+                                          format,
+                                        ];
+
+                                  return {
+                                    ...prev,
+
+                                    Glass: {
+                                      ...(prev.Glass ||
+                                        {}),
+
+                                      DORICA:
+                                        updated,
+                                    },
+                                  };
+                                }
+                              );
+
+                            }}
                           >
-                            <View
-                              style={[
-                                styles.checkbox,
-                                (
-                                  formatsEmballage[
-                                    type
-                                  ] || []
-                                ).includes(
-                                  value
-                                ) &&
-                                  styles.checkboxSelected,
-                              ]}
-                            >
-                              {(
-                                formatsEmballage[
-                                  type
-                                ] || []
-                              ).includes(
-                                value
-                              ) && (
-                                <Text
-                                  style={
-                                    styles.checkboxCheck
-                                  }
-                                >
-                                  ✓
-                                </Text>
-                              )}
-                            </View>
 
                             <Text
                               style={
-                                styles.checkboxText
+                                styles.checkbox
+                              }
+                            >
+                              {selected
+                                ? "☑"
+                                : "☐"}
+                            </Text>
+
+                            <Text
+                              style={
+                                styles.checkboxLabel
                               }
                             >
                               {format}
                             </Text>
+
                           </TouchableOpacity>
                         );
-                      }
-                    )}
-                  </>
-                )}
+                      })}
 
-                {/* AUTRE */}
+                    </View>
 
-                {type === "Autre" && (
-                  <TextInput
+                  </View>
+
+                  {/* AUTRE GLASS */}
+
+                  <TouchableOpacity
                     style={
-                      styles.input
+                      styles.formatItem
                     }
-                    placeholder="Préciser le format souhaité"
-                    value={
-                      formatsEmballage[
-                        type
-                      ]?.[0] || ""
-                    }
-                    onChangeText={(
-                      value
-                    ) => {
-                      setFormatsEmballage(
+                    onPress={() => {
+
+                      setAutresSelectionnes(
                         (prev) => ({
                           ...prev,
-                          [type]:
-                            value
-                              ? [value]
-                              : [],
+                          Glass:
+                            !prev.Glass,
                         })
                       );
+
+                      if (
+                        autresSelectionnes.Glass
+                      ) {
+
+                        setAutresEmballages(
+                          (prev) => ({
+                            ...prev,
+                            Glass: "",
+                          })
+                        );
+
+                      }
+
                     }}
-                  />
-                )}
-              </View>
-            )
-          )}
-
-          {/* CERTIFICATIONS */}
-
-          <Text style={styles.label}>
-            Certifications requises
-          </Text>
-
-          <TextInput
-            style={[
-              styles.input,
-              styles.textArea,
-            ]}
-            placeholder="Ex : BIO, ISO, IFS..."
-            value={certificationsRequises.join(
-              ", "
-            )}
-            onChangeText={(text) =>
-              setCertificationsRequises(
-                text
-                  .split(",")
-                  .map((item) =>
-                    item.trim()
-                  )
-                  .filter(Boolean)
-              )
-            }
-            multiline
-          />
-
-          {/* NOM ENTREPRISE */}
-
-          <Text style={styles.label}>
-            Nom entreprise
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Nom de l'entreprise"
-            value={nomEntreprise}
-            onChangeText={
-              setNomEntreprise
-            }
-          />
-
-          {/* SITE WEB */}
-
-          <Text style={styles.label}>
-            Site web
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="https://..."
-            value={siteWeb}
-            onChangeText={setSiteWeb}
-            autoCapitalize="none"
-            keyboardType="url"
-          />
-
-          {/* CONTACT */}
-
-          <Text style={styles.label}>
-            Contact professionnel
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email / téléphone"
-            value={
-              contactProfessionnel
-            }
-            onChangeText={
-              setContactProfessionnel
-            }
-          />
-
-          {/* TYPE MARQUE */}
-
-          <Text style={styles.label}>
-            Type de marque
-          </Text>
-
-          <View
-            style={
-              styles.pickerContainer
-            }
-          >
-            <Picker
-              selectedValue={typeMarque}
-              onValueChange={(value) => {
-                setTypeMarque(value);
-
-                if (
-                  value !==
-                  "Création de nouvelle marque"
-                ) {
-                  resetNouvelleMarque();
-                }
-              }}
-            >
-              <Picker.Item
-                label="Sélectionner"
-                value=""
-              />
-
-              <Picker.Item
-                label="Marque ORZETA"
-                value="Marque ORZETA"
-              />
-
-              <Picker.Item
-                label="Private Label"
-                value="Private Label"
-              />
-
-              <Picker.Item
-                label="Création de nouvelle marque"
-                value="Création de nouvelle marque"
-              />
-            </Picker>
-          </View>
-
-          {/* ==========================================
-              NOUVELLE MARQUE
-          =========================================== */}
-
-          {typeMarque ===
-            "Création de nouvelle marque" && (
-            <View
-              style={
-                styles.newBrandSection
-              }
-            >
-              <Text
-                style={
-                  styles.newBrandTitle
-                }
-              >
-                Informations nouvelle marque
-              </Text>
-
-              {/* MARCHÉ CIBLE */}
-
-              <Text style={styles.label}>
-                Marché cible
-              </Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Ex : Tunisie, France, Italie..."
-                value={marcheCible}
-                onChangeText={
-                  setMarcheCible
-                }
-              />
-
-              {/* QUANTITÉ */}
-
-              <Text style={styles.label}>
-                Quantité prévue
-              </Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Ex : 5000 litres / an"
-                value={quantitePrevue}
-                onChangeText={
-                  setQuantitePrevue
-                }
-              />
-
-              {/* ======================================
-                  PACKAGING NOUVELLE MARQUE
-                  
-                  Même interface que Type d'emballage
-                  mais états différents.
-              ======================================= */}
-
-              <Text style={styles.label}>
-                Packaging
-              </Text>
-
-              <View
-                style={
-                  styles.multiSelectContainer
-                }
-              >
-                {/* TIN */}
-
-                <TouchableOpacity
-                  style={
-                    styles.checkboxRow
-                  }
-                  onPress={() =>
-                    toggleNouvelleMarqueEmballage(
-                      "Tin"
-                    )
-                  }
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      nouvelleMarqueEmballagesSelectionnes.includes(
-                        "Tin"
-                      ) &&
-                        styles.checkboxSelected,
-                    ]}
                   >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "Tin"
-                    ) && (
-                      <Text
-                        style={
-                          styles.checkboxCheck
-                        }
-                      >
-                        ✓
-                      </Text>
-                    )}
-                  </View>
 
-                  <Text
-                    style={
-                      styles.checkboxText
-                    }
-                  >
-                    Tin
-                  </Text>
-                </TouchableOpacity>
-
-                {/* PET */}
-
-                <TouchableOpacity
-                  style={
-                    styles.checkboxRow
-                  }
-                  onPress={() =>
-                    toggleNouvelleMarqueEmballage(
-                      "PET"
-                    )
-                  }
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      nouvelleMarqueEmballagesSelectionnes.includes(
-                        "PET"
-                      ) &&
-                        styles.checkboxSelected,
-                    ]}
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "PET"
-                    ) && (
-                      <Text
-                        style={
-                          styles.checkboxCheck
-                        }
-                      >
-                        ✓
-                      </Text>
-                    )}
-                  </View>
-
-                  <Text
-                    style={
-                      styles.checkboxText
-                    }
-                  >
-                    PET
-                  </Text>
-                </TouchableOpacity>
-
-                {/* GLASS */}
-
-                <TouchableOpacity
-                  style={
-                    styles.checkboxRow
-                  }
-                  onPress={() =>
-                    toggleNouvelleMarqueEmballage(
-                      "Glass"
-                    )
-                  }
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      nouvelleMarqueEmballagesSelectionnes.includes(
-                        "Glass"
-                      ) &&
-                        styles.checkboxSelected,
-                    ]}
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "Glass"
-                    ) && (
-                      <Text
-                        style={
-                          styles.checkboxCheck
-                        }
-                      >
-                        ✓
-                      </Text>
-                    )}
-                  </View>
-
-                  <Text
-                    style={
-                      styles.checkboxText
-                    }
-                  >
-                    Glass
-                  </Text>
-                </TouchableOpacity>
-
-                {/* AUTRE */}
-
-                <TouchableOpacity
-                  style={
-                    styles.checkboxRow
-                  }
-                  onPress={() =>
-                    toggleNouvelleMarqueEmballage(
-                      "Autre"
-                    )
-                  }
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      nouvelleMarqueEmballagesSelectionnes.includes(
-                        "Autre"
-                      ) &&
-                        styles.checkboxSelected,
-                    ]}
-                  >
-                    {nouvelleMarqueEmballagesSelectionnes.includes(
-                      "Autre"
-                    ) && (
-                      <Text
-                        style={
-                          styles.checkboxCheck
-                        }
-                      >
-                        ✓
-                      </Text>
-                    )}
-                  </View>
-
-                  <Text
-                    style={
-                      styles.checkboxText
-                    }
-                  >
-                    Autre
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* AUTRE EMBALLAGE */}
-
-              {nouvelleMarqueEmballagesSelectionnes.includes(
-                "Autre"
-              ) && (
-                <TextInput
-                  style={styles.input}
-                  placeholder="Préciser l'emballage"
-                  value={
-                    nouvelleMarqueAutreEmballage
-                  }
-                  onChangeText={
-                    setNouvelleMarqueAutreEmballage
-                  }
-                />
-              )}
-
-              {/* ======================================
-                  FORMATS NOUVELLE MARQUE
-              ======================================= */}
-
-              {nouvelleMarqueEmballagesSelectionnes.map(
-                (type) => (
-                  <View
-                    key={type}
-                    style={
-                      styles.formatBlock
-                    }
-                  >
                     <Text
                       style={
-                        styles.label
+                        styles.checkbox
                       }
                     >
-                      Formats souhaités -{" "}
-                      {type}
+                      {autresSelectionnes.Glass
+                        ? "☑"
+                        : "☐"}
                     </Text>
 
-                    {/* TIN */}
+                    <Text
+                      style={
+                        styles.checkboxLabel
+                      }
+                    >
+                      Autre
+                    </Text>
 
-                    {type === "Tin" &&
-                      [
-                        "250 ml",
-                        "500 ml",
-                        "1 L",
-                        "2 L",
-                        "3 L",
-                        "4 L",
-                        "5 L",
-                        "16 L",
-                        "20 L",
-                      ].map(
-                        (format) => (
-                          <TouchableOpacity
-                            key={format}
-                            style={
-                              styles.checkboxRow
-                            }
-                            onPress={() =>
-                              toggleNouvelleMarqueFormat(
-                                type,
-                                format
-                              )
-                            }
-                          >
-                            <View
-                              style={[
-                                styles.checkbox,
-                                (
-                                  nouvelleMarqueFormatsEmballage[
-                                    type
-                                  ] || []
-                                ).includes(
-                                  format
-                                ) &&
-                                  styles.checkboxSelected,
-                              ]}
-                            >
-                              {(
-                                nouvelleMarqueFormatsEmballage[
-                                  type
-                                ] || []
-                              ).includes(
-                                format
-                              ) && (
-                                <Text
-                                  style={
-                                    styles.checkboxCheck
-                                  }
-                                >
-                                  ✓
-                                </Text>
-                              )}
-                            </View>
+                  </TouchableOpacity>
 
-                            <Text
-                              style={
-                                styles.checkboxText
-                              }
-                            >
-                              {format}
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      )}
+                  {autresSelectionnes.Glass && (
 
-                    {/* PET */}
+                    <View
+                      style={{
+                        width: "100%",
+                      }}
+                    >
 
-                    {type === "PET" &&
-                      [
-                        "250 ml",
-                        "500 ml",
-                        "1 L",
-                        "3 L",
-                        "5 L",
-                      ].map(
-                        (format) => (
-                          <TouchableOpacity
-                            key={format}
-                            style={
-                              styles.checkboxRow
-                            }
-                            onPress={() =>
-                              toggleNouvelleMarqueFormat(
-                                type,
-                                format
-                              )
-                            }
-                          >
-                            <View
-                              style={[
-                                styles.checkbox,
-                                (
-                                  nouvelleMarqueFormatsEmballage[
-                                    type
-                                  ] || []
-                                ).includes(
-                                  format
-                                ) &&
-                                  styles.checkboxSelected,
-                              ]}
-                            >
-                              {(
-                                nouvelleMarqueFormatsEmballage[
-                                  type
-                                ] || []
-                              ).includes(
-                                format
-                              ) && (
-                                <Text
-                                  style={
-                                    styles.checkboxCheck
-                                  }
-                                >
-                                  ✓
-                                </Text>
-                              )}
-                            </View>
+                      <Text
+                        style={
+                          styles.label
+                        }
+                      >
+                        Préciser l'emballage
+                      </Text>
 
-                            <Text
-                              style={
-                                styles.checkboxText
-                              }
-                            >
-                              {format}
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      )}
-
-                    {/* GLASS */}
-
-                    {type === "Glass" && (
-                      <>
-                        <Text
-                          style={
-                            styles.subLabel
-                          }
-                        >
-                          MARASCA
-                        </Text>
-
-                        {[
-                          "250 ml",
-                          "500 ml",
-                          "750 ml",
-                          "1 L",
-                        ].map(
-                          (format) => {
-                            const value =
-                              `MARASCA - ${format}`;
-
-                            return (
-                              <TouchableOpacity
-                                key={value}
-                                style={
-                                  styles.checkboxRow
-                                }
-                                onPress={() =>
-                                  toggleNouvelleMarqueFormat(
-                                    type,
-                                    value
-                                  )
-                                }
-                              >
-                                <View
-                                  style={[
-                                    styles.checkbox,
-                                    (
-                                      nouvelleMarqueFormatsEmballage[
-                                        type
-                                      ] || []
-                                    ).includes(
-                                      value
-                                    ) &&
-                                      styles.checkboxSelected,
-                                  ]}
-                                >
-                                  {(
-                                    nouvelleMarqueFormatsEmballage[
-                                      type
-                                    ] || []
-                                  ).includes(
-                                    value
-                                  ) && (
-                                    <Text
-                                      style={
-                                        styles.checkboxCheck
-                                      }
-                                    >
-                                      ✓
-                                    </Text>
-                                  )}
-                                </View>
-
-                                <Text
-                                  style={
-                                    styles.checkboxText
-                                  }
-                                >
-                                  {format}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          }
-                        )}
-
-                        <Text
-                          style={
-                            styles.subLabel
-                          }
-                        >
-                          DORICA
-                        </Text>
-
-                        {[
-                          "250 ml",
-                          "500 ml",
-                          "750 ml",
-                        ].map(
-                          (format) => {
-                            const value =
-                              `DORICA - ${format}`;
-
-                            return (
-                              <TouchableOpacity
-                                key={value}
-                                style={
-                                  styles.checkboxRow
-                                }
-                                onPress={() =>
-                                  toggleNouvelleMarqueFormat(
-                                    type,
-                                    value
-                                  )
-                                }
-                              >
-                                <View
-                                  style={[
-                                    styles.checkbox,
-                                    (
-                                      nouvelleMarqueFormatsEmballage[
-                                        type
-                                      ] || []
-                                    ).includes(
-                                      value
-                                    ) &&
-                                      styles.checkboxSelected,
-                                  ]}
-                                >
-                                  {(
-                                    nouvelleMarqueFormatsEmballage[
-                                      type
-                                    ] || []
-                                  ).includes(
-                                    value
-                                  ) && (
-                                    <Text
-                                      style={
-                                        styles.checkboxCheck
-                                      }
-                                    >
-                                      ✓
-                                    </Text>
-                                  )}
-                                </View>
-
-                                <Text
-                                  style={
-                                    styles.checkboxText
-                                  }
-                                >
-                                  {format}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          }
-                        )}
-                      </>
-                    )}
-
-                    {/* AUTRE */}
-
-                    {type === "Autre" && (
                       <TextInput
                         style={
                           styles.input
                         }
-                        placeholder="Préciser le format souhaité"
+                        placeholder="Saisir le type d'emballage"
                         value={
-                          nouvelleMarqueFormatsEmballage[
-                            type
-                          ]?.[0] || ""
+                          autresEmballages.Glass
                         }
-                        onChangeText={(
-                          value
-                        ) => {
-                          setNouvelleMarqueFormatsEmballage(
+                        onChangeText={(text) =>
+                          setAutresEmballages(
                             (prev) => ({
                               ...prev,
-                              [type]:
-                                value
-                                  ? [value]
-                                  : [],
+                              Glass: text,
                             })
-                          );
-                        }}
+                          )
+                        }
                       />
-                    )}
-                  </View>
-                )
+
+                    </View>
+
+                  )}
+
+                </View>
+
+              )}
+
+            </View>
+
+            <View style={styles.packagingRow}>
+
+<TouchableOpacity
+  style={styles.typeContainer}
+  onPress={() =>
+    toggleEmballageConditionne(
+      "BaginBox"
+    )
+  }
+>
+
+  <Text style={styles.checkbox}>
+    {emballagesSelectionnes.includes(
+      "BaginBox"
+    )
+      ? "☑"
+      : "☐"}
+  </Text>
+
+  <Text style={styles.checkboxLabel}>
+  Bag in Box
+  </Text>
+
+</TouchableOpacity>
+
+{emballagesSelectionnes.includes(
+  "BaginBox"
+) && (
+
+  <View style={styles.formatsRow}>
+
+    {[
+      
+      "3 L",
+      "5 L",
+      "10 L",
+      "20 L",
+    ].map((format) => {
+
+      const selected =
+        formatsEmballage.BaginBox?.includes(
+          format
+        ) || false;
+
+      return (
+        <TouchableOpacity
+          key={`BaginBox-${format}`}
+          style={
+            styles.formatItem
+          }
+          onPress={() => {
+
+            setFormatsEmballage(
+              (prev) => {
+
+                const current =
+                  prev.BaginBox || [];
+
+                const updated =
+                  current.includes(
+                    format
+                  )
+                    ? current.filter(
+                        (item) =>
+                          item !==
+                          format
+                      )
+                    : [
+                        ...current,
+                        format,
+                      ];
+
+                return {
+                  ...prev,
+                  BaginBox: updated,
+                };
+              }
+            );
+
+          }}
+        >
+
+          <Text
+            style={
+              styles.checkbox
+            }
+          >
+            {selected
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text
+            style={
+              styles.checkboxLabel
+            }
+          >
+            {format}
+          </Text>
+
+        </TouchableOpacity>
+      );
+    })}
+
+    {/* AUTRE BaginBox */}
+
+    <TouchableOpacity
+      style={
+        styles.formatItem
+      }
+      onPress={() => {
+
+        setAutresSelectionnes(
+          (prev) => ({
+            ...prev,
+            BaginBox:
+              !prev.BaginBox,
+          })
+        );
+
+        if (
+          autresSelectionnes.BaginBox
+        ) {
+
+          setAutresEmballages(
+            (prev) => ({
+              ...prev,
+              BaginBox: "",
+            })
+          );
+
+        }
+
+      }}
+    >
+
+      <Text
+        style={
+          styles.checkbox
+        }
+      >
+        {autresSelectionnes.BaginBox
+          ? "☑"
+          : "☐"}
+      </Text>
+
+      <Text
+        style={
+          styles.checkboxLabel
+        }
+      >
+        Autre
+      </Text>
+
+    </TouchableOpacity>
+
+    {autresSelectionnes.BaginBox && (
+
+      <View
+        style={{
+          width: "100%",
+        }}
+      >
+
+        <Text
+          style={
+            styles.label
+          }
+        >
+          Préciser l'emballage
+        </Text>
+
+        <TextInput
+          style={
+            styles.input
+          }
+          placeholder="Saisir le type d'emballage"
+          value={
+            autresEmballages.BaginBox
+          }
+          onChangeText={(text) =>
+            setAutresEmballages(
+              (prev) => ({
+                ...prev,
+                BaginBox: text,
+              })
+            )
+          }
+        />
+
+      </View>
+
+    )}
+
+  </View>
+
+)}
+
+</View>
+
+
+                        {/* AUTRE */}
+
+            <View
+              style={styles.packagingRow}
+            >
+              <TouchableOpacity
+                style={
+                  styles.typeContainer
+                }
+                onPress={() =>
+                  toggleEmballageConditionne(
+                    "Autre"
+                  )
+                }
+              >
+                <Text
+                  style={
+                    styles.checkbox
+                  }
+                >
+                  {emballagesSelectionnes.includes(
+                    "Autre"
+                  )
+                    ? "☑"
+                    : "☐"}
+                </Text>
+
+                <Text
+                  style={
+                    styles.checkboxLabel
+                  }
+                >
+                  Autre
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* AUTRE EMBALLAGE */}
+
+            {emballagesSelectionnes.includes(
+              "Autre"
+            ) && (
+              <>
+                <Text
+                  style={styles.label}
+                >
+                  Préciser l'emballage
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={
+                    autreEmballage
+                  }
+                  onChangeText={
+                    setAutreEmballage
+                  }
+                />
+              </>
+            )}
+
+            {/* =================================================
+    QUANTITÉ DE LA COMMANDE
+================================================= */}
+
+<Text style={styles.label}>
+  Quantité de la commande
+</Text>
+
+<View style={styles.pickerContainer}>
+
+  <Picker
+    selectedValue={quantiteCommande}
+    onValueChange={setQuantiteCommande}
+  >
+
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="FCL 20 pieds"
+      value="conteneur_20"
+    />
+
+    <Picker.Item
+      label="FCL 40 pieds"
+      value="conteneur_40"
+    />
+
+    <Picker.Item
+      label="Palettes"
+      value="palettes"
+    />
+
+  </Picker>
+
+</View>
+
+
+{/* =================================================
+    NOMBRE DE FCL
+================================================= */}
+
+{(
+  quantiteCommande === "conteneur_20" ||
+  quantiteCommande === "conteneur_40"
+) && (
+
+  <>
+    <Text style={styles.label}>
+      Nombre de FCL
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nombre de FCL"
+      value={nombreFCL}
+      onChangeText={setNombreFCL}
+      keyboardType="numeric"
+    />
+  </>
+
+)}
+
+
+{/* =================================================
+    NOMBRE DE PALETTES
+================================================= */}
+
+{quantiteCommande === "palettes" && (
+
+  <>
+    <Text style={styles.label}>
+      Nombre de palettes
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nombre de palettes"
+      value={nombrePalettes}
+      onChangeText={setNombrePalettes}
+      keyboardType="numeric"
+    />
+  </>
+
+)}
+
+            {/* CERTIFICATIONS */}
+
+<Text style={styles.label}>
+  Certifications requises
+</Text>
+
+<View style={styles.exigencesContainer}>
+
+  {[
+    "ISO 22000",
+    "HACCP",
+    "IFS Food",
+    "BRCGS",
+    "ISO 9001",
+    "BIO / Organic",
+    "Halal",
+    "Kosher",
+    "JAS",
+    "Analyses COI / IOC",
+    "Certificat d’analyse (COA)",
+    "Certificat d’analyse ONH",
+    "Autre",
+  ].map((item) => {
+
+    const selected =
+      certificationsRequises.includes(item);
+
+    return (
+      <TouchableOpacity
+        key={item}
+        style={styles.exigenceOption}
+        onPress={() => {
+
+          if (selected) {
+
+            // Désélectionner
+            setCertificationsRequises(
+              certificationsRequises.filter(
+                (certification) =>
+                  certification !== item
+              )
+            );
+
+            // Vider le champ si Autre est désélectionné
+            if (item === "Autre") {
+              setAutreCertification("");
+            }
+
+          } else {
+
+            // Sélectionner
+            setCertificationsRequises([
+              ...certificationsRequises,
+              item,
+            ]);
+
+          }
+
+        }}
+      >
+
+        <Text style={styles.exigenceCheckbox}>
+          {selected ? "☑" : "☐"}
+        </Text>
+
+        <Text style={styles.exigenceText}>
+          {item}
+        </Text>
+
+      </TouchableOpacity>
+    );
+  })}
+
+  {/* CHAMP AUTRE */}
+  {certificationsRequises.includes("Autre") && (
+  <TextInput
+    style={styles.input}
+    placeholder="Préciser la certification"
+    value={autreCertification}
+    onChangeText={(text) => {
+      console.log("AUTRE CERTIFICATION :", text);
+      setAutreCertification(text);
+    }}
+  />
+)}
+
+</View>
+
+            {/* NOM ENTREPRISE */}
+
+            <Text style={styles.label}>
+              Nom entreprise
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nom de l'entreprise"
+              value={nomEntreprise}
+              onChangeText={
+                setNomEntreprise
+              }
+            />
+
+            {/* SITE WEB */}
+
+            <Text style={styles.label}>
+              Site web
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="www..."
+              value={siteWeb}
+              onChangeText={
+                setSiteWeb
+              }
+              autoCapitalize="none"
+            />
+
+            {/* CONTACT */}
+
+<Text style={styles.label}>
+  Canal de communication préféré
+</Text>
+
+<View style={styles.pickerContainer}>
+
+  <Picker
+    selectedValue={contactProfessionnel}
+    onValueChange={setContactProfessionnel}
+  >
+
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="📧 Email"
+      value="Email"
+    />
+
+    <Picker.Item
+      label="📞 Téléphone"
+      value="Téléphone"
+    />
+
+    <Picker.Item
+      label="💬 WhatsApp"
+      value="WhatsApp"
+    />
+
+    <Picker.Item
+      label="💬 BOTIM"
+      value="BOTIM"
+    />
+
+    <Picker.Item
+      label="💬 Telegram"
+      value="Telegram"
+    />
+
+    <Picker.Item
+      label="💬 Viber"
+      value="Viber"
+    />
+
+<Picker.Item
+      label="🟢 WeChat"
+      value="WeChatWeChat"
+    />
+
+  </Picker>
+
+</View>
+
+            {/* TYPE DE MARQUE */}
+
+<Text style={styles.label}>
+  Type de marque
+</Text>
+
+<View style={styles.pickerContainer}>
+
+  <Picker
+    selectedValue={typeMarque}
+    onValueChange={setTypeMarque}
+  >
+
+    <Picker.Item
+      label="Sélectionner"
+      value=""
+    />
+
+    <Picker.Item
+      label="Marque ORZETA"
+      value="Marque ORZETA"
+    />
+
+    <Picker.Item
+      label="Private Label"
+      value="Private Label"
+    />
+
+    <Picker.Item
+      label="Création de nouvelle marque"
+      value="Création de nouvelle marque"
+    />
+
+  </Picker>
+
+</View>
+
+
+{/* NOM DU LABEL */}
+
+{typeMarque === "Private Label" && (
+  <>
+    <Text style={styles.label}>
+      Nom de label
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Nom de label"
+      value={nomLabel}
+      onChangeText={setNomLabel}
+    />
+  </>
+)}
+
+{/* =================================================
+    INFORMATIONS NOUVELLE MARQUE
+================================================= */}
+
+{typeMarque === "Création de nouvelle marque" && (
+  <View style={styles.newBrandSection}>
+    <Text style={styles.newBrandTitle}>
+      Informations nouvelle marque
+    </Text>
+
+    {/* MARCHÉ CIBLE */}
+    <Text style={styles.label}>
+      Marché cible
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Ex : Tunisie, France, Italie..."
+      value={marcheCible}
+      onChangeText={setMarcheCible}
+    />
+
+    {/* QUANTITÉ PRÉVUE */}
+    <Text style={styles.label}>
+      Quantité prévue
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Ex : 5000 litres / an"
+      value={quantitePrevue}
+      onChangeText={setQuantitePrevue}
+      keyboardType="numeric"
+    />
+
+    {/* =================================================
+        EMBALLAGE NOUVELLE MARQUE
+    ================================================= */}
+
+    <View style={styles.packagingContainer}>
+      <Text style={styles.label}>
+        Type d'emballage
+      </Text>
+
+      {/* ================= TIN ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("Tin")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("Tin")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>
+            Tin
+          </Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("Tin") && (
+          <View style={styles.packagingDetails}>
+            <View style={styles.packagingFormatsRow}>
+              {[
+                "250 ml",
+                "500 ml",
+                "1 L",
+                "2 L",
+                "3 L",
+                "4 L",
+                "5 L",
+                "16 L",
+                "20 L",
+                "Autre",
+              ].map((format) =>
+                renderFormatCheckbox("Tin", format)
               )}
             </View>
-          )}
-        </View>
-      )}
 
-      {/* ==============================================
+            {nouvelleMarqueFormatsEmballage.Tin?.includes("Autre") && (
+              <>
+                <Text style={styles.label}>
+                  Préciser l'emballage
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={nouvelleMarqueAutresFormats.Tin}
+                  onChangeText={(value) =>
+                    setNouvelleMarqueAutresFormats((prev) => ({
+                      ...prev,
+                      Tin: value,
+                    }))
+                  }
+                />
+              </>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* ================= PET ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("PET")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("PET")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>
+            PET
+          </Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("PET") && (
+          <View style={styles.packagingDetails}>
+            <View style={styles.packagingFormatsRow}>
+              {[
+                "250 ml",
+                "500 ml",
+                "1 L",
+                "3 L",
+                "5 L",
+                "Autre",
+              ].map((format) =>
+                renderFormatCheckbox("PET", format)
+              )}
+            </View>
+
+            {nouvelleMarqueFormatsEmballage.PET?.includes("Autre") && (
+              <>
+                <Text style={styles.label}>
+                  Préciser l'emballage
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={nouvelleMarqueAutresFormats.PET}
+                  onChangeText={(value) =>
+                    setNouvelleMarqueAutresFormats((prev) => ({
+                      ...prev,
+                      PET: value,
+                    }))
+                  }
+                />
+              </>
+            )}
+          </View>
+        )}
+      </View>
+
+{/* ================= GLASS ================= */}
+
+<View style={styles.packagingSection}>
+
+  {/* ================= TYPE GLASS ================= */}
+
+  <TouchableOpacity
+    style={styles.packagingType}
+    onPress={() => toggleEmballageNouvelleMarque("Glass")}
+  >
+    <Text style={styles.checkbox}>
+      {nouvelleMarqueEmballagesSelectionnes.includes("Glass")
+        ? "☑"
+        : "☐"}
+    </Text>
+
+    <Text style={styles.checkboxLabel}>
+      Glass
+    </Text>
+  </TouchableOpacity>
+
+
+  {/* ================= DETAILS GLASS ================= */}
+
+  {nouvelleMarqueEmballagesSelectionnes.includes("Glass") && (
+
+    <View style={styles.packagingDetails}>
+
+      {/* =================================================
+          MARASCA
+      ================================================= */}
+
+<View style={styles.packagingFormatsRow}>
+  <Text style={styles.packagingBrand}>
+    MARASCA
+  </Text>
+
+  {["250 ml", "500 ml", "750 ml", "1 L"].map((format) =>
+    renderFormatCheckbox("Glass", format, "MARASCA")
+  )}
+</View>
+
+
+      {/* =================================================
+          DORICA
+      ================================================= */}
+
+<View style={styles.packagingFormatsRow}>
+  <Text style={styles.packagingBrand}>
+    DORICA
+  </Text>
+
+  {["250 ml", "500 ml", "750 ml"].map((format) =>
+    renderFormatCheckbox("Glass", format, "DORICA")
+  )}
+</View>
+
+
+{/* =================================================
+    AUTRE FORMAT GLASS
+================================================= */}
+
+<View style={styles.packagingFormatsRow}>
+
+  {renderFormatCheckbox(
+    "Glass",
+    "Autre"
+  )}
+
+</View>
+
+
+{/* =================================================
+    CHAMP PRÉCISER AUTRE GLASS
+================================================= */}
+
+{nouvelleMarqueFormatsEmballage?.Glass?.formats?.includes(
+  "Autre"
+) && (
+
+  <View style={{ width: "100%", marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      Préciser l'emballage
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      placeholder="Saisir le type d'emballage"
+      value={nouvelleMarqueAutresFormats?.Glass || ""}
+      onChangeText={(value) =>
+        setNouvelleMarqueAutresFormats((prev) => ({
+          ...prev,
+          Glass: value,
+        }))
+      }
+    />
+
+  </View>
+)}
+
+    </View>
+
+  )}
+
+</View>
+
+
+{/* ================= BaginBox ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("BaginBox")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("BaginBox")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>Bag in Box</Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("BaginBox") && (
+          <View style={styles.packagingDetails}>
+            <View style={styles.packagingFormatsRow}>
+              {[
+                
+                "3 L",
+                
+                "5 L",
+                "10 L",
+                "20 L",
+                "Autre",
+              ].map((format) =>
+                renderFormatCheckbox("BaginBox", format)
+              )}
+            </View>
+
+            {nouvelleMarqueFormatsEmballage.BaginBox?.includes("Autre") && (
+              <>
+                <Text style={styles.label}>
+                  Préciser l'emballage
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Saisir le type d'emballage"
+                  value={nouvelleMarqueAutresFormats.BaginBox}
+                  onChangeText={(value) =>
+                    setNouvelleMarqueAutresFormats((prev) => ({
+                      ...prev,
+                      BaginBox: value,
+                    }))
+                  }
+                />
+              </>
+            )}
+          </View>
+        )}
+      </View>
+      {/* ================= AUTRE TYPE ================= */}
+      <View style={styles.packagingSection}>
+        <TouchableOpacity
+          style={styles.packagingType}
+          onPress={() => toggleEmballageNouvelleMarque("Autre")}
+        >
+          <Text style={styles.checkbox}>
+            {nouvelleMarqueEmballagesSelectionnes.includes("Autre")
+              ? "☑"
+              : "☐"}
+          </Text>
+
+          <Text style={styles.checkboxLabel}>
+            Autre
+          </Text>
+        </TouchableOpacity>
+
+        {nouvelleMarqueEmballagesSelectionnes.includes("Autre") && (
+          <View style={styles.packagingDetails}>
+            <Text style={styles.label}>
+              Préciser l'emballage
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Saisir le type d'emballage"
+              value={nouvelleMarqueAutreEmballage}
+              onChangeText={setNouvelleMarqueAutreEmballage}
+            />
+          </View>
+        )}
+      </View>
+    </View>
+    {/* Fin packagingContainer */}
+  </View>
+  /* Fin newBrandSection */
+)}
+
+
+{/* DEMANDE D'ÉCHANTILLON */}
+<View style={styles.sectionInline}>
+  <Text style={styles.label}>Demande d'échantillon</Text>
+  <Text style={styles.sampleQuestion}>Le client demande-t-il un échantillon ?</Text>
+
+  <View style={styles.checkboxContainer}>
+    <TouchableOpacity
+      onPress={() => setDemandeEchantillon("oui")}
+      activeOpacity={0.7}
+      style={styles.checkboxOption}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {demandeEchantillon === "oui" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>Oui</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={() => {
+        setDemandeEchantillon("non");
+        setAdresseEchantillon("");
+        setPersonneReceptionEchantillon("");
+        setTelReceptionEchantillon("");
+      }}
+      activeOpacity={0.7}
+      style={styles.checkboxOption}
+    >
+      <Text style={styles.checkboxSymbol}>
+        {demandeEchantillon === "non" ? "☑" : "☐"}
+      </Text>
+      <Text style={styles.checkboxText}>Non</Text>
+    </TouchableOpacity>
+  </View>
+
+  {demandeEchantillon === "oui" && (
+    <View style={styles.echantillonContainer}>
+      <Text style={styles.label}>Adresse de réception *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Saisir l'adresse de réception"
+        value={adresseEchantillon}
+        onChangeText={setAdresseEchantillon}
+      />
+      <Text style={styles.label}>Personne en charge de la réception *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Nom et prénom"
+        value={personneReceptionEchantillon}
+        onChangeText={setPersonneReceptionEchantillon}
+      />
+      <Text style={styles.label}>Téléphone de la personne en charge *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ex : +216 XX XXX XXX"
+        value={telReceptionEchantillon}
+        onChangeText={setTelReceptionEchantillon}
+        keyboardType="phone-pad"
+      />
+    </View>
+  )}
+</View>
+<TouchableOpacity
+  style={styles.addCommandButton}
+  onPress={handleAjouterCommande}
+  activeOpacity={0.8}
+>
+  <Text style={styles.addCommandButtonText}>
+    + Ajouter une commande Conditionnée
+  </Text>
+</TouchableOpacity>
+
+{/* FERMETURE SECTION CONDITIONNÉ */}
+</View>
+)}
+
+{/* =================================================
+    QUALIFICATION DU VISITEUR
+================================================= */}
+
+      <View
+        style={
+          styles.ratingContainer
+        }
+      >
+
+        <Text
+          style={
+            styles.ratingTitle
+          }
+        >
+          Qualification du visiteur
+        </Text>
+
+        <View
+          style={
+            styles.starsContainer
+          }
+        >
+
+          {[1, 2, 3, 4, 5].map(
+            (etoile) => (
+
+              <TouchableOpacity
+                key={etoile}
+                onPress={() =>
+                  setQualification(
+                    etoile
+                  )
+                }
+                activeOpacity={0.7}
+              >
+
+                <Text
+                  style={
+                    styles.star
+                  }
+                >
+                  {etoile <=
+                  qualification
+                    ? "★"
+                    : "☆"}
+                </Text>
+
+              </TouchableOpacity>
+
+            )
+          )}
+
+        </View>
+
+        <Text
+          style={
+            styles.ratingText
+          }
+        >
+          {qualification === 0
+            ? "Sélectionner une note"
+            : `${qualification} / 5 étoiles`}
+        </Text>
+
+      </View>
+
+      {/* =================================================
           BOUTON AJOUTER
-      =============================================== */}
+      ================================================= */}
 
       <TouchableOpacity
         style={styles.button}
         onPress={handleAjouter}
       >
-        <Text style={styles.buttonText}>
-          AJOUTER LE VISITEUR
+
+        <Text
+          style={
+            styles.buttonText
+          }
+        >
+          Traitement de commande
         </Text>
+
       </TouchableOpacity>
-    </ScrollView>
+
+    </ScrollView> 
   );
 }
 
@@ -2565,6 +5058,7 @@ router.push("/pdf");
 // =====================================================
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
@@ -2572,7 +5066,7 @@ const styles = StyleSheet.create({
 
   content: {
     padding: 20,
-    paddingBottom: 60,
+    paddingBottom: 50,
   },
 
   title: {
@@ -2586,14 +5080,14 @@ const styles = StyleSheet.create({
   subtitle: {
     textAlign: "center",
     color: "#666",
-    marginBottom: 20,
+    marginBottom: 25,
   },
 
   label: {
     fontSize: 16,
     fontWeight: "600",
-    marginTop: 12,
     marginBottom: 7,
+    marginTop: 12,
   },
 
   input: {
@@ -2666,7 +5160,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#EE672A",
+    borderColor: "#5C681F",
   },
 
   newBrandTitle: {
@@ -2675,78 +5169,428 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
 
-  multiSelectContainer: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
+  button: {
+    backgroundColor: "#5C681F",
+    paddingVertical: 15,
     borderRadius: 8,
-    padding: 10,
-  },
-
-  checkboxRow: {
-    flexDirection: "row",
+    marginTop: 25,
     alignItems: "center",
-    paddingVertical: 9,
-  },
-
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 1,
-    borderColor: "#aaa",
-    borderRadius: 5,
-    marginRight: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-  },
-
-  checkboxSelected: {
-    backgroundColor: "#EE672A",
-    borderColor: "#EE672A",
-  },
-
-  checkboxCheck: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-
-  checkboxText: {
-    fontSize: 16,
-  },
-
-  formatBlock: {
-    marginTop: 10,
-    paddingTop: 5,
-  },
-
-  subLabel: {
-    fontSize: 15,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 5,
   },
 
   testButton: {
     backgroundColor: "#555",
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderRadius: 8,
-    marginBottom: 15,
-    alignItems: "center",
-  },
-
-  button: {
-    backgroundColor: "#EE672A",
-    paddingVertical: 16,
-    borderRadius: 8,
-    marginTop: 30,
+    marginTop: 15,
     alignItems: "center",
   },
 
   buttonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "bold",
   },
+
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+
+  checkbox: {
+    fontSize: 22,
+    marginRight: 10,
+  },
+
+  checkboxLabel: {
+    fontSize: 16,
+    color: "#333",
+    //flexShrink: 0,
+  },
+
+  packagingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    width: "100%",
+  },
+
+  packagingRowGlass: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+    width: "100%",
+  },
+
+  typeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 90,
+  },
+
+  formatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    flex: 1,
+  },
+
+  formatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 12,
+    marginBottom: 8,
+  },
+
+  glassFormatsContainer: {
+    flex: 1,
+  },
+
+  glassRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  subTypeLabel: {
+    width: 85,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // =====================================================
+  // STYLES QUALIFICATION
+  // =====================================================
+
+  ratingContainer: {
+    alignItems: "center",
+    marginVertical: 25,
+  },
+
+  ratingTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+    color: "#333333",
+  },
+
+  starsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  star: {
+    fontSize: 42,
+    color: "#FFD700",
+    marginHorizontal: 5,
+  },
+
+  ratingText: {
+    fontSize: 16,
+    marginTop: 8,
+    color: "#555555",
+  },
+
+  
+packagingContainer: {
+  width: "100%",
+  marginTop: 10,
+},
+
+packagingSection: {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  width: "100%",
+  marginTop: 12,
+},
+
+packagingType: {
+  flexDirection: "row",
+  alignItems: "center",
+  width: 80,
+  paddingTop: 2,
+},
+
+packagingDetails: {
+  flex: 1,
+  minWidth: 0,
+  marginLeft: 0,
+},
+
+packagingFormatsRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  flexWrap: "wrap",
+  marginBottom: 12,
+},
+
+packagingFormatItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginRight: 12,
+  marginBottom: 4,
+},
+
+packagingBrand: {
+  minWidth: 65,
+  marginRight: 12,
+  fontSize: 13,
+  color: "#000",
+},
+formatCheckboxContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginRight: 15,
+  marginBottom: 10,
+},
+
+formatCheckbox: {
+  fontSize: 20,
+  marginRight: 5,
+},
+
+formatCheckboxLabel: {
+  fontSize: 14,
+  color: "#333",
+},
+inputWithUnit: {
+  flexDirection: "row",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 8,
+  height: 45,
+  paddingRight: 12,
+},
+
+inputVolume: {
+  flex: 1,
+  height: 45,
+  paddingHorizontal: 12,
+  borderWidth: 0,
+},
+
+unitText: {
+  fontSize: 16,
+  fontWeight: "bold",
+},
+
+aromatiqueContainer: {
+  marginTop: 10,
+  marginBottom: 15,
+},
+
+aromatiqueTitle: {
+  fontSize: 16,
+  fontWeight: "bold",
+  marginBottom: 10,
+  color: "#333",
+},
+
+aromatiqueRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 8,
+  minHeight: 35,
+},
+
+aromatiqueLabel: {
+  width: 90,
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#333",
+},
+
+aromatiqueOption: {
+  flexDirection: "row",
+  alignItems: "center",
+  width: 90,
+},
+
+aromatiqueCheckbox: {
+  fontSize: 20,
+  marginRight: 5,
+},
+
+aromatiqueOptionText: {
+  fontSize: 14,
+  color: "#333",
+},
+
+exigencesContainer: {
+  marginTop: 5,
+  marginBottom: 15,
+},
+
+exigenceOption: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 8,
+  paddingVertical: 4,
+},
+
+exigenceCheckbox: {
+  fontSize: 20,
+  marginRight: 8,
+},
+
+exigenceText: {
+  fontSize: 14,
+  color: "#333",
+},
+
+contactContainer: {
+  marginTop: 5,
+  marginBottom: 15,
+},
+
+contactItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingVertical: 8,
+},
+
+checkbox: {
+  fontSize: 22,
+  marginRight: 10,
+},
+
+contactText: {
+  fontSize: 16,
+},
+
+  // =====================================================
+  // STYLES COMMANDES MULTIPLES
+  // =====================================================
+
+  sectionInline: {
+    marginTop: 15,
+  },
+
+  sampleQuestion: {
+    fontSize: 15,
+    color: "#444",
+    marginBottom: 5,
+  },
+
+  checkboxOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 25,
+  },
+
+  checkboxSymbol: {
+    fontSize: 22,
+    marginRight: 7,
+  },
+
+  checkboxText: {
+    fontSize: 16,
+    color: "#333",
+  },
+
+  echantillonContainer: {
+    marginTop: 5,
+  },
+
+  uvSelectionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+
+  uvOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 30,
+  },
+
+  uvValuesContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
+    marginBottom: 10,
+  },
+
+  uvValueOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 25,
+  },
+
+  savedCommandsContainer: {
+    marginBottom: 15,
+  },
+
+  savedCommandsTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#5C681F",
+    marginBottom: 8,
+  },
+
+  savedCommandCard: {
+    backgroundColor: "#f4f4f4",
+    borderWidth: 1,
+    borderColor: "#d8d8d8",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+
+  savedCommandTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 5,
+  },
+
+  savedCommandText: {
+    fontSize: 14,
+    color: "#555",
+    marginTop: 2,
+  },
+
+  currentCommandTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 8,
+    marginBottom: 12,
+    color: "#333",
+  },
+
+  addCommandButton: {
+    backgroundColor: "#5c681F",
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginTop: 20,
+    alignItems: "center",
+  },
+
+  addCommandButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  logoutButton: {
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#c62828",
+    borderRadius: 8,
+  },
+  
+  logoutText: {
+    marginLeft: 6,
+    color: "#c62828",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
 });
