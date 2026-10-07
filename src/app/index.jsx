@@ -1746,192 +1746,274 @@ setK270Valeur("");
   // AJOUTER VISITEUR
   // =====================================================
 
-  const handleAjouter = async () => {
-    try {
-      if (qualification === 0) {
-        Alert.alert(
-          "Attention",
-          "Veuillez sélectionner une note de 1 à 5 étoiles."
-        );
-        return;
-      }
 
-      const commandesFinales = [...(commandes || [])];
+const handleAjouter = async () => {
+  try {
+    // =====================================================
+    // COMMANDES
+    // =====================================================
 
-      // Si une commande est encore en cours de saisie, on l'ajoute
-      // automatiquement. Si l'utilisateur a déjà cliqué sur
-      // « Ajouter une commande », les champs sont vides et les
-      // commandes déjà enregistrées sont utilisées telles quelles.
-      console.log("TYPE COMMANDE :", typeCommande);
-console.log("COMMANDE RENSEIGNEE :", commandeCouranteEstRenseignee());
-console.log("K232 :", k232Selection, k232Valeur);
-console.log("K270 :", k270Selection, k270Valeur);
+    const commandesFinales = [...(commandes || [])];
 
-      if (typeCommande && commandeCouranteEstRenseignee()) {
-        const commandeCourante = construireCommandeCourante();
-        console.log(
-          "COMMANDE COURANTE :",
-          JSON.stringify(commandeCourante, null, 2)
-        );
-        if (commandeCourante) {
-          if (commandesFinales.length > 0) {
-            const typeExistant = commandesFinales[0]?.type_commande;
+    console.log("=======================================");
+    console.log("📋 PRÉPARATION VISITEUR");
+    console.log("TYPE COMMANDE :", typeCommande || "AUCUN");
+    console.log(
+      "COMMANDE RENSEIGNÉE :",
+      commandeCouranteEstRenseignee()
+    );
+    console.log("K232 :", k232Selection, k232Valeur);
+    console.log("K270 :", k270Selection, k270Valeur);
 
-            if (
-              typeExistant &&
-              typeExistant !== commandeCourante.type_commande
-            ) {
-              Alert.alert(
-                "Type de commande incompatible",
-                "Vous ne pouvez pas mélanger les commandes Vrac et Conditionné."
-              );
-              return;
-            }
-          }
+    // =====================================================
+    // AJOUT DE LA COMMANDE COURANTE SI UN TYPE EST CHOISI
+    // =====================================================
 
-          commandesFinales.push(commandeCourante);
-        }
-      }
+    if (typeCommande) {
+      const commandeCourante = construireCommandeCourante();
 
-      if (commandesFinales.length === 0) {
-        Alert.alert(
-          "Attention",
-          "Veuillez ajouter au moins une commande."
-        );
-        return;
-      }
-
-      if (
-        commandesFinales.some(
-          (commande) => !commande?.type_commande
-        )
-      ) {
-        Alert.alert(
-          "Erreur",
-          "Une commande ne possède pas de type valide."
-        );
-        return;
-      }
-
-      const typeCommandeFinal =
-        commandesFinales[0]?.type_commande || null;
-
-      const typesCommandes = [
-        ...new Set(
-          commandesFinales.map(
-            (commande) => commande.type_commande
-          )
-        ),
-      ];
-
-      if (typesCommandes.length > 1) {
-        Alert.alert(
-          "Erreur",
-          "Les commandes Vrac et Conditionné ne peuvent pas être mélangées."
-        );
-        return;
-      }
-
-      const visitorData = {
-        nom: nom?.trim() || null,
-        prenom: prenom?.trim() || null,
-        email: email?.trim() || null,
-        site: site?.trim() || null,
-        origine: origine || null,
-        indicatif: indicatif || null,
-        telephone: telephone?.trim() || null,
-        societe: societe?.trim() || null,
-        adresse_societe: adresseSociete?.trim() || null,
-        fonction: fonction?.trim() || null,
-        genre: genre?.trim() || null,
-        langue_communication: langueCommunication || null,
-        profile: profile || null,
-        type_commande: typeCommandeFinal,
-        commandes: commandesFinales,
-        nombre_commandes: commandesFinales.length,
-        qualification,
-      };
-
-      console.log("=======================================");
-      console.log("📤 ENVOI VISITEUR + COMMANDES");
-      console.log("NOMBRE COMMANDES :", commandesFinales.length);
-      console.log(JSON.stringify(visitorData, null, 2));
-      console.log("=======================================");
-
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        throw new Error("Authentification requise");
-      }
-
-      const response = await fetch(
-        `${API_URL}/api/visiteurs`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(visitorData),
-        }
+      console.log(
+        "COMMANDE COURANTE :",
+        JSON.stringify(commandeCourante, null, 2)
       );
 
-      const data = await response.json();
+      if (commandeCourante) {
+        // Vérification uniquement si plusieurs commandes
+        // existent déjà avec un type différent.
+        if (commandesFinales.length > 0) {
+          const typeExistant =
+            commandesFinales[0]?.type_commande;
 
-      console.log("STATUS HTTP :", response.status);
-      console.log("RÉPONSE BACKEND :", data);
+          const nouveauType =
+            commandeCourante?.type_commande;
 
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
-          data.error ||
-          "Erreur serveur"
-        );
+          if (
+            typeExistant &&
+            nouveauType &&
+            typeExistant !== nouveauType
+          ) {
+            Alert.alert(
+              "Type de commande incompatible",
+              "Vous ne pouvez pas mélanger les commandes Vrac et Conditionné."
+            );
+            return;
+          }
+        }
+
+        commandesFinales.push(commandeCourante);
       }
+    }
 
-      console.log("=======================================");
-      console.log("✅ VISITEUR AJOUTÉ AVEC SUCCÈS");
-      console.log("VISITEUR ID :", data.id);
-      console.log("COMMANDES ENREGISTRÉES :", data.nombre_commandes);
-      console.log("=======================================");
+    // =====================================================
+    // TYPES DE COMMANDES
+    // =====================================================
 
-      router.push({
-        pathname: "/pdf",
-        params: {
-          id: String(data.id),
-        },
-      });
+    const typesCommandes = [
+      ...new Set(
+        commandesFinales
+          .map((commande) => commande?.type_commande)
+          .filter(Boolean)
+      ),
+    ];
 
-      // RESET VISITEUR
-      setNom("");
-      setPrenom("");
-      setTelephone("");
-      setEmail("");
-      setSite("");
-      setOrigine("");
-      setIndicatif("+216");
-      setSociete("");
-      setAdresseSociete("");
-      setFonction("");
-      setLangueCommunication("");
-      setGenre("");
-      setProfile("");
-      setTypeCommande("");
-      setCommandes([]);
-      setQualification(0);
-
-      resetCommandeFields();
-    } catch (error) {
-      console.error("=======================================");
-      console.error("❌ ERREUR POST :", error);
-      console.error("=======================================");
-
+    // Vérification uniquement lorsqu'il existe
+    // réellement plusieurs types.
+    if (typesCommandes.length > 1) {
       Alert.alert(
         "Erreur",
-        `Impossible d'ajouter le visiteur.\n\n${error.message}`
+        "Les commandes Vrac et Conditionné ne peuvent pas être mélangées."
+      );
+      return;
+    }
+
+    const typeCommandeFinal =
+      typesCommandes.length > 0
+        ? typesCommandes[0]
+        : null;
+
+    // =====================================================
+    // DONNÉES VISITEUR
+    // =====================================================
+
+    const visitorData = {
+      nom: nom?.trim() || null,
+      prenom: prenom?.trim() || null,
+      email: email?.trim() || null,
+      site: site?.trim() || null,
+      origine: origine || null,
+      indicatif: indicatif || null,
+      telephone: telephone?.trim() || null,
+      societe: societe?.trim() || null,
+      adresse_societe:
+        adresseSociete?.trim() || null,
+      fonction: fonction?.trim() || null,
+      genre: genre?.trim() || null,
+      langue_communication:
+        langueCommunication || null,
+      profile: profile || null,
+
+      // Commande totalement facultative
+      type_commande: typeCommandeFinal,
+
+      // Peut être vide
+      commandes: commandesFinales,
+
+      // 0 si aucune commande
+      nombre_commandes:
+        commandesFinales.length,
+
+      // Qualification facultative
+      qualification:
+        qualification || null,
+    };
+
+    // =====================================================
+    // DEBUG
+    // =====================================================
+
+    console.log("=======================================");
+    console.log("📤 ENVOI VISITEUR + COMMANDES");
+    console.log(
+      "TYPE COMMANDE FINAL :",
+      typeCommandeFinal || "AUCUN"
+    );
+    console.log(
+      "NOMBRE COMMANDES :",
+      commandesFinales.length
+    );
+    console.log(
+      JSON.stringify(visitorData, null, 2)
+    );
+    console.log("=======================================");
+
+    // =====================================================
+    // AUTHENTIFICATION
+    // =====================================================
+
+    const token =
+      await AsyncStorage.getItem("token");
+
+    if (!token) {
+      throw new Error(
+        "Authentification requise"
       );
     }
-  };
+
+    // =====================================================
+    // ENVOI BACKEND
+    // =====================================================
+
+    const response = await fetch(
+      `${API_URL}/api/visiteurs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(visitorData),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log(
+      "STATUS HTTP :",
+      response.status
+    );
+
+    console.log(
+      "RÉPONSE BACKEND :",
+      data
+    );
+
+    // =====================================================
+    // ERREUR BACKEND
+    // =====================================================
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message ||
+          data.error ||
+          "Erreur serveur"
+      );
+    }
+
+    // =====================================================
+    // SUCCÈS
+    // =====================================================
+
+    console.log("=======================================");
+    console.log(
+      "✅ VISITEUR AJOUTÉ AVEC SUCCÈS"
+    );
+    console.log(
+      "VISITEUR ID :",
+      data.id
+    );
+    console.log(
+      "COMMANDES ENREGISTRÉES :",
+      data.nombre_commandes ??
+        commandesFinales.length
+    );
+    console.log("=======================================");
+
+    // =====================================================
+    // OUVERTURE PDF
+    // =====================================================
+
+    router.push({
+      pathname: "/pdf",
+      params: {
+        id: String(data.id),
+      },
+    });
+
+    // =====================================================
+    // RESET VISITEUR
+    // =====================================================
+
+    setNom("");
+    setPrenom("");
+    setTelephone("");
+    setEmail("");
+    setSite("");
+    setOrigine("");
+    setIndicatif("+216");
+    setSociete("");
+    setAdresseSociete("");
+    setFonction("");
+    setLangueCommunication("");
+    setGenre("");
+    setProfile("");
+    setTypeCommande("");
+    setCommandes([]);
+    setQualification(0);
+
+    resetCommandeFields();
+
+  } catch (error) {
+    console.error(
+      "======================================="
+    );
+    console.error(
+      "❌ ERREUR POST :",
+      error
+    );
+    console.error(
+      "=======================================");
+
+    Alert.alert(
+      "Erreur",
+      `Impossible d'ajouter le visiteur.\n\n${
+        error?.message ||
+        "Erreur inconnue"
+      }`
+    );
+  }
+};
+
+
 
   // =====================================================
 // INTERFACE
