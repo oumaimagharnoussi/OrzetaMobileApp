@@ -2730,55 +2730,41 @@ app.get(
 // ============================================================
 
 app.get(
-  "/api/visiteurs/:id",
+  "/api/visiteurs/:id/pdf",
   authenticateToken,
   async (req, res) => {
+    let browser;
 
     try {
+      const id = Number(req.params.id);
 
-      const id =
-        Number(
-          req.params.id
-        );
-
-
-      if (
-        !Number.isInteger(id) ||
-        id <= 0
-      ) {
-
+      if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({
           success: false,
-          message:
-            "Identifiant visiteur invalide.",
+          message: "Identifiant visiteur invalide.",
         });
       }
 
-
-      const visitor =
-        await getVisitorById(id);
-
+      // ================================
+      // RÉCUPÉRER LE VISITEUR
+      // ================================
+      const visitor = await getVisitorById(id);
 
       if (!visitor) {
-
         return res.status(404).json({
           success: false,
-          message:
-            "Visiteur introuvable.",
+          message: "Visiteur introuvable.",
         });
       }
 
-
-      if (
-        !visitor.reference
-      ) {
-
-        const reference =
-          generateReference(
-            visitor.id,
-            visitor.type_commande
-          );
-
+      // ================================
+      // RÉFÉRENCE
+      // ================================
+      if (!visitor.reference) {
+        const reference = generateReference(
+          visitor.id,
+          visitor.type_commande
+        );
 
         await pool.execute(
           `
@@ -2792,57 +2778,110 @@ app.get(
           ]
         );
 
-
-        visitor.reference =
-          reference;
+        visitor.reference = reference;
       }
 
-
+      // ================================
+      // COMMANDES
+      // ================================
       const commandes =
-        await getCommandesByVisitorId(
-          id
+        await getCommandesByVisitorId(id);
+
+      visitor.commandes = commandes;
+
+      // ================================
+      // GÉNÉRER LE HTML DU VRAI PDF
+      // ================================
+      const htmlContent = await pdfHtml(visitor);
+
+      if (!htmlContent || !htmlContent.trim()) {
+        throw new Error(
+          "Le contenu HTML du PDF est vide."
         );
+      }
 
-
-      visitor.commandes =
-        commandes;
-
-
-      return res.status(200).json({
-        success: true,
-        data:
-          visitor,
-        visitor:
-          visitor,
+      // ================================
+      // PUPPETEER
+      // ================================
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+        ],
       });
+
+      const page = await browser.newPage();
+
+      await page.setContent(
+        htmlContent,
+        {
+          waitUntil: "networkidle0",
+        }
+      );
+
+      // ================================
+      // VRAI PDF
+      // ================================
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: {
+          top: "0",
+          right: "0",
+          bottom: "0",
+          left: "0",
+        },
+      });
+
+      await browser.close();
+      browser = null;
+
+      // ================================
+      // RETOURNER LE PDF
+      // ================================
+      res.setHeader(
+        "Content-Type",
+        "application/pdf"
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="OLIVED_${visitor.reference}.pdf"`
+      );
+
+      res.setHeader(
+        "Content-Length",
+        pdfBuffer.length
+      );
+
+      return res.send(pdfBuffer);
 
     } catch (error) {
 
       console.error(
-        "❌ GET VISITEUR :",
+        "❌ ERREUR GÉNÉRATION PDF :",
         error
       );
 
-
-      if (
-        error.message ===
-        "Visiteur introuvable."
-      ) {
-
-        return res.status(404).json({
-          success: false,
-          message:
-            error.message,
-        });
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (closeError) {
+          console.error(
+            "Erreur fermeture Puppeteer :",
+            closeError
+          );
+        }
       }
-
 
       return res.status(500).json({
         success: false,
         message:
-          "Erreur lors de la récupération du visiteur.",
-        error:
-          error.message,
+          "Erreur lors de la génération du PDF.",
+        error: error.message,
       });
     }
   }

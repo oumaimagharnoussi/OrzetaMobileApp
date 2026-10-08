@@ -1066,82 +1066,127 @@ export default function PDFScreen() {
   
       setGenerating(true);
   
-      // Générer le HTML complet avec le logo local
-      const content = await html();
-  
       console.log(
         "======================================="
       );
   
       console.log(
-        "GÉNÉRATION PDF LOCAL"
+        "OUVERTURE DU PDF"
       );
   
       console.log(
-        "Plateforme :",
-        Platform.OS
+        "======================================="
       );
   
+      // =========================================
+      // GÉNÉRER LE HTML DU DOCUMENT
+      // =========================================
+      const content = await html();
+  
+      if (
+        !content ||
+        !content.trim()
+      ) {
+        throw new Error(
+          "Le contenu du PDF est vide."
+        );
+      }
+  
       console.log(
-        "HTML :",
+        "HTML généré :",
         content.length,
         "caractères"
       );
   
-      console.log(
-        "======================================="
-      );
-  
-      if (!content || !content.trim()) {
-        throw new Error(
-          "Le contenu HTML du PDF est vide."
-        );
-      }
-  
+      // =========================================
+      // WEB
+      // =========================================
       if (Platform.OS === "web") {
-        // Sur Web : ouvrir la boîte d'impression
-        await Print.printAsync({
-          html: content,
-        });
-      } else {
-        // Sur Android / iOS :
-        // générer d'abord le fichier PDF
-        const file = await Print.printToFileAsync({
-          html: content,
-        });
   
-        console.log(
-          "PDF généré :",
-          file?.uri
-        );
+        // Créer une nouvelle page
+        const newWindow =
+          window.open(
+            "",
+            "_blank"
+          );
   
-        if (!file?.uri) {
+        if (!newWindow) {
           throw new Error(
-            "Le fichier PDF n'a pas pu être généré."
+            "Le navigateur a bloqué l'ouverture du nouvel onglet."
           );
         }
   
-        // Ouvrir l'impression du fichier PDF
-        await Print.printAsync({
-          uri: file.uri,
+        // Écrire le document OLIVED
+        newWindow.document.open();
+  
+        newWindow.document.write(
+          content
+        );
+  
+        newWindow.document.close();
+  
+        console.log(
+          "✅ PDF/document ouvert dans un nouvel onglet."
+        );
+  
+        return;
+      }
+  
+      // =========================================
+      // MOBILE
+      // =========================================
+      const Print =
+        require("expo-print");
+  
+      const file =
+        await Print.printToFileAsync({
+          html: content,
         });
+  
+      if (
+        !file?.uri
+      ) {
+        throw new Error(
+          "Impossible de générer le fichier PDF."
+        );
       }
   
       console.log(
-        "PDF généré/imprimé avec succès."
+        "PDF généré :",
+        file.uri
       );
+  
+      await Print.printAsync({
+        uri: file.uri,
+      });
+  
     } catch (error) {
+  
       console.error(
-        "ERREUR PDF :",
+        "❌ ERREUR PDF :",
         error
       );
   
-      Alert.alert(
-        "Erreur PDF",
-        error?.message ||
+      if (
+        Platform.OS === "web"
+      ) {
+  
+        window.alert(
+          error?.message ||
+          "Impossible d'ouvrir le PDF."
+        );
+  
+      } else {
+  
+        Alert.alert(
+          "Erreur PDF",
+          error?.message ||
           "Impossible de générer le PDF."
-      );
+        );
+      }
+  
     } finally {
+  
       setGenerating(false);
     }
   };
@@ -1248,10 +1293,8 @@ export default function PDFScreen() {
         );
       }
   
-      //const validationUrl = data.validationUrl;
-      const appPublicUrl = "https://orzetamobileapp.onrender.com";
-
-      const validationUrl = `${appPublicUrl}/validation/${token}`;
+      const validationUrl = data.validationUrl;
+      
       // ================================
       // MESSAGE POUR LE VALIDATEUR
       // ================================
