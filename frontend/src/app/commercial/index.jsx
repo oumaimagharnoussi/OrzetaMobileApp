@@ -38,7 +38,7 @@ export default function CommercialHome() {
       <TouchableOpacity
         style={styles.button}
         onPress={() =>
-          router.push("/commercial/visiteurs")
+          router.push("/commercial")
         }
       >
         <Text style={styles.buttonText}>

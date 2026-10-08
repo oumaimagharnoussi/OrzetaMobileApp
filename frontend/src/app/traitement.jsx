@@ -35,192 +35,124 @@ export default function Traitement() {
   // ENREGISTRER QUALIFICATION
   // ==========================================================
 
-  const handleEnregistrerQualification =
-    async () => {
-      console.log("");
-      console.log(
-        "================================="
+  const handleEnregistrerQualification = async () => {
+    console.log("");
+    console.log("=================================");
+    console.log("CLIC SUR ENREGISTRER");
+    console.log("=================================");
+  
+    console.log("ID :", id);
+    console.log("QUALIFICATION :", qualification);
+    console.log("TYPE QUALIFICATION :", typeof qualification);
+    console.log("API_URL :", API_URL);
+  
+    if (!id) {
+      Alert.alert(
+        "Erreur",
+        "Identifiant du visiteur introuvable."
       );
-      console.log(
-        "CLIC SUR ENREGISTRER"
+      return;
+    }
+  
+    if (qualification < 1 || qualification > 5) {
+      Alert.alert(
+        "Attention",
+        "Veuillez sélectionner une note de 1 à 5 étoiles."
       );
-      console.log(
-        "================================="
-      );
-
-      console.log(
-        "ID :",
-        id
-      );
-
-      console.log(
-        "QUALIFICATION :",
-        qualification
-      );
-
-      console.log(
-        "TYPE QUALIFICATION :",
-        typeof qualification
-      );
-
-      console.log(
-        "API_URL :",
-        API_URL
-      );
-
-      // ------------------------------------------------------
-      // Vérifier ID
-      // ------------------------------------------------------
-
-      if (!id) {
-        Alert.alert(
-          "Erreur",
-          "Identifiant du visiteur introuvable."
-        );
-
-        return;
-      }
-
-      // ------------------------------------------------------
-      // Vérifier qualification
-      // ------------------------------------------------------
-
-      if (
-        qualification < 1 ||
-        qualification > 5
-      ) {
-        Alert.alert(
-          "Attention",
-          "Veuillez sélectionner une note de 1 à 5 étoiles."
-        );
-
-        return;
-      }
-
+      return;
+    }
+  
+    try {
+      setSavingQualification(true);
+  
+      // URL PUT
+      const url =
+        `${API_URL}/api/visiteurs/${id}/qualification`;
+  
+      console.log("URL PUT :", url);
+  
+      // FETCH PUT
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          qualification: qualification,
+        }),
+      });
+  
+      console.log("=======================================");
+      console.log("STATUS HTTP :", response.status);
+  
+      const text = await response.text();
+  
+      console.log("RÉPONSE BACKEND :", text);
+  
+      let data;
+  
       try {
-        setSavingQualification(true);
-
-        // ----------------------------------------------------
-        // URL
-        // ----------------------------------------------------
-
-        const url =
-          `${API_URL}/api/visiteurs/${id}/qualification`;
-
-        console.log(
-          "URL PUT :",
-          url
-        );
-
-        // ----------------------------------------------------
-        // FETCH
-        // ----------------------------------------------------
-
-        const response =
-          await fetch(
-            url,
-            {
-              method: "PUT",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body: JSON.stringify({
-                qualification:
-                  Number(
-                    qualification
-                  ),
-              }),
-            }
-          );
-
-        console.log(
-          "STATUS HTTP :",
-          response.status
-        );
-
-        // ----------------------------------------------------
-        // Réponse serveur
-        // ----------------------------------------------------
-
-        const data =
-          await response.json();
-
-        console.log(
-          "RÉPONSE SERVEUR :",
-          data
-        );
-
-        // ----------------------------------------------------
-        // Vérification
-        // ----------------------------------------------------
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          throw new Error(
-            data.message ||
-              "Impossible d'enregistrer la qualification."
-          );
-        }
-
-        console.log(
-          "================================="
-        );
-
-        console.log(
-          "✅ QUALIFICATION ENREGISTRÉE"
-        );
-
-        console.log(
-          "ID :",
-          data.data?.id
-        );
-
-        console.log(
-          "Qualification DB :",
-          data.data?.qualification
-        );
-
-        console.log(
-          "================================="
-        );
-
-        Alert.alert(
-          "Succès",
-          `Qualification ${qualification}/5 enregistrée avec succès.`
-        );
-
+        data = JSON.parse(text);
       } catch (error) {
         console.error(
-          "================================="
+          "❌ Réponse backend non JSON :",
+          text
         );
-
-        console.error(
-          "❌ ERREUR ENREGISTREMENT QUALIFICATION"
+  
+        throw new Error(
+          "Le serveur a retourné une réponse invalide."
         );
-
-        console.error(
-          error
-        );
-
-        console.error(
-          "================================="
-        );
-
-        Alert.alert(
-          "Erreur",
-          error.message ||
+      }
+  
+      console.log("RÉPONSE SERVEUR :", data);
+  
+      // Vérification
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message ||
             "Impossible d'enregistrer la qualification."
         );
-
-      } finally {
-        setSavingQualification(false);
       }
-    };
+  
+      console.log("=================================");
+      console.log("✅ QUALIFICATION ENREGISTRÉE");
+      console.log("ID :", data.data?.id);
+      console.log(
+        "Qualification DB :",
+        data.data?.qualification
+      );
+      console.log("=================================");
+  
+      Alert.alert(
+        "Succès",
+        `Qualification ${qualification}/5 enregistrée avec succès.`
+      );
+  
+    } catch (error) {
+      console.error(
+        "================================="
+      );
+  
+      console.error(
+        "❌ ERREUR ENREGISTREMENT QUALIFICATION"
+      );
+  
+      console.error(error);
+  
+      console.error(
+        "================================="
+      );
+  
+      Alert.alert(
+        "Erreur",
+        error.message ||
+          "Impossible d'enregistrer la qualification."
+      );
+  
+    } finally {
+      setSavingQualification(false);
+    }
+  };
 
   // ==========================================================
   // RENDER

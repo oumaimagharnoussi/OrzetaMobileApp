@@ -233,72 +233,107 @@ export default function PDFScreen() {
         console.log("CHARGEMENT VISITEUR");
         console.log("Visitor ID :", id);
         console.log("TYPE ID :", typeof id);
+        console.log("API_URL :", API_URL);
         console.log("=======================================");
-      
-        const token = await AsyncStorage.getItem("token");
-      
+  
+        const token =
+          await AsyncStorage.getItem("token");
+  
         console.log(
           "TOKEN PDF :",
           token ? "PRÉSENT" : "ABSENT"
         );
-      
+  
         if (!token) {
-          throw new Error("Token d'authentification introuvable.");
+          throw new Error(
+            "Token d'authentification introuvable."
+          );
         }
-      
-        const response = await fetch(
-          `${API_URL}/api/visiteurs/${encodeURIComponent(id)}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-      
-        const data = await response.json();
-      
+  
+        const visitorId = Array.isArray(id)
+  ? id[0]
+  : id;
+
+const url = `${API_URL}/api/visiteurs/${encodeURIComponent(visitorId)}`;
+
+console.log("=================================");
+console.log("🔵 API_URL :", API_URL);
+console.log("🔵 ID :", visitorId);
+console.log("🔵 URL APPELÉE :", url);
+console.log("🔵 TOKEN :", token ? "PRÉSENT" : "ABSENT");
+console.log("=================================");
+
+const response = await fetch(url, {
+  method: "GET",
+  headers: {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+});
+  
         console.log(
           "GET VISITEUR STATUS :",
           response.status
         );
-      
+  
+        const responseText =
+          await response.text();
+  
+        console.log(
+          "GET VISITEUR RÉPONSE BRUTE :",
+          responseText.substring(0, 500)
+        );
+  
+        let data;
+  
+        try {
+          data = JSON.parse(responseText);
+        } catch (jsonError) {
+          throw new Error(
+            `Le serveur retourne une réponse HTML au lieu du JSON. HTTP ${response.status}`
+          );
+        }
+  
         console.log(
           "GET VISITEUR RESPONSE :",
           data
         );
-      
+  
         if (!response.ok) {
           throw new Error(
             data?.message ||
-              "Impossible de charger le visiteur."
+              `Impossible de charger le visiteur. HTTP ${response.status}`
           );
         }
-      
+  
         if (!data?.success) {
           throw new Error(
             data?.message ||
               "Le serveur n'a pas retourné les données du visiteur."
           );
         }
-      
+  
         const visitorData =
           data?.data ||
           data?.visitor ||
           data?.visiteur ||
           data;
-      
+  
+        console.log(
+          "✅ VISITEUR CHARGÉ :",
+          visitorData
+        );
+  
         if (active) {
           setVisiteur(visitorData);
         }
-      
+  
       } catch (error) {
         console.error(
           "ERREUR CHARGEMENT VISITEUR :",
           error
         );
-      
+  
         if (active) {
           Alert.alert(
             "Erreur",
@@ -306,8 +341,8 @@ export default function PDFScreen() {
               "Impossible de charger le visiteur."
           );
         }
-      
-} finally {
+  
+      } finally {
         if (active) {
           setLoading(false);
         }

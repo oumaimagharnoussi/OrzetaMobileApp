@@ -2724,7 +2724,53 @@ app.get(
   }
 );
 
+// ============================================================
+// GET VISITEUR PAR ID
+// ============================================================
+app.get(
+  "/api/visiteurs/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
 
+      console.log("GET VISITEUR ID :", id);
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Identifiant visiteur invalide.",
+        });
+      }
+
+      const visitor = await getVisitorById(id);
+      const commandes = await getCommandesByVisitorId(id);
+
+      visitor.commandes = commandes;
+
+      return res.status(200).json({
+        success: true,
+        data: visitor,
+      });
+
+    } catch (error) {
+      console.error("❌ ERREUR GET VISITEUR :", error);
+
+      if (error.message === "Visiteur introuvable.") {
+        return res.status(404).json({
+          success: false,
+          message: "Visiteur introuvable.",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Erreur lors du chargement du visiteur.",
+        error: error.message,
+      });
+    }
+  }
+);
 // ============================================================
 // GET VISITEUR PAR ID
 // ============================================================
