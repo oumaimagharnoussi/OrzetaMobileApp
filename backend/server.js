@@ -2373,98 +2373,80 @@ app.post(
       // INSERT VISITEUR
       // ========================================================
 
-      const [result] =
-        await connection.execute(
-          `
-          INSERT INTO visiteurs (
-            nom,
-            prenom,
-            email,
-            site,
-            origine,
-            indicatif,
-            telephone,
-            societe,
-            adresse_societe,
-            fonction,
-            genre,
-            langue_communication,
-            profile,
-            type_commande,
-            qualification,
-            commercial_id,
-
-            demande_echantillon,
-            adresse_echantillon,
-            personne_reception_echantillon,
-            tel_reception_echantillon
-          )
-
-          VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?
-          )
-          `,
-          [
-            nom || null,
-            prenom || null,
-            email || null,
-            site || null,
-            origine || null,
-            indicatif || null,
-            telephone || null,
-            societe || null,
-            adresse_societe || null,
-            fonction || null,
-            genre || null,
-            langue_communication || null,
-            profile || null,
-            type_commande || null,
-            qualification || null,
-            commercialId,
-
-            // ==================================================
-            // ÉCHANTILLON
-            // ==================================================
-
-            demande_echantillon === "oui" ||
-            demande_echantillon === 1 ||
-            demande_echantillon === true
-              ? 1
-              : 0,
-
-            (
-              demande_echantillon === "oui" ||
-              demande_echantillon === 1 ||
-              demande_echantillon === true
-            )
-              ? adresse_echantillon?.trim() || null
-              : null,
-
-            (
-              demande_echantillon === "oui" ||
-              demande_echantillon === 1 ||
-              demande_echantillon === true
-            )
-              ? personne_reception_echantillon?.trim() || null
-              : null,
-
-            (
-              demande_echantillon === "oui" ||
-              demande_echantillon === 1 ||
-              demande_echantillon === true
-            )
-              ? tel_reception_echantillon?.trim() || null
-              : null,
-          ]
-        );
-
-
-      const visiteurId =
-        result.insertId;
-
-
+      const [result] = await connection.execute(
+        `
+        INSERT INTO visiteurs (
+          nom,
+          prenom,
+          email,
+          site,
+          origine,
+          indicatif,
+          telephone,
+          societe,
+          adresse_societe,
+          fonction,
+          genre,
+          langue_communication,
+          profile,
+          type_commande,
+          qualification,
+          commercial_id,
+      
+          demande_echantillon,
+          adresse_echantillon,
+          personne_reception_echantillon,
+          tel_reception_echantillon
+        )
+      
+        VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?
+        )
+        `,
+        [
+          nom || null,
+          prenom || null,
+          email || null,
+          site || null,
+          origine || null,
+          indicatif || null,
+          telephone || null,
+          societe || null,
+          adresse_societe || null,
+          fonction || null,
+          genre || null,
+          langue_communication || null,
+          profile || null,
+          type_commande || null,
+          qualification || null,
+          commercialId,
+      
+          // ==================================================
+          // ÉCHANTILLON
+          // ==================================================
+      
+          demande_echantillon === "oui"
+            ? "oui"
+            : "non",
+      
+          demande_echantillon === "oui"
+            ? adresse_echantillon?.trim() || null
+            : null,
+      
+          demande_echantillon === "oui"
+            ? personne_reception_echantillon?.trim() || null
+            : null,
+      
+          demande_echantillon === "oui"
+            ? tel_reception_echantillon?.trim() || null
+            : null,
+        ]
+      );
+      
+      const visiteurId = result.insertId;
+      
       console.log(
         "✅ VISITEUR CRÉÉ ID :",
         visiteurId
