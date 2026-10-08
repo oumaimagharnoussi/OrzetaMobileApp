@@ -1248,9 +1248,10 @@ export default function PDFScreen() {
         );
       }
   
-      const validationUrl =
-        data.validationUrl;
-  
+      //const validationUrl = data.validationUrl;
+      const appPublicUrl = "https://orzetamobileapp.onrender.com";
+
+      const validationUrl = `${appPublicUrl}/validation/${token}`;
       // ================================
       // MESSAGE POUR LE VALIDATEUR
       // ================================
