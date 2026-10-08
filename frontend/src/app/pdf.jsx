@@ -1274,6 +1274,10 @@ const response = await fetch(url, {
       // ================================
   
 
+// ================================
+// CRÉER LA DEMANDE DE VALIDATION
+// ================================
+
 const response = await fetch(
   `${API_URL}/api/validation/create`,
   {
@@ -1336,7 +1340,7 @@ if (
 const token = data.token;
 
 const validationUrl =
-  `https://olived-app.vercel.app/validation/${token}`;
+  `https://orzetamobileapp.onrender.com/validation/${token}`;
 
 // ================================
 // MESSAGE POUR LE VALIDATEUR
