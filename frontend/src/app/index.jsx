@@ -1874,7 +1874,7 @@ const handleAjouter = async () => {
       genre: genre?.trim() || null,
       langue_communication:
         langueCommunication || null,
-      profile: profile || null,
+        profile: profile?.trim() || null,
     
       // Commande totalement facultative
       type_commande: typeCommandeFinal,

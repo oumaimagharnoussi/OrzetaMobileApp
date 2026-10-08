@@ -1328,10 +1328,10 @@ const response = await fetch(url, {
         );
       }
   
-      const validationUrl = data.validationUrl;
+      const validationUrl = `https://orzetamobileapp.onrender.com/validation/${token}`;
       
       // ================================
-      // MESSAGE POUR LE VALIDATEUR
+      // MESSAGE POUR LE VALIDATEUR   
       // ================================
   
       const message =
@@ -1343,7 +1343,7 @@ const response = await fetch(url, {
        `https://orzetamobileapp.onrender.com/validation/${token}`
   
       // ================================
-      // NUMÉRO DE VALIDATION
+      // NUMÉRO DE VALIDATION  
       // ================================
   
       const validationPhone =
