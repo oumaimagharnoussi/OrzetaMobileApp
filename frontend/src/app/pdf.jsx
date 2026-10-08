@@ -1336,7 +1336,7 @@ if (
 const token = data.token;
 
 const validationUrl =
-  `https://orzetamobileapp.onrender.com/validation/${token}`;
+  `https://olived-app.vercel.app/validation/${token}`;
 
 // ================================
 // MESSAGE POUR LE VALIDATEUR
