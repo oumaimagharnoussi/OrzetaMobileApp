@@ -1884,22 +1884,22 @@ const handleAjouter = async () => {
       // Ces données appartiennent au VISITEUR
       // =====================================================
       demande_echantillon:
-        demandeEchantillon === "oui" ? 1 : 0,
-    
-      adresse_echantillon:
-        demandeEchantillon === "oui"
-          ? adresseEchantillon?.trim() || null
-          : null,
-    
-      personne_reception_echantillon:
-        demandeEchantillon === "oui"
-          ? personneReceptionEchantillon?.trim() || null
-          : null,
-    
-      tel_reception_echantillon:
-        demandeEchantillon === "oui"
-          ? telReceptionEchantillon?.trim() || null
-          : null,
+  demandeEchantillon === "oui" ? "oui" : "non",
+
+adresse_echantillon:
+  demandeEchantillon === "oui"
+    ? adresseEchantillon?.trim() || null
+    : null,
+
+personne_reception_echantillon:
+  demandeEchantillon === "oui"
+    ? personneReceptionEchantillon?.trim() || null
+    : null,
+
+tel_reception_echantillon:
+  demandeEchantillon === "oui"
+    ? telReceptionEchantillon?.trim() || null
+    : null,
     
       // =====================================================
       // COMMANDES
