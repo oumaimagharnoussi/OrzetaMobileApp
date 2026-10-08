@@ -1340,7 +1340,7 @@ const response = await fetch(url, {
         `Référence : ${reference}\n\n` +
         `Veuillez consulter la fiche et choisir VALIDER ou REFUSER.\n\n` +
         `Lien de validation :\n` +
-        `${validationUrl}`;
+        `${process.env.APP_PUBLIC_URL}/validation/${token}`;
   
       // ================================
       // NUMÉRO DE VALIDATION
