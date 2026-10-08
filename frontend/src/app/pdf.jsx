@@ -1273,74 +1273,82 @@ const response = await fetch(url, {
       // CRÉER LA DEMANDE DE VALIDATION
       // ================================
   
-      const response = await fetch(
-        `${API_URL}/api/validation/create`,
-        {
-          method: "POST",
-  
-          headers: {
-            "Content-Type": "application/json",
-          },
-  
-          body: JSON.stringify({
-            visitorId: Number(visitorId),
-  
-            reference,
-  
-            channel,
-  
-            pdfHtml: content,
-          }),
-        }
-      );
-  
-      const data = await response.json();
-  
-      console.log(
-        "======================================="
-      );
-  
-      console.log(
-        "RÉPONSE VALIDATION"
-      );
-  
-      console.log(
-        "STATUS :",
-        response.status
-      );
-  
-      console.log(
-        "DATA :",
-        data
-      );
-  
-      console.log(
-        "======================================="
-      );
-  
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data?.message ||
-            "Impossible de créer le lien de validation."
-        );
-      }
-  
-      const validationUrl = `https://orzetamobileapp.onrender.com/validation/${token}`;
-      
-      // ================================
-      // MESSAGE POUR LE VALIDATEUR   
-      // ================================
-  
-      const message =
-        `Bonjour,\n\n` +
-        `Une fiche OLIVED est prête pour validation.\n\n` +
-        `Référence : ${reference}\n\n` +
-        `Veuillez consulter la fiche et choisir VALIDER ou REFUSER.\n\n` +
-        `Lien de validation :\n` +
-       `https://orzetamobileapp.onrender.com/validation/${token}`
+
+const response = await fetch(
+  `${API_URL}/api/validation/create`,
+  {
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json",
+    },
+
+    body: JSON.stringify({
+      visitorId: Number(visitorId),
+
+      reference,
+
+      channel,
+
+      pdfHtml: content,
+    }),
+  }
+);
+
+const data = await response.json();
+
+console.log(
+  "======================================="
+);
+
+console.log(
+  "RÉPONSE VALIDATION"
+);
+
+console.log(
+  "STATUS :",
+  response.status
+);
+
+console.log(
+  "DATA :",
+  data
+);
+
+console.log(
+  "======================================="
+);
+
+if (
+  !response.ok ||
+  !data.success
+) {
+  throw new Error(
+    data?.message ||
+      "Impossible de créer le lien de validation."
+  );
+}
+
+// ================================
+// LIEN PUBLIC DE VALIDATION
+// ================================
+
+const token = data.token;
+
+const validationUrl =
+  `https://orzetamobileapp.onrender.com/validation/${token}`;
+
+// ================================
+// MESSAGE POUR LE VALIDATEUR
+// ================================
+
+const message =
+  `Bonjour,\n\n` +
+  `Une fiche OLIVED est prête pour validation.\n\n` +
+  `Référence : ${reference || "—"}\n\n` +
+  `Veuillez consulter la fiche et choisir VALIDER ou REFUSER.\n\n` +
+  `Lien de validation :\n` +
+  `${validationUrl}`;
   
       // ================================
       // NUMÉRO DE VALIDATION  
