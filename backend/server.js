@@ -693,35 +693,26 @@ async function getCommandesByVisitorId(
 // PDF - PUPPETEER
 // ============================================================
 
-async function generatePdfFromHtml(
-  htmlContent
-) {
+
+async function generatePdfFromHtml(htmlContent) {
   let browser = null;
 
   try {
-    if (
-      !htmlContent ||
-      typeof htmlContent !== "string"
-    ) {
-      throw new Error(
-        "Contenu HTML du PDF manquant."
-      );
+    if (!htmlContent || typeof htmlContent !== "string") {
+      throw new Error("Contenu HTML du PDF manquant.");
     }
 
-    browser =
-      await puppeteer.launch({
-        headless: true,
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
 
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
-      });
-
-    const page =
-      await browser.newPage();
+    const page = await browser.newPage();
 
     await page.setViewport({
       width: 1280,
@@ -729,54 +720,51 @@ async function generatePdfFromHtml(
       deviceScaleFactor: 1,
     });
 
-    await page.setContent(
-      htmlContent,
-      {
-        waitUntil: "networkidle0",
-        timeout: 60000,
+    // Charger le HTML sans attendre la fin de toutes les connexions réseau.
+    await page.setContent(htmlContent, {
+      waitUntil: "load",
+      timeout: 30000,
+    });
+
+    await page.emulateMediaType("screen");
+
+    // Attendre les polices avant de produire le PDF.
+    await page.evaluate(async () => {
+      if (document.fonts) {
+        await document.fonts.ready;
       }
-    );
+    });
 
-    await page.emulateMediaType(
-      "screen"
-    );
+    const pdfData = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: {
+        top: "0",
+        right: "0",
+        bottom: "0",
+        left: "0",
+      },
+    });
 
-    const pdfData =
-      await page.pdf({
-        format: "A4",
-        printBackground: true,
-        preferCSSPageSize: true,
-
-        margin: {
-          top: "0",
-          right: "0",
-          bottom: "0",
-          left: "0",
-        },
-      });
-
-    const pdfBuffer =
-      Buffer.from(pdfData);
-
-    await browser.close();
-
-    browser = null;
-
-    return pdfBuffer;
+    return Buffer.from(pdfData);
 
   } catch (error) {
+    console.error("ERREUR GENERATION PDF :", error);
 
+    throw error;
+
+  } finally {
     if (browser) {
       try {
         await browser.close();
       } catch (closeError) {
         console.error(
+          "ERREUR FERMETURE CHROME :",
           closeError.message
         );
       }
     }
-
-    throw error;
   }
 }
 
@@ -804,27 +792,19 @@ function createEmailTransporter() {
     );
   }
 
-  return nodemailer.createTransport({
-    host:
-      process.env.SMTP_HOST ||
-      "smtp.hostinger.com",
-
-    port:
-      Number(
-        process.env.SMTP_PORT ||
-        465
-      ),
-
-    secure:
-      String(
-        process.env.SMTP_SECURE
-      ).toLowerCase() === "true",
-
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
+ 
+return nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.hostinger.com",
+  port: Number(process.env.SMTP_PORT || 465),
+  secure: Number(process.env.SMTP_PORT || 465) === 465,
+  auth: {
+    user: smtpUser,
+    pass: smtpPass,
+  },
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 20000,
+});
 }
 
 
