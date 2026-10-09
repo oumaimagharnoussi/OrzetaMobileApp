@@ -20,7 +20,9 @@ const puppeteer = require("puppeteer");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
+const dns = require("node:dns");
 
+dns.setDefaultResultOrder("ipv4first");
 // ============================================================
 // APP
 // ============================================================
@@ -705,14 +707,21 @@ async function generatePdfFromHtml(htmlContent) {
       typeof htmlContent !== "string" ||
       !htmlContent.trim()
     ) {
-      throw new Error("Contenu HTML du PDF manquant ou vide.");
+      throw new Error(
+        "Contenu HTML du PDF manquant ou vide."
+      );
     }
 
-    console.log("PDF : lancement de Chromium...");
+    console.log("========================================");
+    console.log("PDF : démarrage de la génération");
+    console.log("PDF : longueur HTML =", htmlContent.length);
+    console.log("========================================");
 
     // ==========================================
-    // 2. LANCER PUPPETEER
+    // 2. LANCER CHROMIUM
     // ==========================================
+    console.log("PDF : lancement de Chromium...");
+
     browser = await puppeteer.launch({
       headless: true,
       args: [
@@ -736,9 +745,27 @@ async function generatePdfFromHtml(htmlContent) {
     page.setDefaultTimeout(20000);
 
     // ==========================================
-    // 3. CHARGER LE HTML SANS ATTENDRE LE RÉSEAU
+    // 3. JOURNALISER LES ERREURS DE PAGE
     // ==========================================
-    console.log("PDF : chargement du HTML...");
+    page.on("pageerror", (error) => {
+      console.error(
+        "PDF : erreur JavaScript dans la page :",
+        error.message
+      );
+    });
+
+    page.on("requestfailed", (request) => {
+      console.warn(
+        "PDF : ressource inaccessible :",
+        request.url(),
+        request.failure()?.errorText || "Erreur inconnue"
+      );
+    });
+
+    // ==========================================
+    // 4. CHARGER LE HTML
+    // ==========================================
+    console.log("PDF : chargement HTML, délai maximal 20 s...");
 
     await page.setContent(htmlContent, {
       waitUntil: "domcontentloaded",
@@ -748,8 +775,10 @@ async function generatePdfFromHtml(htmlContent) {
     console.log("PDF : HTML chargé.");
 
     // ==========================================
-    // 4. ATTENDRE LES POLICES, AU MAXIMUM 5 SECONDES
+    // 5. ATTENDRE LES POLICES (MAXIMUM 5 S)
     // ==========================================
+    console.log("PDF : attente des polices...");
+
     await Promise.race([
       page.evaluate(async () => {
         if (document.fonts) {
@@ -759,10 +788,12 @@ async function generatePdfFromHtml(htmlContent) {
       new Promise((resolve) => setTimeout(resolve, 5000)),
     ]);
 
+    console.log("PDF : préparation terminée.");
+
     // ==========================================
-    // 5. GÉNÉRER LE PDF
+    // 6. GÉNÉRER LE PDF
     // ==========================================
-    console.log("PDF : génération du fichier...");
+    console.log("PDF : génération du fichier A4...");
 
     const pdfData = await page.pdf({
       format: "A4",
@@ -778,11 +809,13 @@ async function generatePdfFromHtml(htmlContent) {
     });
 
     if (!pdfData || pdfData.length === 0) {
-      throw new Error("Le PDF généré est vide.");
+      throw new Error(
+        "Puppeteer a généré un PDF vide."
+      );
     }
 
     console.log(
-      "PDF : génération terminée, taille :",
+      "PDF : génération réussie, taille =",
       pdfData.length,
       "octets"
     );
@@ -791,23 +824,28 @@ async function generatePdfFromHtml(htmlContent) {
 
   } catch (error) {
     console.error(
-      "ERREUR GENERATION PDF :",
-      error.stack || error.message
+      "========================================"
+    );
+    console.error("PDF : ÉCHEC DE GÉNÉRATION");
+    console.error("PDF : message =", error.message);
+    console.error(error.stack || error);
+    console.error(
+      "========================================"
     );
 
     throw error;
 
   } finally {
     // ==========================================
-    // 6. FERMER CHROMIUM
+    // 7. FERMER CHROMIUM
     // ==========================================
     if (browser) {
       try {
         await browser.close();
-        console.log("PDF : navigateur fermé.");
+        console.log("PDF : Chromium fermé.");
       } catch (closeError) {
         console.error(
-          "ERREUR FERMETURE CHROME :",
+          "PDF : erreur fermeture Chromium :",
           closeError.message
         );
       }
@@ -1766,344 +1804,339 @@ app.get(
 // VALIDER PDF
 // ============================================================
 
-app.post(
-  "/api/validation/:token/validate",
-  async (req, res) => {
+// ============================================================
+// VALIDER UNE FICHE OLIVED
+// ============================================================
 
-    try {
+app.post("/api/validation/:token/validate", async (req, res) => {
+  let validation;
 
-      const { token } =
-        req.params;
+  try {
+    console.log("[VALIDATION] Début");
 
+    const { token } = req.params;
 
-      console.log(
-        "======================================="
+    // 1. Vérifier le token
+    if (!token || !/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({
+        success: false,
+        message: "Token de validation invalide.",
+      });
+    }
+
+    // 2. Récupérer la demande
+    const [rows] = await pool.query(
+      `
+        SELECT
+          id,
+          visitor_id,
+          reference,
+          channel,
+          status,
+          expires_at
+        FROM pdf_validations
+        WHERE token = ?
+        LIMIT 1
+      `,
+      [token]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Demande de validation introuvable.",
+      });
+    }
+
+    validation = rows[0];
+
+    if (validation.status !== "pending") {
+      return res.status(409).json({
+        success: false,
+        message: "Cette fiche a déjà été traitée.",
+        status: validation.status,
+      });
+    }
+
+    if (
+      validation.expires_at &&
+      new Date(validation.expires_at).getTime() < Date.now()
+    ) {
+      return res.status(410).json({
+        success: false,
+        message: "Le lien de validation a expiré.",
+      });
+    }
+
+    if (!["email", "whatsapp"].includes(validation.channel)) {
+      return res.status(400).json({
+        success: false,
+        message: "Canal de notification invalide.",
+      });
+    }
+
+    console.log(
+      "[VALIDATION] Demande trouvée :",
+      validation.reference,
+      "| Canal :",
+      validation.channel
+    );
+
+    // 3. Récupérer le visiteur
+    const visiteur = await getVisitorById(validation.visitor_id);
+
+    if (!visiteur) {
+      return res.status(404).json({
+        success: false,
+        message: "Visiteur introuvable.",
+      });
+    }
+
+    const nomComplet =
+      `${visiteur.prenom || ""} ${visiteur.nom || ""}`.trim();
+
+    // 4. Enregistrer la décision avant toute notification.
+    // L'UPDATE conditionnel évite deux validations simultanées.
+    const [updateResult] = await pool.query(
+      `
+        UPDATE pdf_validations
+        SET
+          status = 'validated',
+          validated_at = NOW()
+        WHERE id = ?
+          AND status = 'pending'
+          AND (expires_at IS NULL OR expires_at >= NOW())
+      `,
+      [validation.id]
+    );
+
+    if (updateResult.affectedRows !== 1) {
+      const [currentRows] = await pool.query(
+        `
+          SELECT status, expires_at
+          FROM pdf_validations
+          WHERE id = ?
+          LIMIT 1
+        `,
+        [validation.id]
       );
 
-      console.log(
-        "VALIDATION PDF"
-      );
-
-      console.log(
-        "Token :",
-        token
-      );
-
-      console.log(
-        "======================================="
-      );
-
-
-      const [rows] =
-        await pool.query(
-          `
-            SELECT *
-            FROM pdf_validations
-            WHERE token = ?
-            LIMIT 1
-          `,
-          [token]
-        );
-
-
-      if (!rows.length) {
-
-        return res.status(404).json({
-          success: false,
-          message:
-            "Demande de validation introuvable.",
-        });
-      }
-
-
-      const validation =
-        rows[0];
-
+      const current = currentRows[0];
 
       if (
-        validation.status !==
-        "pending"
+        current?.expires_at &&
+        new Date(current.expires_at).getTime() < Date.now()
       ) {
-
-        return res.status(400).json({
-          success: false,
-          message:
-            "Cette fiche a déjà été traitée.",
-          status:
-            validation.status,
-        });
-      }
-
-
-      if (
-        validation.expires_at &&
-        new Date(
-          validation.expires_at
-        ) < new Date()
-      ) {
-
         return res.status(410).json({
           success: false,
-          message:
-            "Le lien de validation a expiré.",
+          message: "Le lien de validation a expiré.",
         });
       }
 
+      return res.status(409).json({
+        success: false,
+        message: "Cette fiche a déjà été traitée.",
+        status: current?.status || "inconnu",
+      });
+    }
 
-      const visiteur =
-        await getVisitorById(
-          validation.visitor_id
-        );
+    console.log(
+      "[VALIDATION] Décision enregistrée :",
+      validation.reference
+    );
 
+    // 5. Préparer les informations de notification
+    const message =
+      `Dear ${nomComplet || "Customer"},\n\n` +
+      `Please find the OLIVED offer for your review.\n\n` +
+      `Reference: ${validation.reference}\n\n` +
+      `Best regards,\nOLIVED`;
 
-      const nomComplet =
-        `${visiteur.prenom || ""} ${visiteur.nom || ""}`
-          .trim();
+    let whatsappUrl = null;
 
+    if (validation.channel === "whatsapp") {
+      const telephone =
+        visiteur.telephone ||
+        visiteur.phone ||
+        visiteur.whatsapp;
+
+      if (!telephone) {
+        return res.json({
+          success: true,
+          status: "validated",
+          reference: validation.reference,
+          channel: "whatsapp",
+          notificationSent: false,
+          notificationError:
+            "Fiche validée, mais le numéro WhatsApp du visiteur est manquant.",
+          whatsappUrl: null,
+          message:
+            "La fiche est validée, mais aucun numéro WhatsApp n'est disponible.",
+        });
+      }
+
+      let phone = String(telephone).replace(/\D/g, "");
+
+      if (phone.startsWith("00")) {
+        phone = phone.substring(2);
+      }
+
+      // Numéro tunisien local à 8 chiffres
+      if (/^[234579]\d{7}$/.test(phone)) {
+        phone = "216" + phone;
+      }
+
+      // Vérification minimale du numéro international
+      if (phone.length < 8 || phone.length > 15) {
+        return res.json({
+          success: true,
+          status: "validated",
+          reference: validation.reference,
+          channel: "whatsapp",
+          notificationSent: false,
+          notificationError: "Le numéro WhatsApp semble invalide.",
+          whatsappUrl: null,
+          message: "Fiche validée, mais le numéro WhatsApp est invalide.",
+        });
+      }
+
+      whatsappUrl =
+        `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
       console.log(
-        "Visiteur :",
-        nomComplet
+        "[VALIDATION] Lien WhatsApp préparé :",
+        validation.reference
       );
 
-      console.log(
-        "Canal :",
-        validation.channel
-      );
+      // WhatsApp n'envoie pas automatiquement le message ni le PDF.
+      return res.json({
+        success: true,
+        message:
+          "Fiche validée. Ouvrez WhatsApp pour poursuivre l'envoi.",
+        status: "validated",
+        reference: validation.reference,
+        channel: "whatsapp",
+        notificationSent: false,
+        notificationError: null,
+        whatsappUrl,
+      });
+    }
 
+    // 6. Répondre immédiatement pour éviter que Puppeteer ou SMTP
+    // ne bloque la requête HTTP jusqu'à un 502.
+    res.status(200).json({
+      success: true,
+      message:
+        "Fiche validée. L'envoi de l'e-mail est en cours.",
+      status: "validated",
+      reference: validation.reference,
+      channel: "email",
+      notificationSent: false,
+      notificationStatus: "processing",
+      notificationError: null,
+      whatsappUrl: null,
+    });
 
-      const pdfBuffer =
-        await generatePdfFromHtml(
-          validation.pdf_html
+    // 7. Générer le PDF et envoyer l'e-mail en arrière-plan.
+    // Les erreurs sont consignées dans les logs Render.
+    void (async () => {
+      try {
+        console.log(
+          "[EMAIL] Début du traitement :",
+          validation.reference
         );
 
-
-      // ========================================================
-      // EMAIL
-      // ========================================================
-
-      if (
-        validation.channel ===
-        "email"
-      ) {
-
-        const recipient =
-          visiteur.email;
-
-
-        if (!recipient) {
-
-          return res.status(400).json({
-            success: false,
-            message:
-              "L'adresse email du visiteur est manquante.",
-          });
+        if (!visiteur.email) {
+          throw new Error(
+            "L'adresse e-mail du visiteur est manquante."
+          );
         }
 
+        const [htmlRows] = await pool.query(
+          `
+            SELECT pdf_html
+            FROM pdf_validations
+            WHERE id = ?
+            LIMIT 1
+          `,
+          [validation.id]
+        );
 
-        const transporter =
-          createEmailTransporter();
+        if (!htmlRows.length || !htmlRows[0].pdf_html) {
+          throw new Error(
+            "Le contenu HTML de la fiche est introuvable."
+          );
+        }
 
+        console.log(
+          "[EMAIL] Génération du PDF :",
+          validation.reference
+        );
 
-        await transporter.sendMail({
+        const pdfBuffer = await generatePdfFromHtml(
+          htmlRows[0].pdf_html
+        );
 
-          from:
-            process.env.EMAIL_FROM ||
-            process.env.SMTP_USER,
+        if (!pdfBuffer || !pdfBuffer.length) {
+          throw new Error("Le PDF généré est vide.");
+        }
 
-          to:
-            recipient,
+        console.log(
+          "[EMAIL] PDF généré, envoi en cours :",
+          validation.reference
+        );
 
+        const transporter = createEmailTransporter();
+
+        const info = await transporter.sendMail({
+          from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+          to: visiteur.email,
           subject:
             `Official Price Offer OLIVED - ${validation.reference}`,
-
           text:
-            `Dear ${nomComplet},\n\n` +
-
-            `I hope you are doing well.\n\n` +
-
-            `Please find attached our quotation for the requested olive oil products.\n` +
-
-            `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
-
-            `Please do not hesitate to contact us should you need any further information or clarification.\n` +
-
-            `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-
+            `Dear ${nomComplet || "Customer"},\n\n` +
+            `Please find attached our quotation for the requested olive oil products.\n\n` +
             `Reference: ${validation.reference}\n\n` +
-
-            `Best regards,\n` +
-
-            `OLIVED`,
-
+            `Best regards,\nOLIVED`,
           attachments: [
             {
-              filename:
-                `visiteur-${validation.visitor_id}-${validation.reference}.pdf`,
-
-              content:
-                pdfBuffer,
-
-              contentType:
-                "application/pdf",
+              filename: `OLIVED_${validation.reference}.pdf`,
+              content: pdfBuffer,
+              contentType: "application/pdf",
             },
           ],
         });
 
-
         console.log(
-          "EMAIL ENVOYÉ AVEC SUCCÈS"
-        );
-      }
-
-
-      // ========================================================
-      // WHATSAPP SANS META
-      // ========================================================
-
-      let whatsappUrl =
-        null;
-
-
-      if (
-        validation.channel ===
-        "whatsapp"
-      ) {
-
-        const telephone =
-          visiteur.telephone ||
-          visiteur.phone ||
-          visiteur.whatsapp;
-
-
-        if (!telephone) {
-
-          return res.status(400).json({
-            success: false,
-            message:
-              "Le numéro WhatsApp du visiteur est manquant.",
-          });
-        }
-
-
-        let phone =
-          String(telephone)
-            .replace(/\D/g, "");
-
-
-        if (
-          phone.startsWith("00")
-        ) {
-
-          phone =
-            phone.substring(2);
-        }
-
-
-        if (
-          (
-            phone.startsWith("2") ||
-            phone.startsWith("5") ||
-            phone.startsWith("9")
-          ) &&
-          phone.length === 8
-        ) {
-
-          phone =
-            "216" + phone;
-        }
-
-
-        const message =
-          `Dear ${nomComplet},\n\n` +
-
-          `I hope you are doing well.\n\n` +
-
-          `Please find attached our quotation for the requested olive oil products.\n` +
-
-          `The offer includes the product specifications, packaging options, quantities, and corresponding prices. Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n` +
-
-          `Please do not hesitate to contact us should you need any further information or clarification.\n` +
-
-          `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-
-          `Reference: ${validation.reference}\n\n` +
-
-          `Best regards,\n` +
-
-          `OLIVED`;
-
-
-        whatsappUrl =
-          `https://wa.me/${phone}?text=${encodeURIComponent(
-            message
-          )}`;
-
-
-        console.log(
-          "WHATSAPP URL :",
-          whatsappUrl
-        );
-      }
-
-
-      // ========================================================
-      // UPDATE VALIDATION
-      // ========================================================
-
-      await pool.query(
-        `
-          UPDATE pdf_validations
-          SET
-            status = 'validated',
-            validated_at = NOW()
-          WHERE token = ?
-        `,
-        [token]
-      );
-
-
-      console.log(
-        "VALIDATION ENREGISTRÉE EN BASE"
-      );
-
-
-      return res.json({
-        success: true,
-        message:
-          "Validation effectuée avec succès.",
-        reference:
+          "[EMAIL] E-mail envoyé :",
           validation.reference,
-        whatsappUrl,
-      });
+          "| Message ID :",
+          info.messageId
+        );
+      } catch (emailError) {
+        console.error(
+          "[EMAIL] ÉCHEC pour",
+          validation?.reference,
+          ":",
+          emailError.stack || emailError.message
+        );
+      }
+    })();
+  } catch (error) {
+    console.error(
+      "[VALIDATION] ERREUR :",
+      error.stack || error.message
+    );
 
-    } catch (error) {
-
-      console.error(
-        "======================================="
-      );
-
-      console.error(
-        "ERREUR VALIDATION :",
-        error
-      );
-
-      console.error(
-        "======================================="
-      );
-
-
+    if (!res.headersSent) {
       return res.status(500).json({
         success: false,
-        message:
-          "Erreur lors de la validation et de l'envoi.",
-        error:
-          error.message,
+        message: "Erreur lors de la validation de la fiche.",
+        error: error.message,
       });
     }
   }
-);
-
+});
 
 // ============================================================
 // REFUSER PDF
