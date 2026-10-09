@@ -1209,595 +1209,481 @@ app.post(
 // PAGE VALIDATION PDF
 // ============================================================
 
-app.get(
-  "/validation/:token",
-  async (req, res) => {
 
-    try {
+app.get("/validation/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
 
-      const { token } =
-        req.params;
+    console.log("=======================================");
+    console.log("OUVERTURE LIEN VALIDATION");
+    console.log("=======================================");
 
-
-      console.log(
-        "======================================="
-      );
-
-      console.log(
-        "OUVERTURE LIEN VALIDATION"
-      );
-
-      console.log(
-        "Token :",
-        token
-      );
-
-      console.log(
-        "======================================="
-      );
-
-
-      const [rows] =
-        await pool.query(
-          `
-            SELECT
-              id,
-              visitor_id,
-              reference,
-              channel,
-              pdf_html,
-              status,
-              expires_at
-            FROM pdf_validations
-            WHERE token = ?
-            LIMIT 1
-          `,
-          [token]
-        );
-
-
-      if (!rows.length) {
-
-        return res.status(404).send(`
-          <!DOCTYPE html>
-          <html lang="fr">
-          <head>
-            <meta charset="UTF-8">
-            <title>Validation OLIVED</title>
-          </head>
-
-          <body style="
-            margin:0;
-            padding:40px;
-            font-family:Arial,sans-serif;
-            text-align:center;
-            background:#f5f5f5;
-          ">
-
-            <h1>
-              Lien invalide
-            </h1>
-
-            <p>
-              Le lien de validation n'existe pas.
-            </p>
-
-          </body>
-          </html>
-        `);
-      }
-
-
-      const validation =
-        rows[0];
-
-
-      if (
-        validation.expires_at &&
-        new Date(
-          validation.expires_at
-        ) < new Date()
-      ) {
-
-        return res.status(410).send(`
-          <!DOCTYPE html>
-          <html lang="fr">
-          <head>
-            <meta charset="UTF-8">
-            <title>Validation OLIVED</title>
-          </head>
-
-          <body style="
-            margin:0;
-            padding:40px;
-            font-family:Arial,sans-serif;
-            text-align:center;
-            background:#f5f5f5;
-          ">
-
-            <h1>
-              Lien expiré
-            </h1>
-
-            <p>
-              Ce lien de validation a expiré.
-            </p>
-
-          </body>
-          </html>
-        `);
-      }
-
-
-      const pdfBuffer =
-        await generatePdfFromHtml(
-          validation.pdf_html
-        );
-
-
-      res.setHeader(
-        "Content-Type",
-        "text/html; charset=utf-8"
-      );
-
-
-      const pdfBase64 =
-        pdfBuffer.toString(
-          "base64"
-        );
-
-
-      const isPending =
-        validation.status === "pending";
-
-
-      return res.send(`
+    // 1. Vérifier le format du token
+    if (!token || !/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).send(`
         <!DOCTYPE html>
-
         <html lang="fr">
-
         <head>
-
           <meta charset="UTF-8">
-
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-          >
-
-          <title>
-            Validation PDF OLIVED -
-            ${validation.reference}
-          </title>
-
-          <style>
-
-            * {
-              box-sizing: border-box;
-            }
-
-            html,
-            body {
-              margin: 0;
-              padding: 0;
-              width: 100%;
-              height: 100%;
-            }
-
-            body {
-              font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
-
-              background: #eeeeee;
-
-              display: flex;
-              flex-direction: column;
-
-              min-height: 100vh;
-            }
-
-            .header {
-              background: white;
-
-              padding: 18px 25px;
-
-              border-bottom:
-                1px solid #ddd;
-
-              display: flex;
-
-              justify-content:
-                space-between;
-
-              align-items: center;
-
-              gap: 20px;
-
-              flex-wrap: wrap;
-            }
-
-            .title {
-              font-size: 20px;
-
-              font-weight: 700;
-
-              color: #222;
-            }
-
-            .reference {
-              font-size: 14px;
-
-              color: #666;
-            }
-
-            .pdf-container {
-              flex: 1;
-
-              padding: 20px;
-
-              display: flex;
-
-              justify-content: center;
-
-              min-height: 0;
-            }
-
-            .pdf-frame {
-              width: 100%;
-
-              max-width: 1200px;
-
-              height:
-                calc(100vh - 150px);
-
-              min-height: 600px;
-
-              border: none;
-
-              background: white;
-
-              box-shadow:
-                0 2px 15px
-                rgba(0,0,0,0.15);
-
-              border-radius: 6px;
-            }
-
-            .actions {
-              background: white;
-
-              padding: 18px 25px;
-
-              border-top:
-                1px solid #ddd;
-
-              display: flex;
-
-              justify-content: center;
-
-              gap: 20px;
-
-              position: sticky;
-
-              bottom: 0;
-
-              z-index: 100;
-            }
-
-            button {
-              border: none;
-
-              padding:
-                14px 45px;
-
-              border-radius: 7px;
-
-              font-size: 16px;
-
-              font-weight: 700;
-
-              cursor: pointer;
-
-              min-width: 180px;
-            }
-
-            .validate {
-              background: #198754;
-
-              color: white;
-            }
-
-            .validate:hover {
-              background: #157347;
-            }
-
-            .reject {
-              background: #dc3545;
-
-              color: white;
-            }
-
-            .reject:hover {
-              background: #bb2d3b;
-            }
-
-            .status {
-              text-align: center;
-
-              padding: 15px;
-
-              font-weight: 700;
-
-              background: #fff3cd;
-
-              color: #856404;
-            }
-
-            @media(max-width:700px) {
-
-              .pdf-container {
-                padding: 5px;
-              }
-
-              .pdf-frame {
-                height:
-                  calc(100vh - 190px);
-
-                min-height: 500px;
-              }
-
-              .actions {
-                flex-direction: column;
-              }
-
-              button {
-                width: 100%;
-              }
-
-            }
-
-          </style>
-
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Lien invalide - OLIVED</title>
         </head>
-
-
-        <body>
-
-          <div class="header">
-
-            <div class="title">
-              OLIVED - Validation de la fiche
-            </div>
-
-            <div class="reference">
-              Référence :
-              <strong>
-                ${validation.reference}
-              </strong>
-            </div>
-
-          </div>
-
-
-          ${
-            !isPending
-              ? `
-                <div class="status">
-
-                  Cette demande a déjà été
-
-                  ${
-                    validation.status === "validated"
-                      ? "VALIDÉE"
-                      : "REFUSÉE"
-                  }.
-
-                </div>
-              `
-              : ""
-          }
-
-
-          <div class="pdf-container">
-
-            <iframe
-              class="pdf-frame"
-              src="data:application/pdf;base64,${pdfBase64}"
-            ></iframe>
-
-          </div>
-
-
-          ${
-            isPending
-              ? `
-                <div class="actions">
-
-                  <button
-                    class="validate"
-                    onclick="valider()"
-                  >
-                    ✓ VALIDER
-                  </button>
-
-                  <button
-                    class="reject"
-                    onclick="refuser()"
-                  >
-                    ✕ REFUSER
-                  </button>
-
-                </div>
-              `
-              : ""
-          }
-
-
-          <script>
-
-            async function valider() {
-
-              const confirmation =
-                confirm(
-                  "Voulez-vous VALIDER cette fiche ?"
-                );
-
-              if (!confirmation) {
-                return;
-              }
-
-              try {
-
-                const response =
-                  await fetch(
-                    "/api/validation/${token}/validate",
-                    {
-                      method: "POST",
-
-                      headers: {
-                        "Content-Type":
-                          "application/json",
-                      },
-                    }
-                  );
-
-                const data =
-                  await response.json();
-
-                console.log(
-                  "RÉPONSE VALIDATION :",
-                  data
-                );
-
-                if (
-                  !response.ok ||
-                  !data.success
-                ) {
-
-                  alert(
-                    data.message ||
-                    "Erreur lors de la validation."
-                  );
-
-                  return;
-                }
-
-                if (
-                  data.whatsappUrl
-                ) {
-
-                  window.location.href =
-                    data.whatsappUrl;
-
-                  return;
-                }
-
-                alert(
-                  "✓ Fiche validée avec succès."
-                );
-
-                window.location.reload();
-
-              } catch (error) {
-
-                console.error(
-                  "ERREUR VALIDATION :",
-                  error
-                );
-
-                alert(
-                  "Erreur de connexion au serveur."
-                );
-              }
-            }
-
-
-            async function refuser() {
-
-              const confirmation =
-                confirm(
-                  "Voulez-vous REFUSER cette fiche ?"
-                );
-
-              if (!confirmation) {
-                return;
-              }
-
-              try {
-
-                const response =
-                  await fetch(
-                    "/api/validation/${token}/reject",
-                    {
-                      method: "POST",
-
-                      headers: {
-                        "Content-Type":
-                          "application/json",
-                      },
-                    }
-                  );
-
-                const data =
-                  await response.json();
-
-                if (
-                  !response.ok ||
-                  !data.success
-                ) {
-
-                  alert(
-                    data.message ||
-                    "Erreur lors du refus."
-                  );
-
-                  return;
-                }
-
-                alert(
-                  "La fiche a été refusée."
-                );
-
-                window.location.reload();
-
-              } catch (error) {
-
-                console.error(
-                  error
-                );
-
-                alert(
-                  "Erreur de connexion au serveur."
-                );
-              }
-            }
-
-          </script>
-
+        <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
+          <h1>Lien invalide</h1>
+          <p>Le lien de validation est invalide.</p>
         </body>
-
         </html>
       `);
+    }
 
-    } catch (error) {
+    // 2. Récupérer la demande de validation
+    const [rows] = await pool.query(
+      `
+        SELECT
+          id,
+          visitor_id,
+          reference,
+          channel,
+          pdf_html,
+          status,
+          expires_at
+        FROM pdf_validations
+        WHERE token = ?
+        LIMIT 1
+      `,
+      [token]
+    );
 
+    if (!rows.length) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>Lien invalide - OLIVED</title>
+        </head>
+        <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
+          <h1>Lien invalide</h1>
+          <p>Le lien de validation n'existe pas.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    const validation = rows[0];
+
+    // 3. Vérifier l'expiration
+    if (
+      validation.expires_at &&
+      new Date(validation.expires_at).getTime() < Date.now()
+    ) {
+      return res.status(410).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>Lien expiré - OLIVED</title>
+        </head>
+        <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
+          <h1>Lien expiré</h1>
+          <p>Ce lien de validation a expiré.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    // 4. Vérifier que le HTML de la fiche existe
+    if (
+      !validation.pdf_html ||
+      typeof validation.pdf_html !== "string"
+    ) {
       console.error(
-        "ERREUR PAGE VALIDATION :",
-        error
+        "[VALIDATION] HTML absent pour la demande :",
+        validation.id
       );
 
       return res.status(500).send(`
-        <h1>Erreur serveur</h1>
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>Fiche indisponible - OLIVED</title>
+        </head>
+        <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
+          <h1>Fiche indisponible</h1>
+          <p>Le contenu de cette fiche est introuvable.</p>
+        </body>
+        </html>
+      `);
+    }
 
-        <p>
-          Impossible d'afficher la fiche.
-        </p>
+    // 5. IMPORTANT :
+    // Ne pas appeler generatePdfFromHtml() ici.
+    // On affiche le HTML directement dans l'iframe.
+    const htmlBase64 = Buffer.from(
+      validation.pdf_html || "",
+      "utf8"
+    ).toString("base64");
+
+    const isPending = validation.status === "pending";
+
+    const reference = String(
+      validation.reference || "Non renseignée"
+    );
+
+    const statusLabel =
+      validation.status === "validated"
+        ? "VALIDÉE"
+        : validation.status === "rejected"
+          ? "REFUSÉE"
+          : validation.status;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+
+    console.log(
+      "[VALIDATION] Fiche affichée sans génération PDF :",
+      reference,
+      "| Canal :",
+      validation.channel
+    );
+
+    // 6. Afficher la page de validation
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        >
+
+        <title>Validation OLIVED - ${reference}</title>
+
+        <style>
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+          }
+
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #eeeeee;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+          }
+
+          .header {
+            background: white;
+            padding: 18px 25px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+          }
+
+          .title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #222;
+          }
+
+          .reference {
+            font-size: 14px;
+            color: #666;
+            overflow-wrap: anywhere;
+          }
+
+          .pdf-container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 0;
+          }
+
+          .pdf-frame {
+            width: 100%;
+            max-width: 1200px;
+            height: calc(100vh - 150px);
+            min-height: 600px;
+            border: none;
+            background: white;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.15);
+            border-radius: 6px;
+          }
+
+          .actions {
+            background: white;
+            padding: 18px 25px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            position: sticky;
+            bottom: 0;
+            z-index: 100;
+          }
+
+          button {
+            border: none;
+            padding: 14px 45px;
+            border-radius: 7px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            min-width: 180px;
+          }
+
+          button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+          }
+
+          .validate {
+            background: #198754;
+            color: white;
+          }
+
+          .validate:hover {
+            background: #157347;
+          }
+
+          .reject {
+            background: #dc3545;
+            color: white;
+          }
+
+          .reject:hover {
+            background: #bb2d3b;
+          }
+
+          .status {
+            text-align: center;
+            padding: 15px;
+            font-weight: 700;
+            background: #fff3cd;
+            color: #856404;
+          }
+
+          @media (max-width: 700px) {
+            .pdf-container {
+              padding: 5px;
+            }
+
+            .pdf-frame {
+              height: calc(100vh - 190px);
+              min-height: 500px;
+            }
+
+            .actions {
+              flex-direction: column;
+              padding: 12px;
+            }
+
+            button {
+              width: 100%;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="header">
+          <div class="title">
+            OLIVED - Validation de la fiche
+          </div>
+
+          <div class="reference">
+            Référence :
+            <strong>${reference}</strong>
+          </div>
+        </div>
+
+        ${
+          !isPending
+            ? `
+              <div class="status">
+                Cette demande a déjà été traitée :
+                ${statusLabel}.
+              </div>
+            `
+            : ""
+        }
+
+        <div class="pdf-container">
+          <iframe
+            class="pdf-frame"
+            src="data:text/html;charset=utf-8;base64,${htmlBase64}"
+            title="Fiche OLIVED à consulter"
+          ></iframe>
+        </div>
+
+        ${
+          isPending
+            ? `
+              <div class="actions">
+                <button
+                  id="btnValider"
+                  class="validate"
+                  onclick="valider()"
+                >
+                  ✓ VALIDER
+                </button>
+
+                <button
+                  id="btnRefuser"
+                  class="reject"
+                  onclick="refuser()"
+                >
+                  ✕ REFUSER
+                </button>
+              </div>
+            `
+            : ""
+        }
+
+        <script>
+          let traitementEnCours = false;
+
+          async function envoyerDecision(action) {
+            if (traitementEnCours) return;
+
+            const confirmation =
+              action === "validate"
+                ? "Voulez-vous VALIDER cette fiche ?"
+                : "Voulez-vous REFUSER cette fiche ?";
+
+            if (!confirm(confirmation)) return;
+
+            traitementEnCours = true;
+
+            const btnValider =
+              document.getElementById("btnValider");
+
+            const btnRefuser =
+              document.getElementById("btnRefuser");
+
+            if (btnValider) btnValider.disabled = true;
+            if (btnRefuser) btnRefuser.disabled = true;
+
+            try {
+              const response = await fetch(
+                "/api/validation/${token}/" + action,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json"
+                  }
+                }
+              );
+
+              const data = await response.json();
+
+              console.log("RÉPONSE SERVEUR :", data);
+
+              if (!response.ok || !data.success) {
+                alert(
+                  data.message ||
+                  "Impossible de traiter cette demande."
+                );
+
+                traitementEnCours = false;
+
+                if (btnValider) btnValider.disabled = false;
+                if (btnRefuser) btnRefuser.disabled = false;
+
+                return;
+              }
+
+              if (
+                action === "validate" &&
+                data.whatsappUrl
+              ) {
+                window.location.href = data.whatsappUrl;
+                return;
+              }
+
+              if (
+                action === "validate" &&
+                data.notificationError
+              ) {
+                alert(
+                  "La fiche est validée, mais la notification a échoué : " +
+                  data.notificationError
+                );
+              } else if (action === "validate") {
+                alert(
+                  data.notificationStatus === "processing"
+                    ? "Fiche validée. L'envoi de l'e-mail est en cours."
+                    : "Fiche validée avec succès."
+                );
+              } else {
+                alert("La fiche a été refusée.");
+              }
+
+              window.location.reload();
+            } catch (error) {
+              console.error("ERREUR DÉCISION :", error);
+
+              alert(
+                "Erreur de connexion au serveur. Consultez les logs Render."
+              );
+
+              traitementEnCours = false;
+
+              if (btnValider) btnValider.disabled = false;
+              if (btnRefuser) btnRefuser.disabled = false;
+            }
+          }
+
+          function valider() {
+            return envoyerDecision("validate");
+          }
+
+          function refuser() {
+            return envoyerDecision("reject");
+          }
+        </script>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error(
+      "ERREUR PAGE VALIDATION :",
+      error.stack || error.message
+    );
+
+    if (!res.headersSent) {
+      return res.status(500).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <title>Erreur serveur - OLIVED</title>
+        </head>
+        <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
+          <h1>Erreur serveur</h1>
+          <p>Impossible d'afficher la fiche.</p>
+          <p>Veuillez réessayer plus tard.</p>
+        </body>
+        </html>
       `);
     }
   }
-);
+});
 
 
 // ============================================================
