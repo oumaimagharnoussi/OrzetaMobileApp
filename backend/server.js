@@ -2823,12 +2823,11 @@ app.get(
 
       const page = await browser.newPage();
 
-      await page.setContent(
-        htmlContent,
-        {
-          waitUntil: "networkidle0",
-        }
-      );
+      
+await page.setContent(htmlContent, {
+  waitUntil: "domcontentloaded",
+  timeout: 30000,
+});
 
       // ================================
       // VRAI PDF
