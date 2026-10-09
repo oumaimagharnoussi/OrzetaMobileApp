@@ -721,10 +721,11 @@ async function generatePdfFromHtml(htmlContent) {
     });
 
     // Charger le HTML sans attendre la fin de toutes les connexions réseau.
-    await page.setContent(htmlContent, {
-      waitUntil: "load",
-      timeout: 30000,
-    });
+    
+await page.setContent(htmlContent, {
+  waitUntil: "domcontentloaded",
+  timeout: 30000,
+});
 
     await page.emulateMediaType("screen");
 
