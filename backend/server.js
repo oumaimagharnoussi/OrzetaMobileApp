@@ -715,14 +715,28 @@ async function generatePdfFromHtml(htmlContent) {
     console.log("========================================");
     console.log("PDF : démarrage de la génération");
     console.log("PDF : longueur HTML =", htmlContent.length);
+    console.log(
+      "PDF : environnement =",
+      process.env.NODE_ENV || "non défini"
+    );
     console.log("========================================");
 
     // ==========================================
-    // 2. LANCER CHROMIUM
+    // 2. LANCER CHROMIUM AVEC DIAGNOSTIC
     // ==========================================
     console.log("PDF : lancement de Chromium...");
+    console.log("PDF : vérification de Puppeteer...");
+    console.log(
+      "PDF : version Puppeteer =",
+      puppeteer?.version || "non disponible"
+    );
+    console.log(
+      "PDF : exécutable configuré =",
+      process.env.PUPPETEER_EXECUTABLE_PATH ||
+        "chemin par défaut de Puppeteer"
+    );
 
-    browser = await puppeteer.launch({
+    const launchOptions = {
       headless: true,
       args: [
         "--no-sandbox",
@@ -731,7 +745,29 @@ async function generatePdfFromHtml(htmlContent) {
         "--disable-gpu",
       ],
       timeout: 30000,
+      protocolTimeout: 60000,
+    };
+
+    console.log(
+      "PDF : options Chromium préparées."
+    );
+
+    browser = await puppeteer.launch(launchOptions);
+
+    console.log(
+      "PDF : Chromium lancé avec succès."
+    );
+
+    browser.on("disconnected", () => {
+      console.error(
+        "PDF : connexion à Chromium interrompue."
+      );
     });
+
+    // ==========================================
+    // 3. CRÉER LA PAGE
+    // ==========================================
+    console.log("PDF : création de la page...");
 
     const page = await browser.newPage();
 
@@ -745,7 +781,7 @@ async function generatePdfFromHtml(htmlContent) {
     page.setDefaultTimeout(20000);
 
     // ==========================================
-    // 3. JOURNALISER LES ERREURS DE PAGE
+    // 4. JOURNALISER LES ERREURS
     // ==========================================
     page.on("pageerror", (error) => {
       console.error(
@@ -758,14 +794,17 @@ async function generatePdfFromHtml(htmlContent) {
       console.warn(
         "PDF : ressource inaccessible :",
         request.url(),
-        request.failure()?.errorText || "Erreur inconnue"
+        request.failure()?.errorText ||
+          "Erreur inconnue"
       );
     });
 
     // ==========================================
-    // 4. CHARGER LE HTML
+    // 5. CHARGER LE HTML
     // ==========================================
-    console.log("PDF : chargement HTML, délai maximal 20 s...");
+    console.log(
+      "PDF : chargement HTML, délai maximal 20 s..."
+    );
 
     await page.setContent(htmlContent, {
       waitUntil: "domcontentloaded",
@@ -775,7 +814,7 @@ async function generatePdfFromHtml(htmlContent) {
     console.log("PDF : HTML chargé.");
 
     // ==========================================
-    // 5. ATTENDRE LES POLICES (MAXIMUM 5 S)
+    // 6. ATTENDRE LES POLICES
     // ==========================================
     console.log("PDF : attente des polices...");
 
@@ -785,13 +824,15 @@ async function generatePdfFromHtml(htmlContent) {
           await document.fonts.ready;
         }
       }),
-      new Promise((resolve) => setTimeout(resolve, 5000)),
+      new Promise((resolve) =>
+        setTimeout(resolve, 5000)
+      ),
     ]);
 
     console.log("PDF : préparation terminée.");
 
     // ==========================================
-    // 6. GÉNÉRER LE PDF
+    // 7. GÉNÉRER LE PDF A4
     // ==========================================
     console.log("PDF : génération du fichier A4...");
 
@@ -814,33 +855,34 @@ async function generatePdfFromHtml(htmlContent) {
       );
     }
 
+    const pdfBuffer = Buffer.from(pdfData);
+
     console.log(
       "PDF : génération réussie, taille =",
-      pdfData.length,
+      pdfBuffer.length,
       "octets"
     );
 
-    return Buffer.from(pdfData);
+    return pdfBuffer;
 
   } catch (error) {
-    console.error(
-      "========================================"
-    );
+    console.error("========================================");
     console.error("PDF : ÉCHEC DE GÉNÉRATION");
+    console.error("PDF : nom =", error.name);
     console.error("PDF : message =", error.message);
+    console.error("PDF : code =", error.code || "non défini");
     console.error(error.stack || error);
-    console.error(
-      "========================================"
-    );
+    console.error("========================================");
 
     throw error;
 
   } finally {
     // ==========================================
-    // 7. FERMER CHROMIUM
+    // 8. FERMER CHROMIUM
     // ==========================================
     if (browser) {
       try {
+        console.log("PDF : fermeture de Chromium...");
         await browser.close();
         console.log("PDF : Chromium fermé.");
       } catch (closeError) {
