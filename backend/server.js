@@ -1915,11 +1915,18 @@ app.post("/api/validation/:token/validate", async (req, res) => {
     );
 
     // 5. Préparer les informations de notification
+    
     const message =
-      `Dear ${nomComplet || "Customer"},\n\n` +
-      `Please find the OLIVED offer for your review.\n\n` +
-      `Reference: ${validation.reference}\n\n` +
-      `Best regards,\nOLIVED`;
+    `Dear ${nomComplet},\n\n` +
+    `I hope you are doing well.\n\n` +
+    `Please find attached our quotation for the requested olive oil products.\n\n` +
+    `The offer includes the product specifications, packaging options, quantities, and corresponding prices.\n\n` +
+    `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
+    `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
+    `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+    `Reference: ${reference}\n\n` +
+    `Best regards,\n` +
+    `OLIVED`;
 
     let whatsappUrl = null;
 
@@ -2063,10 +2070,16 @@ app.post("/api/validation/:token/validate", async (req, res) => {
           subject:
             `Official Price Offer OLIVED - ${validation.reference}`,
           text:
-            `Dear ${nomComplet || "Customer"},\n\n` +
-            `Please find attached our quotation for the requested olive oil products.\n\n` +
-            `Reference: ${validation.reference}\n\n` +
-            `Best regards,\nOLIVED`,
+          `Dear ${nomComplet},\n\n` +
+          `I hope you are doing well.\n\n` +
+          `Please find attached our quotation for the requested olive oil products.\n\n` +
+          `The offer includes the product specifications, packaging options, quantities, and corresponding prices.\n\n` +
+          `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
+          `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
+          `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+          `Reference: ${reference}\n\n` +
+          `Best regards,\n` +
+          `OLIVED`,
           attachments: [
             {
               filename: `OLIVED_${validation.reference}.pdf`,
