@@ -1210,6 +1210,30 @@ app.post(
 // ============================================================
 
 
+// ============================================================
+// FONCTION : ÉCHAPPER LES CARACTÈRES HTML
+// ============================================================
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+
+    return entities[char];
+  });
+}
+
+
+// ============================================================
+// PAGE DE VALIDATION DE LA FICHE OLIVED
+// IMPORTANT : AUCUN APPEL À PUPPETEER DANS CETTE ROUTE
+// ============================================================
+
 app.get("/validation/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -1254,17 +1278,19 @@ app.get("/validation/:token", async (req, res) => {
       [token]
     );
 
+    // 3. Vérifier que la demande existe
     if (!rows.length) {
       return res.status(404).send(`
         <!DOCTYPE html>
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
-          <title>Lien invalide - OLIVED</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Lien introuvable - OLIVED</title>
         </head>
         <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
-          <h1>Lien invalide</h1>
-          <p>Le lien de validation n'existe pas.</p>
+          <h1>Lien introuvable</h1>
+          <p>Cette demande de validation n'existe pas ou n'est plus disponible.</p>
         </body>
         </html>
       `);
@@ -1272,7 +1298,12 @@ app.get("/validation/:token", async (req, res) => {
 
     const validation = rows[0];
 
-    // 3. Vérifier l'expiration
+    console.log("[VALIDATION] ID :", validation.id);
+    console.log("[VALIDATION] Référence :", validation.reference);
+    console.log("[VALIDATION] Statut :", validation.status);
+    console.log("[VALIDATION] Canal :", validation.channel);
+
+    // 4. Vérifier l'expiration du lien
     if (
       validation.expires_at &&
       new Date(validation.expires_at).getTime() < Date.now()
@@ -1282,17 +1313,44 @@ app.get("/validation/:token", async (req, res) => {
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>Lien expiré - OLIVED</title>
         </head>
         <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
           <h1>Lien expiré</h1>
           <p>Ce lien de validation a expiré.</p>
+          <p>Veuillez demander un nouveau lien.</p>
         </body>
         </html>
       `);
     }
 
-    // 4. Vérifier que le HTML de la fiche existe
+    // 5. Vérifier le statut de la demande
+    const statutsAutorises = ["pending", "validated", "rejected"];
+
+    if (!statutsAutorises.includes(validation.status)) {
+      console.error(
+        "[VALIDATION] Statut inattendu :",
+        validation.status
+      );
+
+      return res.status(500).send(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Erreur de validation - OLIVED</title>
+        </head>
+        <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
+          <h1>Erreur de validation</h1>
+          <p>Le statut de cette demande est invalide.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    // 6. Vérifier la présence du HTML de la fiche
     if (
       !validation.pdf_html ||
       typeof validation.pdf_html !== "string"
@@ -1307,58 +1365,55 @@ app.get("/validation/:token", async (req, res) => {
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>Fiche indisponible - OLIVED</title>
         </head>
         <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
           <h1>Fiche indisponible</h1>
           <p>Le contenu de cette fiche est introuvable.</p>
+          <p>Veuillez contacter l'équipe OLIVED.</p>
         </body>
         </html>
       `);
     }
 
-    // 5. IMPORTANT :
-    // Ne pas appeler generatePdfFromHtml() ici.
-    // On affiche le HTML directement dans l'iframe.
-    const htmlBase64 = Buffer.from(
-      validation.pdf_html || "",
-      "utf8"
-    ).toString("base64");
+    // 7. Préparer les données affichées
+    const htmlBase64 = Buffer
+      .from(validation.pdf_html, "utf8")
+      .toString("base64");
 
-    const isPending = validation.status === "pending";
-
-    const reference = String(
+    const reference = escapeHtml(
       validation.reference || "Non renseignée"
     );
+
+    const isPending = validation.status === "pending";
 
     const statusLabel =
       validation.status === "validated"
         ? "VALIDÉE"
         : validation.status === "rejected"
           ? "REFUSÉE"
-          : validation.status;
+          : "EN ATTENTE";
 
+    // 8. En-têtes HTTP
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("X-Content-Type-Options", "nosniff");
 
     console.log(
       "[VALIDATION] Fiche affichée sans génération PDF :",
-      reference,
+      validation.reference || "Non renseignée",
       "| Canal :",
       validation.channel
     );
 
-    // 6. Afficher la page de validation
+    // 9. Afficher la page de validation
     return res.send(`
       <!DOCTYPE html>
       <html lang="fr">
       <head>
         <meta charset="UTF-8">
-
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0"
-        >
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
         <title>Validation OLIVED - ${reference}</title>
 
@@ -1384,9 +1439,9 @@ app.get("/validation/:token", async (req, res) => {
           }
 
           .header {
-            background: white;
+            background: #ffffff;
             padding: 18px 25px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #dddddd;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1397,12 +1452,12 @@ app.get("/validation/:token", async (req, res) => {
           .title {
             font-size: 20px;
             font-weight: 700;
-            color: #222;
+            color: #222222;
           }
 
           .reference {
             font-size: 14px;
-            color: #666;
+            color: #666666;
             overflow-wrap: anywhere;
           }
 
@@ -1420,15 +1475,15 @@ app.get("/validation/:token", async (req, res) => {
             height: calc(100vh - 150px);
             min-height: 600px;
             border: none;
-            background: white;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.15);
+            background: #ffffff;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.15);
             border-radius: 6px;
           }
 
           .actions {
-            background: white;
+            background: #ffffff;
             padding: 18px 25px;
-            border-top: 1px solid #ddd;
+            border-top: 1px solid #dddddd;
             display: flex;
             justify-content: center;
             gap: 20px;
@@ -1454,7 +1509,7 @@ app.get("/validation/:token", async (req, res) => {
 
           .validate {
             background: #198754;
-            color: white;
+            color: #ffffff;
           }
 
           .validate:hover {
@@ -1463,7 +1518,7 @@ app.get("/validation/:token", async (req, res) => {
 
           .reject {
             background: #dc3545;
-            color: white;
+            color: #ffffff;
           }
 
           .reject:hover {
@@ -1478,19 +1533,37 @@ app.get("/validation/:token", async (req, res) => {
             color: #856404;
           }
 
+          .error-message {
+            color: #842029;
+            background: #f8d7da;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            text-align: center;
+          }
+
           @media (max-width: 700px) {
+            .header {
+              padding: 15px;
+            }
+
+            .title {
+              font-size: 18px;
+            }
+
             .pdf-container {
               padding: 5px;
             }
 
             .pdf-frame {
-              height: calc(100vh - 190px);
-              min-height: 500px;
+              height: calc(100vh - 220px);
+              min-height: 450px;
             }
 
             .actions {
               flex-direction: column;
               padding: 12px;
+              gap: 10px;
             }
 
             button {
@@ -1501,7 +1574,7 @@ app.get("/validation/:token", async (req, res) => {
       </head>
 
       <body>
-        <div class="header">
+        <header class="header">
           <div class="title">
             OLIVED - Validation de la fiche
           </div>
@@ -1510,34 +1583,35 @@ app.get("/validation/:token", async (req, res) => {
             Référence :
             <strong>${reference}</strong>
           </div>
-        </div>
+        </header>
 
         ${
           !isPending
             ? `
               <div class="status">
-                Cette demande a déjà été traitée :
-                ${statusLabel}.
+                Cette demande a déjà été traitée : ${statusLabel}.
               </div>
             `
             : ""
         }
 
-        <div class="pdf-container">
+        <main class="pdf-container">
           <iframe
             class="pdf-frame"
             src="data:text/html;charset=utf-8;base64,${htmlBase64}"
             title="Fiche OLIVED à consulter"
+            sandbox="allow-same-origin"
           ></iframe>
-        </div>
+        </main>
 
         ${
           isPending
             ? `
-              <div class="actions">
+              <footer class="actions">
                 <button
                   id="btnValider"
                   class="validate"
+                  type="button"
                   onclick="valider()"
                 >
                   ✓ VALIDER
@@ -1546,11 +1620,12 @@ app.get("/validation/:token", async (req, res) => {
                 <button
                   id="btnRefuser"
                   class="reject"
+                  type="button"
                   onclick="refuser()"
                 >
                   ✕ REFUSER
                 </button>
-              </div>
+              </footer>
             `
             : ""
         }
@@ -1566,15 +1641,12 @@ app.get("/validation/:token", async (req, res) => {
                 ? "Voulez-vous VALIDER cette fiche ?"
                 : "Voulez-vous REFUSER cette fiche ?";
 
-            if (!confirm(confirmation)) return;
+            if (!window.confirm(confirmation)) return;
 
             traitementEnCours = true;
 
-            const btnValider =
-              document.getElementById("btnValider");
-
-            const btnRefuser =
-              document.getElementById("btnRefuser");
+            const btnValider = document.getElementById("btnValider");
+            const btnRefuser = document.getElementById("btnRefuser");
 
             if (btnValider) btnValider.disabled = true;
             if (btnRefuser) btnRefuser.disabled = true;
@@ -1590,12 +1662,20 @@ app.get("/validation/:token", async (req, res) => {
                 }
               );
 
-              const data = await response.json();
+              let data;
+
+              try {
+                data = await response.json();
+              } catch {
+                throw new Error(
+                  "Le serveur a retourné une réponse invalide."
+                );
+              }
 
               console.log("RÉPONSE SERVEUR :", data);
 
               if (!response.ok || !data.success) {
-                alert(
+                window.alert(
                   data.message ||
                   "Impossible de traiter cette demande."
                 );
@@ -1620,25 +1700,27 @@ app.get("/validation/:token", async (req, res) => {
                 action === "validate" &&
                 data.notificationError
               ) {
-                alert(
+                window.alert(
                   "La fiche est validée, mais la notification a échoué : " +
                   data.notificationError
                 );
               } else if (action === "validate") {
-                alert(
+                window.alert(
                   data.notificationStatus === "processing"
                     ? "Fiche validée. L'envoi de l'e-mail est en cours."
                     : "Fiche validée avec succès."
                 );
               } else {
-                alert("La fiche a été refusée.");
+                window.alert("La fiche a été refusée.");
               }
 
               window.location.reload();
+
             } catch (error) {
               console.error("ERREUR DÉCISION :", error);
 
-              alert(
+              window.alert(
+                error.message ||
                 "Erreur de connexion au serveur. Consultez les logs Render."
               );
 
@@ -1660,6 +1742,7 @@ app.get("/validation/:token", async (req, res) => {
       </body>
       </html>
     `);
+
   } catch (error) {
     console.error(
       "ERREUR PAGE VALIDATION :",
@@ -1672,6 +1755,7 @@ app.get("/validation/:token", async (req, res) => {
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>Erreur serveur - OLIVED</title>
         </head>
         <body style="font-family:Arial,sans-serif;text-align:center;padding:40px">
@@ -1684,7 +1768,6 @@ app.get("/validation/:token", async (req, res) => {
     }
   }
 });
-
 
 // ============================================================
 // VALIDER PDF
