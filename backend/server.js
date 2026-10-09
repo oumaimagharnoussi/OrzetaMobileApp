@@ -689,19 +689,30 @@ async function getCommandesByVisitorId(
 }
 
 
+
 // ============================================================
 // PDF - PUPPETEER
 // ============================================================
-
 
 async function generatePdfFromHtml(htmlContent) {
   let browser = null;
 
   try {
-    if (!htmlContent || typeof htmlContent !== "string") {
-      throw new Error("Contenu HTML du PDF manquant.");
+    // ==========================================
+    // 1. VÉRIFIER LE CONTENU HTML
+    // ==========================================
+    if (
+      typeof htmlContent !== "string" ||
+      !htmlContent.trim()
+    ) {
+      throw new Error("Contenu HTML du PDF manquant ou vide.");
     }
 
+    console.log("PDF : lancement de Chromium...");
+
+    // ==========================================
+    // 2. LANCER PUPPETEER
+    // ==========================================
     browser = await puppeteer.launch({
       headless: true,
       args: [
@@ -710,6 +721,7 @@ async function generatePdfFromHtml(htmlContent) {
         "--disable-dev-shm-usage",
         "--disable-gpu",
       ],
+      timeout: 30000,
     });
 
     const page = await browser.newPage();
@@ -720,21 +732,37 @@ async function generatePdfFromHtml(htmlContent) {
       deviceScaleFactor: 1,
     });
 
-    // Charger le HTML sans attendre la fin de toutes les connexions réseau.
-    
-await page.setContent(htmlContent, {
-  waitUntil: "domcontentloaded",
-  timeout: 30000,
-});
+    page.setDefaultNavigationTimeout(20000);
+    page.setDefaultTimeout(20000);
 
-    await page.emulateMediaType("screen");
+    // ==========================================
+    // 3. CHARGER LE HTML SANS ATTENDRE LE RÉSEAU
+    // ==========================================
+    console.log("PDF : chargement du HTML...");
 
-    // Attendre les polices avant de produire le PDF.
-    await page.evaluate(async () => {
-      if (document.fonts) {
-        await document.fonts.ready;
-      }
+    await page.setContent(htmlContent, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
     });
+
+    console.log("PDF : HTML chargé.");
+
+    // ==========================================
+    // 4. ATTENDRE LES POLICES, AU MAXIMUM 5 SECONDES
+    // ==========================================
+    await Promise.race([
+      page.evaluate(async () => {
+        if (document.fonts) {
+          await document.fonts.ready;
+        }
+      }),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]);
+
+    // ==========================================
+    // 5. GÉNÉRER LE PDF
+    // ==========================================
+    console.log("PDF : génération du fichier...");
 
     const pdfData = await page.pdf({
       format: "A4",
@@ -746,19 +774,37 @@ await page.setContent(htmlContent, {
         bottom: "0",
         left: "0",
       },
+      timeout: 30000,
     });
+
+    if (!pdfData || pdfData.length === 0) {
+      throw new Error("Le PDF généré est vide.");
+    }
+
+    console.log(
+      "PDF : génération terminée, taille :",
+      pdfData.length,
+      "octets"
+    );
 
     return Buffer.from(pdfData);
 
   } catch (error) {
-    console.error("ERREUR GENERATION PDF :", error);
+    console.error(
+      "ERREUR GENERATION PDF :",
+      error.stack || error.message
+    );
 
     throw error;
 
   } finally {
+    // ==========================================
+    // 6. FERMER CHROMIUM
+    // ==========================================
     if (browser) {
       try {
         await browser.close();
+        console.log("PDF : navigateur fermé.");
       } catch (closeError) {
         console.error(
           "ERREUR FERMETURE CHROME :",
@@ -768,7 +814,6 @@ await page.setContent(htmlContent, {
     }
   }
 }
-
 
 // ============================================================
 // EMAIL TRANSPORTER
@@ -2809,25 +2854,7 @@ app.get(
         );
       }
 
-      // ================================
-      // PUPPETEER
-      // ================================
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-        ],
-      });
-
-      const page = await browser.newPage();
-
       
-await page.setContent(htmlContent, {
-  waitUntil: "domcontentloaded",
-  timeout: 30000,
-});
 
       // ================================
       // VRAI PDF
