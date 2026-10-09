@@ -1924,7 +1924,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
     `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
     `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
     `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-    `Reference: ${reference}\n\n` +
+    `Reference: ${validation.reference}\n\n` +
     `Best regards,\n` +
     `OLIVED`;
 
@@ -2077,7 +2077,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
           `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
           `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
           `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-          `Reference: ${reference}\n\n` +
+          `Reference: ${validation.reference}\n\n` +
           `Best regards,\n` +
           `OLIVED`,
           attachments: [
