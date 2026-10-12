@@ -20,7 +20,8 @@ const puppeteer = require("puppeteer");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
-const dns = require("node:dns");
+const dns = require("node:dns").promises;
+const net = require("node:net");
 
 dns.setDefaultResultOrder("ipv4first");
 // ============================================================
@@ -895,6 +896,83 @@ async function generatePdfFromHtml(htmlContent) {
   }
 }
 
+
+
+
+async function sendEmailWithBrevo({
+  to,
+  subject,
+  text,
+  pdfBuffer,
+  filename,
+}) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY est manquante.");
+  }
+
+  if (!senderEmail) {
+    throw new Error("BREVO_SENDER_EMAIL est manquante.");
+  }
+
+  if (!to) {
+    throw new Error("L'adresse e-mail du destinataire est manquante.");
+  }
+
+  const payload = {
+    sender: {
+      name: "OLIVED",
+      email: senderEmail,
+    },
+    to: [{ email: to }],
+    subject,
+    textContent: text,
+  };
+
+  if (pdfBuffer && pdfBuffer.length > 0) {
+    payload.attachment = [
+      {
+        name: filename || "OLIVED_Official_Price_Offer.pdf",
+        content: pdfBuffer.toString("base64"),
+      },
+    ];
+  }
+
+  const response = await fetch(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    console.error(
+      "[BREVO] Erreur HTTP :",
+      response.status,
+      responseText
+    );
+
+    throw new Error(
+      `Erreur Brevo HTTP ${response.status}: ${responseText}`
+    );
+  }
+
+  console.log("[BREVO] Réponse :", responseText);
+
+  return responseText ? JSON.parse(responseText) : {};
+}
+
+
 // ============================================================
 // EMAIL TRANSPORTER
 // ============================================================
@@ -932,7 +1010,74 @@ return nodemailer.createTransport({
   socketTimeout: 20000,
 });
 }
+// ============================================================
+// DIAGNOSTIC TEMPORAIRE SMTP — SANS ENVOI D'EMAIL
+// ============================================================
 
+
+
+async function testerAccesSMTP() {
+  const host = process.env.SMTP_HOST || "smtp.hostinger.com";
+  const port = Number(process.env.SMTP_PORT || 465);
+
+  console.log("[SMTP TEST] Hôte :", host);
+  console.log("[SMTP TEST] Port :", port);
+
+  try {
+    const addresses = await dns.lookup(host, {
+      all: true,
+      verbatim: false,
+    });
+
+    console.log(
+      "[SMTP TEST] Adresses DNS :",
+      addresses.map((item) => item.address)
+    );
+  } catch (error) {
+    console.error(
+      "[SMTP TEST] Échec DNS :",
+      error.code || error.message
+    );
+    return;
+  }
+
+  const socket = net.createConnection({
+    host,
+    port,
+    family: 4,
+  });
+
+  socket.setTimeout(10000);
+
+  socket.once("connect", () => {
+    console.log(
+      "[SMTP TEST] Connexion TCP réussie."
+    );
+    socket.end();
+  });
+
+  socket.once("timeout", () => {
+    console.error(
+      "[SMTP TEST] Délai dépassé :",
+      host,
+      port
+    );
+    socket.destroy();
+  });
+
+  socket.once("error", (error) => {
+    console.error(
+      "[SMTP TEST] Échec TCP :",
+      error.code || error.message
+    );
+  });
+}
+
+
+
+testerAccesSMTP().catch((error) => {
+  console.error("[SMTP TEST] Erreur inattendue :", error.message);
+});
 
 // ============================================================
 // ROOT
@@ -1819,6 +1964,7 @@ app.get("/validation/:token", async (req, res) => {
 // VALIDER UNE FICHE OLIVED
 // ============================================================
 
+
 app.post("/api/validation/:token/validate", async (req, res) => {
   let validation;
 
@@ -1835,7 +1981,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
       });
     }
 
-    // 2. Récupérer la demande
+    // 2. Récupérer la demande de validation
     const [rows] = await pool.query(
       `
         SELECT
@@ -1906,8 +2052,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
     const nomComplet =
       `${visiteur.prenom || ""} ${visiteur.nom || ""}`.trim();
 
-    // 4. Enregistrer la décision avant toute notification.
-    // L'UPDATE conditionnel évite deux validations simultanées.
+    // 4. Enregistrer la validation une seule fois
     const [updateResult] = await pool.query(
       `
         UPDATE pdf_validations
@@ -1956,22 +2101,20 @@ app.post("/api/validation/:token/validate", async (req, res) => {
       validation.reference
     );
 
-    // 5. Préparer les informations de notification
-    
+    // 5. Préparer le message
     const message =
-    `Dear ${nomComplet},\n\n` +
-    `I hope you are doing well.\n\n` +
-    `Please find attached our quotation for the requested olive oil products.\n\n` +
-    `The offer includes the product specifications, packaging options, quantities, and corresponding prices.\n\n` +
-    `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
-    `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
-    `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-    `Reference: ${validation.reference}\n\n` +
-    `Best regards,\n` +
-    `OLIVED`;
+      `Dear ${nomComplet},\n\n` +
+      `I hope you are doing well.\n\n` +
+      `Please find attached our quotation for the requested olive oil products.\n\n` +
+      `The offer includes the product specifications, packaging options, quantities, and corresponding prices.\n\n` +
+      `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
+      `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
+      `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
+      `Reference: ${validation.reference}\n\n` +
+      `Best regards,\n` +
+      `OLIVED`;
 
-    let whatsappUrl = null;
-
+    // 6. Canal WhatsApp : conserver le fonctionnement existant
     if (validation.channel === "whatsapp") {
       const telephone =
         visiteur.telephone ||
@@ -1999,12 +2142,10 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         phone = phone.substring(2);
       }
 
-      // Numéro tunisien local à 8 chiffres
       if (/^[234579]\d{7}$/.test(phone)) {
         phone = "216" + phone;
       }
 
-      // Vérification minimale du numéro international
       if (phone.length < 8 || phone.length > 15) {
         return res.json({
           success: true,
@@ -2018,7 +2159,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         });
       }
 
-      whatsappUrl =
+      const whatsappUrl =
         `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
       console.log(
@@ -2026,7 +2167,6 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         validation.reference
       );
 
-      // WhatsApp n'envoie pas automatiquement le message ni le PDF.
       return res.json({
         success: true,
         message:
@@ -2040,12 +2180,11 @@ app.post("/api/validation/:token/validate", async (req, res) => {
       });
     }
 
-    // 6. Répondre immédiatement pour éviter que Puppeteer ou SMTP
-    // ne bloque la requête HTTP jusqu'à un 502.
+    // 7. Canal email : répondre immédiatement au navigateur
     res.status(200).json({
       success: true,
       message:
-        "Fiche validée. L'envoi de l'e-mail est en cours.",
+        "Fiche validée. La génération du PDF et l'envoi de l'e-mail sont en cours.",
       status: "validated",
       reference: validation.reference,
       channel: "email",
@@ -2055,8 +2194,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
       whatsappUrl: null,
     });
 
-    // 7. Générer le PDF et envoyer l'e-mail en arrière-plan.
-    // Les erreurs sont consignées dans les logs Render.
+    // 8. Générer le PDF et envoyer par l'API Brevo
     void (async () => {
       try {
         console.log(
@@ -2100,42 +2238,24 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         }
 
         console.log(
-          "[EMAIL] PDF généré, envoi en cours :",
+          "[EMAIL] PDF généré, envoi via Brevo :",
           validation.reference
         );
 
-        const transporter = createEmailTransporter();
-
-        const info = await transporter.sendMail({
-          from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+        const info = await sendEmailWithBrevo({
           to: visiteur.email,
           subject:
             `Official Price Offer OLIVED - ${validation.reference}`,
-          text:
-          `Dear ${nomComplet},\n\n` +
-          `I hope you are doing well.\n\n` +
-          `Please find attached our quotation for the requested olive oil products.\n\n` +
-          `The offer includes the product specifications, packaging options, quantities, and corresponding prices.\n\n` +
-          `Should you require any modifications regarding volumes, packaging, delivery terms, or payment conditions, we would be pleased to review the offer accordingly.\n\n` +
-          `Please do not hesitate to contact us should you need any further information or clarification.\n\n` +
-          `We look forward to hearing from you and hope to have the opportunity to work with you.\n\n` +
-          `Reference: ${validation.reference}\n\n` +
-          `Best regards,\n` +
-          `OLIVED`,
-          attachments: [
-            {
-              filename: `OLIVED_${validation.reference}.pdf`,
-              content: pdfBuffer,
-              contentType: "application/pdf",
-            },
-          ],
+          text: message,
+          pdfBuffer,
+          filename: `OLIVED_${validation.reference}.pdf`,
         });
 
         console.log(
-          "[EMAIL] E-mail envoyé :",
+          "[EMAIL] Demande acceptée par Brevo :",
           validation.reference,
           "| Message ID :",
-          info.messageId
+          info.messageId || "non fourni"
         );
       } catch (emailError) {
         console.error(
@@ -2161,6 +2281,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
     }
   }
 });
+
 
 // ============================================================
 // REFUSER PDF
