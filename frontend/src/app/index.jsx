@@ -323,7 +323,7 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
   const [volumeEstime, setVolumeEstime] = useState("");
   const [destination, setDestination] = useState("");
   const [destinationport, setDestinationport] = useState("");
-  const [incoterm, setIncoterm] = useState("");
+  const [incoterm, setIncoterm] = useState("EXW");
   const [formatLivraison, setFormatLivraison] = useState("");
   const [frequenceCommande, setFrequenceCommande] = useState("");
   const [exigencesSpecifiques, setExigencesSpecifiques] = useState([]);
@@ -3256,53 +3256,20 @@ Catégorie
               Incoterm
             </Text>
 
-            <View style={styles.pickerContainer}>
-
-              <Picker
-                selectedValue={incoterm}
-                onValueChange={
-                  setIncoterm
-                }
-              >
-
-                <Picker.Item
-                  label="Sélectionner"
-                  value=""
-                />
-
-                <Picker.Item
-                  label="EXW"
-                  value="EXW"
-                />
-
-                <Picker.Item
-                  label="FOB"
-                  value="FOB"
-                />
-
-                <Picker.Item
-                  label="CFR"
-                  value="CFR"
-                />
-
-                <Picker.Item
-                  label="CIF"
-                  value="CIF"
-                />
-
-                <Picker.Item
-                  label="DAP"
-                  value="DAP"
-                />
-
-                <Picker.Item
-                  label="DDP"
-                  value="DDP"
-                />
-
-              </Picker>
-
-            </View>
+           
+<View style={styles.pickerContainer}>
+  <Picker
+    selectedValue={incoterm}
+    onValueChange={setIncoterm}
+  >
+    <Picker.Item label="EXW" value="EXW" />
+    <Picker.Item label="FOB" value="FOB" />
+    <Picker.Item label="CFR" value="CFR" />
+    <Picker.Item label="CIF" value="CIF" />
+    <Picker.Item label="DAP" value="DAP" />
+    <Picker.Item label="DDP" value="DDP" />
+  </Picker>
+</View>
 
             {/* FORMAT LIVRAISON */}
 

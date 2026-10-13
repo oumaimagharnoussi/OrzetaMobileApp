@@ -9,7 +9,7 @@ import {
   AuthProvider,
   useAuth,
 } from "../context/AuthContext";
-
+import { Analytics } from "@vercel/analytics/next"
 function RootNavigation() {
   const { user, loading } = useAuth();
   const segments = useSegments();

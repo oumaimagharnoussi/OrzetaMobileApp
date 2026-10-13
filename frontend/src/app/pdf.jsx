@@ -39,56 +39,551 @@ const API_URL = "https://orzetamobileapp.onrender.com";
 const ORANGE = "#5C681F";
 
 // =====================================================
-// PRODUITS
+// PRIX ET PRODUITS SÉLECTIONNÉS DANS LE FORMULAIRE
 // =====================================================
 
-const products = [
-  [
-    "Extra Virgin Olive Oil – 3L Tin Cans",
-    18.5,
-    3360,
-  ],
-  [
-    "Extra Virgin Olive Oil – 5L Tin Cans",
-    25.8,
-    2800,
-  ],
-  [
-    "Extra Virgin Olive Oil – 5L PET",
-    21.7,
-    2520,
-  ],
-  [
-    "Extra Virgin Olive Oil – 1L Glass bottle",
-    6.2,
-    7920,
-  ],
-  [
-    "Extra Virgin Olive Oil – 0.750L DORICA Glass bottle",
-    4.6,
-    11520,
-  ],
-  [
-    "Extra Virgin Olive Oil – 0.500L DORICA Glass bottle",
-    3.75,
-    15840,
-  ],
-  [
-    "Extra Virgin Olive Oil – 0.250L DORICA Glass bottle",
-    2.6,
-    21600,
-  ],
-];
 
-// =====================================================
-// MONEY
-// =====================================================
+/**
+ * nombre : nombre de conteneurs ou de palettes sélectionné
+ */
+const calculerQuantiteConditionnee = (
+  unitesFCL20,
+  mode,
+  nombre
+) => {
+  const unites = Number(unitesFCL20);
+  const quantite = Number(nombre);
 
-const money = (n) =>
-  Number(n).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+  if (
+    !Number.isFinite(unites) ||
+    unites <= 0 ||
+    !Number.isFinite(quantite) ||
+    quantite <= 0
+  ) {
+    return null;
+  }
+
+  const type = String(mode || "")
+    .trim()
+    .toLowerCase();
+
+  if (type.includes("fcl 20") || type.includes("20’")) {
+    return unites * quantite;
+  }
+
+  if (type.includes("fcl 40") || type.includes("40’")) {
+    return unites * 2 * quantite;
+  }
+
+  if (type.includes("palette")) {
+    const unitesParPalette = unites / 10;
+    return unitesParPalette * quantite;
+  }
+
+  return null;
+};
+
+
+const UNITS_PER_FCL20 = {
+  Tin: {
+    "500 ml": 9600,
+    "1 L": 8400,
+    "3 L": 2800,
+    "5 L": 2000,
+  },
+
+  PET: {
+    "1 L": 9600,
+    "2 L": 4800,
+    "3 L": 3200,
+    "5 L": 1800,
+  },
+
+  Glass: {
+    "250 ml": 12000,
+    "500 ml": 9600,
+    "750 ml": 7200,
+    "1 L": 6000,
+  },
+
+  BaginBox: {
+    "3 L": 3200,
+    "5 L": 2400,
+  },
+};
+const PRICES_EUR = {
+  PET: { "1 L": 4.57, "2 L": 9.01, "3 L": 13.26, "5 L": 21.83 },
+  Tin: { "500 ml": 3.11, "1 L": 5.12, "3 L": 14.62, "5 L": 23.63 },
+  Glass: { "250 ml": 1.68, "500 ml": 2.93, "750 ml": 4.13, "1 L": 5.43 },
+  BaginBox: { "3 L": 14.80, "5 L": 23.66 },
+};
+
+const money = (n) => Number(n || 0).toLocaleString("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const moneyEUR = (n, decimals = 2) => `${Number(n || 0).toLocaleString("en-US", {
+  minimumFractionDigits: decimals,
+  maximumFractionDigits: decimals,
+})} USD`;
+
+// Tarifs vrac indexés par catégorie + format de livraison.
+// Les prix sont conservés à 3 décimales, comme dans la grille fournie.
+const BULK_PRICES_EUR = {
+  EVOO: {
+    "Flexitank 24 000 L": 12.425,
+    "ISO-tank 24 000 L (rotation)": 12.489,
+    "Citerne routière 27 000 L (local)": 12.352,
+    "IBC 1 000 L": 13.286,
+    "Fût acier 200 L": 12.999,
+  },
+  VOO: {
+    "Flexitank 24 000 L": 13.809,
+    "ISO-tank 24 000 L (rotation)": 13.873,
+    "Citerne routière 27 000 L (local)": 13.736,
+    "IBC 1 000 L": 14.670,
+    "Fût acier 200 L": 14.383,
+  },
+  OO: {
+    "Flexitank 24 000 L": 11.858,
+    "ISO-tank 24 000 L (rotation)": 11.921,
+    "Citerne routière 27 000 L (local)": 11.785,
+    "IBC 1 000 L": 12.718,
+    "Fût acier 200 L": 12.432,
+  },
+};
+
+const normalizeBulkKey = (value) => String(value ?? "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/\s+/g, " ")
+  .trim();
+
+const canonicalBulkFormat = (value) => {
+  const key = normalizeBulkKey(value);
+  if (!key) return "";
+
+  // Le formulaire peut enregistrer un libellé court (ex. "Fûts")
+  // alors que la grille tarifaire utilise le libellé complet.
+  if (/\bflexi ?tank\b/.test(key)) return "Flexitank 24 000 L";
+  if (/\biso ?tank\b/.test(key)) return "ISO-tank 24 000 L (rotation)";
+  if (/citerne/.test(key)) return "Citerne routière 27 000 L (local)";
+  if (/\bibc\b/.test(key)) return "IBC 1 000 L";
+  if (/\bf[uû]ts?\b|\bfut(s)?\b|\btonneaux?\b|\bbarils?\b/.test(key)) return "Fût acier 200 L";
+
+  // Tolérer les libellés complets avec espaces ou ponctuation variables.
+  if (key.includes("flexitank")) return "Flexitank 24 000 L";
+  if (key.includes("iso-tank") || key.includes("isotank")) return "ISO-tank 24 000 L (rotation)";
+  if (key.includes("citerne")) return "Citerne routière 27 000 L (local)";
+  if (key.includes("ibc")) return "IBC 1 000 L";
+  return value;
+};
+
+const getBulkPriceEUR = (categorie, formatLivraison) => {
+  const categoryRaw = String(categorie ?? "").trim().toUpperCase();
+  // Accepter aussi les libellés descriptifs, par exemple
+  // "EXTRA VIRGIN OLIVE OIL – EVOO", et en extraire le code tarifaire.
+  const category = ["EVOO", "VOO", "OO"].find((code) =>
+    categoryRaw === code || new RegExp(`\\b${code}\\b`).test(categoryRaw)
+  );
+  const canonicalFormat = canonicalBulkFormat(formatLivraison);
+  const categoryPrices = BULK_PRICES_EUR[category];
+  if (!categoryPrices || !canonicalFormat) return null;
+  const wantedFormat = normalizeBulkKey(canonicalFormat);
+  const match = Object.entries(categoryPrices).find(([format]) => normalizeBulkKey(format) === wantedFormat);
+  return match ? match[1] : null;
+};
+
+const parseJSON = (value, fallback = null) => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "object") return value;
+  try { return JSON.parse(value); } catch { return fallback; }
+};
+
+const normalizePackagingName = (name) => {
+  const value = String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+  if (/tin|metal|bidon|bo[iî]te|can/.test(value)) return "Tin";
+  if (/\bpet\b/.test(value)) return "PET";
+  if (/glass|verre|dorica|marasca|bouteille/.test(value)) return "Glass";
+  if (/bag.?in.?box|baginbox/.test(value)) return "BaginBox";
+  return null;
+};
+
+const normalizeFormat = (value) => {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/,/g, ".")
+    .replace(/\s+/g, " ");
+
+  const ml = raw.match(/^(?:0\.)?(250|500|750)\s*(?:ml|l)$/);
+  if (ml && (raw.includes("ml") || raw.startsWith("0."))) {
+    return `${ml[1]} ml`;
+  }
+
+  const litres = raw.match(/^(1|2|3|5)\s*l$/);
+  if (litres) return `${litres[1]} L`;
+
+  return raw.replace(/\bml\b/g, "ml");
+};
+const getPriceEUR = (packaging, format) => {
+  const kind = normalizePackagingName(packaging);
+  const size = normalizeFormat(format);
+  if (!kind) return null;
+  const price = PRICES_EUR[kind]?.[size];
+  return Number.isFinite(price) ? price : null;
+};
+
+const isFormat = (value) => /^(250\s*ml|500\s*ml|750\s*ml|0[.,](250|500|750)\s*l|1\s*l|2\s*l|3\s*l|5\s*l)$/i.test(normalizeFormat(value));
+const normalizeFormatLabel = (value) => {
+  const raw = normalizeFormat(value).toLowerCase().replace(/,/g, ".");
+  const ml = raw.match(/^(250|500|750)\s*ml$/);
+  if (ml) return `${ml[1]} ml`;
+  const decimal = raw.match(/^0\.(250|500|750)\s*l$/);
+  if (decimal) return `${Number(decimal[1])} ml`;
+  const liter = raw.match(/^(1|2|3|5)\s*l$/);
+  if (liter) return `${liter[1]} L`;
+  return normalizeFormat(value);
+};
+
+const collectFormats = (value, path = "", output = []) => {
+  const parsed = parseJSON(value, value);
+  if (Array.isArray(parsed)) {
+    parsed.forEach((item) => collectFormats(item, path, output));
+  } else if (parsed && typeof parsed === "object") {
+    Object.entries(parsed).forEach(([key, item]) => {
+      const nextPath = `${path} ${key}`;
+      if (isFormat(key)) output.push({ format: normalizeFormatLabel(key), path: nextPath });
+      collectFormats(item, nextPath, output);
+    });
+  } else if (typeof parsed === "string" && isFormat(parsed)) {
+    output.push({ format: normalizeFormatLabel(parsed), path });
+  }
+  return output;
+};
+
+const FCL20_CAPACITY = {
+  "Tin|3 L": 3360,
+  "Tin|5 L": 2800,
+  "PET|5 L": 2520,
+  "Glass|1 L": 7920,
+  "Glass|750 ml": 11520,
+  "Glass|500 ml": 15840,
+  "Glass|250 ml": 21600,
+};
+
+const BULK_FORMAT_CAPACITY_LITRES = {
+  "Flexitank 24 000 L": 24000,
+  "ISO-tank 24 000 L (rotation)": 24000,
+  "Citerne routière 27 000 L (local)": 27000,
+  "IBC 1 000 L": 1000,
+  "Fût acier 200 L": 200,
+};
+
+const positiveNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const match = String(value).replace(/\s/g, "").replace(/,/g, ".").match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const number = Number(match[0]);
+  return Number.isFinite(number) && number > 0 ? number : null;
+};
+
+const getFclCount = (commande) =>
+  positiveNumber(
+    commande?.nombre_fcl ??
+    commande?.nombreFcl ??
+    commande?.nombre_fcl_20 ??
+    commande?.fcl_count
+  );
+
+const getBulkCapacity = (formatLivraison) => {
+  const canonical = canonicalBulkFormat(formatLivraison);
+  return BULK_FORMAT_CAPACITY_LITRES[canonical] || null;
+};
+
+const getConditionedQuantity = ({
+  commande,
+  target,
+  format,
+  bottleType = "",
+}) => {
+  // Mode choisi dans le formulaire
+  const mode = String(
+    commande?.quantite_commande ??
+    commande?.mode_quantite ??
+    commande?.type_quantite ??
+    commande?.format_conteneur ??
+    commande?.type_conteneur ??
+    ""
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/[’']/g, "");
+
+  const nombreFCL = positiveNumber(
+    commande?.nombre_fcl ?? commande?.nb_fcl
+  );
+
+  const nombrePalettes = positiveNumber(
+    commande?.nombre_palettes ??
+    commande?.nb_palettes ??
+    commande?.nombre_palette ??
+    commande?.nb_palette
+  );
+
+  // À relier aux valeurs de la ligne "Unités/FCL" du fichier Excel.
+  const unitesFCL20 = getUnitsPerFCL20(
+    target,
+    format,
+    bottleType
+  );
+
+  if (unitesFCL20 == null || unitesFCL20 <= 0) {
+    return null;
+  }
+
+  if (mode.includes("fcl 20") || mode.includes("20")) {
+    return nombreFCL
+      ? unitesFCL20 * nombreFCL
+      : unitesFCL20;
+  }
+
+  if (mode.includes("fcl 40") || mode.includes("40")) {
+    return nombreFCL
+      ? unitesFCL20 * 2 * nombreFCL
+      : unitesFCL20 * 2;
+  }
+
+  if (mode.includes("palette")) {
+    return nombrePalettes
+      ? (unitesFCL20 / 10) * nombrePalettes
+      : null;
+  }
+
+  // Compatibilité si le mode n'est pas encore enregistré.
+  if (nombreFCL) {
+    return unitesFCL20 * nombreFCL;
+  }
+
+  if (nombrePalettes) {
+    return (unitesFCL20 / 10) * nombrePalettes;
+  }
+
+  return null;
+};
+
+const getUnitsPerFCL20 = (target, format, bottleType = "") => {
+  const packaging = normalizePackagingName(target);
+  const size = normalizeFormatLabel(format);
+
+  const units = Number(
+    UNITS_PER_FCL20[packaging]?.[size]
+  );
+
+  return Number.isFinite(units) && units > 0
+    ? units
+    : null;
+};
+
+const buildPricingRows = (visiteur) => {
+  const commandes = Array.isArray(visiteur?.commandes) && visiteur.commandes.length
+    ? visiteur.commandes
+    : (visiteur && (
+        visiteur.type_commande || visiteur.type || visiteur.categorie ||
+        visiteur.format_livraison || visiteur.type_emballage || visiteur.packaging
+      ) ? [visiteur] : []);
+
+  const rows = [];
+
+  commandes.forEach((commande, index) => {
+    const type = String(
+      commande?.type_commande ?? commande?.type ?? visiteur?.type_commande ?? visiteur?.type ?? ""
+    )
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+    const numero = commande?.numero_commande || index + 1;
+    const fclCount = getFclCount(commande);
+
+    const categorie = String(
+      commande?.categorie ?? commande?.category ?? commande?.qualite_grade ??
+      visiteur?.categorie ?? visiteur?.category ?? ""
+    ).trim();
+
+    const formatLivraison =
+      commande?.format_livraison ??
+      commande?.["Format livraison"] ??
+      commande?.["format livraison"] ??
+      commande?.formatLivraison ??
+      commande?.format_de_livraison ??
+      commande?.format_livraison_vrac ??
+      visiteur?.format_livraison ??
+      visiteur?.["Format livraison"] ??
+      visiteur?.formatLivraison ??
+      "";
+
+    // Vrac : prix par litre selon la catégorie et le mode de livraison.
+    if (type === "vrac" || (categorie && formatLivraison && !/conditionn/.test(type))) {
+      const price = getBulkPriceEUR(categorie, formatLivraison);
+      const canonicalFormat = canonicalBulkFormat(formatLivraison);
+      const estimatedVolume = positiveNumber(
+        commande?.volume_estime ?? commande?.volumes_estimes ??
+        commande?.volumes_conditionne ?? commande?.quantite_commande
+      );
+      const capacity = getBulkCapacity(formatLivraison);
+      const volumeLitres = estimatedVolume || (capacity && fclCount ? capacity * fclCount : null);
+      const quantity = volumeLitres
+        ? `${volumeLitres.toLocaleString("en-US")} L`
+        : fclCount
+          ? `${fclCount} FCL 20’`
+          : String(commande?.volume_estime ?? commande?.volumes_estimes ?? "À confirmer");
+
+      rows.push({
+        key: `commande-${numero}-vrac-${categorie || "categorie"}-${normalizeBulkKey(String(formatLivraison))}`,
+        description: `QR ${numero} — ${categorie || "Catégorie à confirmer"} — ${String(formatLivraison || canonicalFormat || "Format livraison à confirmer")}`,
+        price,
+        precision: 3,
+        quantity,
+        total: price != null && volumeLitres != null ? price * volumeLitres : null,
+      });
+      return;
+    }
+
+    // Conditionné : le champ réellement enregistré par l'API est `packaging`.
+    const typeEmballage = parseJSON(commande?.type_emballage, {});
+    const packaging = parseJSON(
+      commande?.packaging ?? commande?.formats_emballage ?? commande?.formatsEmballage,
+      {}
+    );
+    const formatsSouhaites = parseJSON(commande?.formats_souhaites, []);
+    const emballagesSelectionnes = parseJSON(commande?.emballages_selectionnes, []);
+
+    let selectedPackaging = [];
+    if (Array.isArray(typeEmballage)) {
+      selectedPackaging = typeEmballage;
+    } else if (Array.isArray(typeEmballage?.emballages)) {
+      selectedPackaging = typeEmballage.emballages;
+    } else if (Array.isArray(emballagesSelectionnes)) {
+      selectedPackaging = emballagesSelectionnes;
+    } else if (typeof emballagesSelectionnes === "string") {
+      selectedPackaging = [emballagesSelectionnes];
+    }
+
+    // Utiliser le JSON `packaging` en priorité : il associe chaque format à son emballage.
+    const primaryFormats = collectFormats(packaging);
+    const formatEntries = primaryFormats.length
+      ? primaryFormats
+      : [
+          ...collectFormats(commande?.formats_emballage),
+          ...collectFormats(formatsSouhaites),
+        ];
+
+    const seenFormats = new Set();
+    const uniqueFormats = formatEntries.filter((entry) => {
+      const key = `${entry.path}|${entry.format}`;
+      if (seenFormats.has(key)) return false;
+      seenFormats.add(key);
+      return true;
+    });
+
+    const packagingNames = selectedPackaging
+      .map((item) => ({ raw: String(item), normalized: normalizePackagingName(item) }))
+      .filter((item) => item.normalized);
+
+    const used = new Set();
+
+    
+
+    uniqueFormats.forEach((entry, formatIndex) => {
+      const pathLower = String(entry.path || "").toLowerCase();
+    
+      const bottleType = /\bdorica\b/i.test(pathLower)
+        ? "DORICA"
+        : /\bmarasca\b/i.test(pathLower)
+          ? "MARASCA"
+          : "";
+    
+      let packaging = null;
+    
+      const pathMatch = packagingNames.find((item) =>
+        pathLower.includes(String(item.raw).toLowerCase()) ||
+        pathLower.includes(item.normalized.toLowerCase())
+      );
+    
+      if (pathMatch) packaging = pathMatch.normalized;
+      if (!packaging && /\bpet\b/i.test(pathLower)) packaging = "PET";
+      if (!packaging && /tin|metal|bidon/i.test(pathLower)) packaging = "Tin";
+      if (!packaging && /glass|verre|dorica|marasca/i.test(pathLower)) packaging = "Glass";
+      if (!packaging && /bag.?in.?box/i.test(pathLower)) packaging = "BaginBox";
+    
+      const targets = packaging
+        ? [packaging]
+        : packagingNames.map((item) => item.normalized);
+    
+      targets.forEach((target) => {
+        const key = `${numero}|${target || ""}|${bottleType}|${entry.format}`;
+    
+        if (used.has(key)) return;
+        used.add(key);
+    
+        const price = target
+          ? getPriceEUR(target, entry.format)
+          : null;
+    
+        const quantiteTotale = getConditionedQuantity({
+          commande,
+          target,
+          format: entry.format,
+          bottleType,
+        });
+    
+        const quantity = quantiteTotale != null
+          ? `${quantiteTotale.toLocaleString("en-US")} units`
+          : "À confirmer";
+    
+        const description =
+          target === "Glass" && bottleType
+            ? `QR ${numero} — Extra Virgin Olive Oil - ${entry.format} ${bottleType} Glass`
+            : `QR ${numero} — Extra Virgin Olive Oil - ${entry.format} ${target || "Packaging to confirm"}`;
+    
+        rows.push({
+          key: `commande-${numero}-${target || "emballage"}-${bottleType}-${entry.format}-${formatIndex}`,
+          description,
+          price,
+          precision: 2,
+          quantity,
+          total:
+            price != null && quantiteTotale != null
+              ? price * quantiteTotale
+              : null,
+        });
+      });
+    });
+    
+
+
+    if (uniqueFormats.length === 0) {
+      const selected = packagingNames.map((item) => item.normalized).join(", ");
+      rows.push({
+        key: `commande-${numero}-sans-format`,
+        description: `QR ${numero} — Huile d'olive vierge extra${selected ? ` — ${selected}` : " — conditionnement à préciser"}`,
+        price: null,
+        quantity: fclCount ? `${fclCount} FCL 20’` : String(commande?.volumes_estimes ?? commande?.volumes_conditionne ?? "À confirmer"),
+        total: null,
+      });
+    }
   });
+
+  return rows;
+};
 
 // =====================================================
 // ESCAPE HTML
@@ -369,6 +864,12 @@ const response = await fetch(url, {
     );
   }, [visiteur]);
 
+  // Une seule source de données pour l'aperçu et le PDF imprimé.
+  const pricingRows = useMemo(
+    () => buildPricingRows(visiteur),
+    [visiteur]
+  );
+
   const getLogoBase64 = async () => {
     try {
       const asset = Asset.fromModule(
@@ -405,6 +906,10 @@ const response = await fetch(url, {
     const logoBase64 = await getLogoBase64();
 
     const v = visiteur || {};
+    const firstCommande = Array.isArray(v.commandes) ? v.commandes[0] : null;
+    const incotermLabel = String(firstCommande?.incoterm ?? v.incoterm ?? "EXW")
+      .trim()
+      .toUpperCase() || "EXW";
 
     const reference =
       getReference(v);
@@ -437,24 +942,16 @@ const response = await fetch(url, {
         }
       );
 
-    const rows = products
-      .map(
-        ([desc, price, qty]) => `
+    const rows = pricingRows.length
+      ? pricingRows.map((item) => `
           <tr>
-            <td>${esc(desc)}</td>
-            <td class="num">${money(
-              price
-            )}</td>
-            <td class="num">${Number(
-              qty
-            ).toLocaleString("en-US")}</td>
-            <td class="num">${money(
-              price * qty
-            )}</td>
+            <td>${esc(item.description)}</td>
+            <td class="num">${item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}</td>
+            <td class="num">${esc(item.quantity)}</td>
+            <td class="num">${item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}</td>
           </tr>
-        `
-      )
-      .join("");
+        `).join("")
+      : `<tr><td colspan="4">Aucune commande ou aucun format sélectionné.</td></tr>`;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -898,7 +1395,7 @@ const response = await fetch(url, {
         </th>
 
         <th>
-          Unit Price EXW Sfax (USD)
+          Unit Price EXW Sfax (EUR)
         </th>
 
         <th>
@@ -906,7 +1403,7 @@ const response = await fetch(url, {
         </th>
 
         <th>
-          Total EXW Sfax (USD)
+          Total EXW Sfax (EUR)
         </th>
 
       </tr>
@@ -929,7 +1426,7 @@ const response = await fetch(url, {
     &nbsp;&nbsp;&nbsp;
 
     <b>Incoterm:</b>
-    EXW SFAX
+    ${esc(incotermLabel)} SFAX
 
   </p>
 
@@ -2027,7 +2524,7 @@ const message =
                   ]}
                 >
                   Unit Price EXW Sfax
-                  (USD)
+                  (EUR)
                 </Text>
 
                 <Text
@@ -2050,77 +2547,24 @@ const message =
                   ]}
                 >
                   Total EXW Sfax
-                  (USD)
+                  (EUR)
                 </Text>
               </View>
 
               {/* TABLE ROWS */}
 
-              {products.map(
-                ([desc, price, qty]) => (
-                  <View
-                    key={desc}
-                    style={
-                      styles.tableRow
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.td,
-                        {
-                          width: 250,
-                        },
-                      ]}
-                    >
-                      {desc}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.td,
-                        {
-                          width: 125,
-                          textAlign:
-                            "right",
-                        },
-                      ]}
-                    >
-                      {money(price)}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.td,
-                        {
-                          width: 105,
-                          textAlign:
-                            "right",
-                        },
-                      ]}
-                    >
-                      {qty.toLocaleString(
-                        "en-US"
-                      )}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.td,
-                        {
-                          width: 135,
-                          textAlign:
-                            "right",
-                        },
-                      ]}
-                    >
-                      {money(
-                        price * qty
-                      )}
-                    </Text>
-                  </View>
-                )
-              )}
-
+              {pricingRows.map((item) => (
+                <View key={item.key} style={styles.tableRow}>
+                  <Text style={[styles.td, { width: 250 }]}>{item.description}</Text>
+                  <Text style={[styles.td, { width: 125, textAlign: "right" }]}>
+                    {item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}
+                  </Text>
+                  <Text style={[styles.td, { width: 105, textAlign: "right" }]}>{item.quantity}</Text>
+                  <Text style={[styles.td, { width: 135, textAlign: "right" }]}>
+                    {item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}
+                  </Text>
+                </View>
+              ))}
             </View>
           </ScrollView>
 
@@ -2141,7 +2585,10 @@ const message =
             >
               Incoterm:
             </Text>{" "}
-            EXW SFAX
+            {String(
+              (Array.isArray(visiteur?.commandes) ? visiteur.commandes[0]?.incoterm : null) ??
+              visiteur?.incoterm ?? "EXW"
+            ).toUpperCase()} SFAX
           </Text>
 
         </Section>

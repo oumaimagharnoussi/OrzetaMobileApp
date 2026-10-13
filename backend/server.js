@@ -516,7 +516,7 @@ async function insererCommande(
       commande.volume_estime ?? null,
       commande.destination || null,
       commande.destinationport?.trim() || null,
-      commande.incoterm || null,
+      commande.incoterm || "EXW",
       commande.format_livraison || null,
       commande.frequence_commande || null,
   
