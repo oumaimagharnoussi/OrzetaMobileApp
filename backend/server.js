@@ -98,6 +98,98 @@ const accessToken =
   process.env.ACCESS_TOKEN ||
   null;
 
+// Numéro qui reçoit toutes les demandes de validation
+const validationWhatsAppNumber =
+  String(
+    process.env.VALIDATION_WHATSAPP_NUMBER ||
+    "21692300800"
+  ).replace(/\D/g, "");
+
+// Green-API : WhatsApp connecté par QR code (console.green-api.com)
+const greenApiUrl =
+  String(
+    process.env.GREENAPI_API_URL ||
+    "https://api.green-api.com"
+  ).replace(/\/+$/, "");
+
+const greenApiIdInstance =
+  process.env.GREENAPI_ID_INSTANCE || null;
+
+const greenApiToken =
+  process.env.GREENAPI_API_TOKEN || null;
+
+
+// ============================================================
+// ENVOYER LA DEMANDE DE VALIDATION AU VALIDATEUR (GREEN-API)
+// ============================================================
+
+async function sendValidationWhatsApp({
+  reference,
+  validationUrl,
+  visiteur,
+}) {
+  if (!greenApiIdInstance || !greenApiToken) {
+    throw new Error(
+      "GREENAPI_ID_INSTANCE / GREENAPI_API_TOKEN manquants dans la configuration du serveur."
+    );
+  }
+
+  const nomVisiteur =
+    `${visiteur?.prenom || ""} ${visiteur?.nom || ""}`.trim() || "—";
+
+  // Commercial qui a ajouté le visiteur
+  let nomCommercial = "—";
+
+  if (visiteur?.commercial_id) {
+    try {
+      const [users] = await pool.query(
+        `SELECT nom, prenom FROM users WHERE id = ? LIMIT 1`,
+        [visiteur.commercial_id]
+      );
+
+      if (users.length) {
+        nomCommercial =
+          `${users[0].prenom || ""} ${users[0].nom || ""}`.trim() || "—";
+      }
+    } catch (error) {
+      console.error(
+        "[VALIDATION] Commercial introuvable :",
+        error.message
+      );
+    }
+  }
+
+  const message =
+    `Bonjour,\n\n` +
+    `Une fiche OLIVED est prête pour validation.\n\n` +
+    `Référence : ${reference || "—"}\n` +
+    `Commercial : ${nomCommercial}\n` +
+    `Visiteur : ${nomVisiteur}\n\n` +
+    `Veuillez consulter la fiche et choisir VALIDER ou REFUSER.\n\n` +
+    `Lien de validation :\n` +
+    `${validationUrl}`;
+
+  const response = await axios.post(
+    `${greenApiUrl}/waInstance${greenApiIdInstance}/sendMessage/${greenApiToken}`,
+    {
+      chatId: `${validationWhatsAppNumber}@c.us`,
+      message,
+    },
+    {
+      headers: { "Content-Type": "application/json" },
+      timeout: 30000,
+    }
+  );
+
+  if (!response.data?.idMessage) {
+    throw new Error(
+      "Green-API n'a pas confirmé l'envoi du message."
+    );
+  }
+
+  return response.data.idMessage;
+}
+
 
 // ============================================================
 // TEST MYSQL
@@ -1451,14 +1543,49 @@ app.post(
       );
 
 
+      // ========================================================
+      // ENVOI AUTOMATIQUE AU VALIDATEUR (WHATSAPP META)
+      // ========================================================
+
+      let notificationSent = false;
+      let notificationError = null;
+
+      try {
+        await sendValidationWhatsApp({
+          reference,
+          validationUrl,
+          visiteur,
+        });
+
+        notificationSent = true;
+
+        console.log(
+          "[VALIDATION] Message WhatsApp envoyé au validateur :",
+          reference
+        );
+      } catch (sendError) {
+        notificationError =
+          sendError.response?.data?.error?.message ||
+          sendError.message;
+
+        console.error(
+          "[VALIDATION] Échec envoi WhatsApp validateur :",
+          sendError.response?.data || sendError.message
+        );
+      }
+
+
       return res.json({
         success: true,
-        message:
-          "Lien de validation créé.",
+        message: notificationSent
+          ? "Demande de validation envoyée."
+          : "Lien de validation créé, mais l'envoi WhatsApp a échoué.",
         validationUrl,
         token,
         reference,
         channel,
+        notificationSent,
+        notificationError,
       });
 
     } catch (error) {

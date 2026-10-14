@@ -1981,70 +1981,25 @@ if (
 }
 
 // ================================
-// LIEN PUBLIC DE VALIDATION
+// ENVOI AUTOMATIQUE PAR LE SERVEUR
 // ================================
+// Le backend envoie lui-même le message WhatsApp
+// au validateur (21692300800) via l'API Meta.
 
-const token = data.token;
-const validationUrl =
-  `https://orzetamobileapp.onrender.com/validation/${token}`;
+if (!data.notificationSent) {
+  throw new Error(
+    "La demande a été créée, mais le message WhatsApp n'a pas pu être envoyé au validateur." +
+      (data.notificationError
+        ? `\n\n${data.notificationError}`
+        : "")
+  );
+}
 
-// ================================
-// MESSAGE POUR LE VALIDATEUR
-// ================================
-
-const message =
-  `Bonjour,\n\n` +
-  `Une fiche OLIVED est prête pour validation.\n\n` +
-  `Référence : ${reference || "—"}\n\n` +
-  `Veuillez consulter la fiche et choisir VALIDER ou REFUSER.\n\n` +
-  `Lien de validation :\n` +
-  `${validationUrl}`;
-  
-      // ================================
-      // NUMÉRO DE VALIDATION  
-      // ================================
-  
-      const validationPhone =
-        "21654839761";
-  
-      const whatsappUrl =
-        `https://wa.me/${validationPhone}?text=` +
-        encodeURIComponent(message);
-  
-      // ================================
-      // OUVRIR WHATSAPP
-      // ================================
-  
-      if (Platform.OS === "web") {
-  
-        window.open(
-          whatsappUrl,
-          "_blank"
-        );
-  
-      } else {
-  
-        const supported =
-          await Linking.canOpenURL(
-            whatsappUrl
-          );
-  
-        if (!supported) {
-          throw new Error(
-            "WhatsApp n'est pas disponible sur cet appareil."
-          );
-        }
-  
-        await Linking.openURL(
-          whatsappUrl
-        );
-      }
-  
       setShowSendModal(false);
-  
+
       Alert.alert(
         "Validation demandée",
-        "La fiche a été envoyée pour validation."
+        "La fiche a été envoyée automatiquement pour validation."
       );
   
     } catch (error) {

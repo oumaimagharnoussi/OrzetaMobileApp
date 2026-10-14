@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Platform,
 } from "react-native";
 
 import { Picker } from "@react-native-picker/picker";
@@ -1810,7 +1811,26 @@ const toggleEmballageConditionne = (type) => {
   // =====================================================
 
 
+// Profils enregistrés directement, sans passer par la page PDF
+const PROFILS_SANS_PDF = [
+  "fournisseur",
+  "institution",
+  "autre",
+];
+
+// Alert.alert ne s'affiche pas sur le web
+const afficherMessage = (titre, message) => {
+  if (Platform.OS === "web") {
+    window.alert(`${titre}\n\n${message}`);
+  } else {
+    Alert.alert(titre, message);
+  }
+};
+
 const handleAjouter = async () => {
+  const sansPdf =
+    PROFILS_SANS_PDF.includes(profile);
+
   try {
     // =====================================================
     // COMMANDES
@@ -2049,12 +2069,19 @@ tel_reception_echantillon:
     // OUVERTURE PDF
     // =====================================================
 
-    router.push({
-      pathname: "/pdf",
-      params: {
-        id: String(data.id),
-      },
-    });
+    if (sansPdf) {
+      afficherMessage(
+        "Succès",
+        "Le visiteur a été ajouté avec succès."
+      );
+    } else {
+      router.push({
+        pathname: "/pdf",
+        params: {
+          id: String(data.id),
+        },
+      });
+    }
 
     // =====================================================
     // RESET VISITEUR
@@ -2090,7 +2117,7 @@ tel_reception_echantillon:
     console.error(
       "=======================================");
 
-    Alert.alert(
+    afficherMessage(
       "Erreur",
       `Impossible d'ajouter le visiteur.\n\n${
         error?.message ||
@@ -5598,7 +5625,9 @@ Catégorie
             styles.buttonText
           }
         >
-          Traitement de commande
+          {PROFILS_SANS_PDF.includes(profile)
+            ? "Ajouter visiteur"
+            : "Traitement de commande"}
         </Text>
 
       </TouchableOpacity>
