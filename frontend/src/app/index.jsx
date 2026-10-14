@@ -60,6 +60,9 @@ export default function HomeScreen() {
   const [telReceptionEchantillon, setTelReceptionEchantillon] = useState("");
   const [certifications, setCertifications] = useState([]);
 
+const [typeEtiquette, setTypeEtiquette] = useState("");
+
+
   const handleLogout = () => {
     logout();
     router.replace("/auth/login");
@@ -457,6 +460,7 @@ const [k270Valeur, setK270Valeur] = useState("");
     });
 
     setTypeMarque("");
+    setTypeEtiquette("");
     setNomLabel("");
     setCertificationsRequises([]);
     setAutreCertification("");
@@ -1215,79 +1219,79 @@ setK270Valeur("");
   // =====================================================
 
 
-  const toggleEmballageConditionne = (type) => {
-    setEmballagesSelectionnes((prev) => {
-      const isSelected = prev.includes(type);
   
-      if (isSelected) {
-        return prev.filter((item) => item !== type);
-      }
-  
-      return [...prev, type];
-    });
-  
-    setFormatsEmballage((prev) => {
-      const updated = { ...prev };
-      delete updated[type];
-      return updated;
-    });
-  
-    if (type === "Tin") {
-      setAutresSelectionnes((prev) => ({
-        ...prev,
-        Tin: false,
-      }));
-  
-      setAutresEmballages((prev) => ({
-        ...prev,
-        Tin: "",
-      }));
-    }
-  
-    if (type === "PET") {
-      setAutresSelectionnes((prev) => ({
-        ...prev,
-        PET: false,
-      }));
-  
-      setAutresEmballages((prev) => ({
-        ...prev,
-        PET: "",
-      }));
-    }
-  
-    if (type === "Glass") {
-      setAutresSelectionnes((prev) => ({
-        ...prev,
-        Glass: false,
-      }));
-  
-      setAutresEmballages((prev) => ({
-        ...prev,
-        Glass: "",
-      }));
+const toggleEmballageConditionne = (type) => {
+  setEmballagesSelectionnes((prev) => {
+    const isSelected = prev.includes(type);
+
+    // Si le type est déjà sélectionné, on le désélectionne
+    if (isSelected) {
+      return [];
     }
 
-    if (type === "BaginBox") {
-      setAutresSelectionnes((prev) => ({
-        ...prev,
-        BaginBox: false,
-      }));
-  
-      setAutresEmballages((prev) => ({
-        ...prev,
-        BaginBox: "",
-      }));
-    }
-  
-    if (type === "Autre") {
-      setAutreEmballage((prev) => {
-        // On efface la valeur uniquement
-        // si le type Autre est décoché.
-        return prev;
-      });
-    }
-  };
+    // Un seul type d'emballage autorisé
+    return [type];
+  });
+
+  setFormatsEmballage((prev) => {
+    const updated = { ...prev };
+    delete updated[type];
+    return updated;
+  });
+
+  if (type === "Tin") {
+    setAutresSelectionnes((prev) => ({
+      ...prev,
+      Tin: false,
+    }));
+
+    setAutresEmballages((prev) => ({
+      ...prev,
+      Tin: "",
+    }));
+  }
+
+  if (type === "PET") {
+    setAutresSelectionnes((prev) => ({
+      ...prev,
+      PET: false,
+    }));
+
+    setAutresEmballages((prev) => ({
+      ...prev,
+      PET: "",
+    }));
+  }
+
+  if (type === "Glass") {
+    setAutresSelectionnes((prev) => ({
+      ...prev,
+      Glass: false,
+    }));
+
+    setAutresEmballages((prev) => ({
+      ...prev,
+      Glass: "",
+    }));
+  }
+
+  if (type === "BaginBox") {
+    setAutresSelectionnes((prev) => ({
+      ...prev,
+      BaginBox: false,
+    }));
+
+    setAutresEmballages((prev) => ({
+      ...prev,
+      BaginBox: "",
+    }));
+  }
+
+  if (type === "Autre") {
+    setAutreEmballage((prev) => prev);
+  }
+};
+
   // =====================================================
   // AJOUT / SUPPRESSION EMBALLAGE NOUVELLE MARQUE
   // =====================================================
@@ -1556,6 +1560,12 @@ setK270Valeur("");
         typeCommande === "conditionné"
           ? typeMarque || null
           : null,
+      
+          type_etiquette:
+          typeCommande === "conditionné" &&
+          typeMarque === "Marque ORZETA"
+            ? typeEtiquette || null
+            : null,
   
       nom_label:
         typeCommande === "conditionné" &&
@@ -3538,23 +3548,18 @@ Catégorie
     />
 
     <Picker.Item
-      label="Retail"
-      value="Retail"
+      label="Epicerie/d'étalon"
+      value="Epicerie/d'étalon"
     />
 
     <Picker.Item
-      label="HoReCa"
-      value="HoReCa"
+      label="HoReCa/Grossiste"
+      value="HoReCa/Grossiste"
     />
 
     <Picker.Item
-      label="E-commerce"
-      value="E-commerce"
-    />
-
-    <Picker.Item
-      label="Grossiste"
-      value="Grossiste"
+      label="Distributeur importateur"
+      value="Distributeur importateur"
     />
 
     {/* AUTRE */}
@@ -4985,6 +4990,41 @@ Catégorie
   </Picker>
 
 </View>
+{/* Afficher le type d'étiquette uniquement pour ORZETA */}
+{typeMarque === "Marque ORZETA" && (
+  <>
+    <Text style={styles.label}>
+      Type d'étiquette
+    </Text>
+
+    <View style={styles.pickerContainer}>
+      <Picker
+        selectedValue={typeEtiquette}
+        onValueChange={setTypeEtiquette}
+      >
+        <Picker.Item
+          label="Sélectionner une étiquette"
+          value=""
+        />
+
+        <Picker.Item
+          label="SUN"
+          value="SUN"
+        />
+
+        <Picker.Item
+          label="GROVE"
+          value="GROVE"
+        />
+
+        <Picker.Item
+          label="ORGANIC"
+          value="ORGANIC"
+        />
+      </Picker>
+    </View>
+  </>
+)}
 
 
 {/* NOM DU LABEL */}

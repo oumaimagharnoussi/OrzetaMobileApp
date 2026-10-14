@@ -288,10 +288,7 @@ function normalizeTypeCommande(value) {
 // NORMALISATION COMMANDES
 // ============================================================
 
-function normalizeCommandes(
-  value,
-  typeCommandePrincipal
-) {
+function normalizeCommandes(value, typeCommandePrincipal) {
   if (
     value === undefined ||
     value === null ||
@@ -307,7 +304,6 @@ function normalizeCommandes(
       typeof value === "string"
         ? JSON.parse(value)
         : value;
-
   } catch (error) {
     throw new Error(
       "Le champ commandes contient un JSON invalide."
@@ -324,25 +320,19 @@ function normalizeCommandes(
     return [];
   }
 
-  const typePrincipal =
-    normalizeTypeCommande(
-      typeCommandePrincipal
+  const typePrincipal = normalizeTypeCommande(
+    typeCommandePrincipal
+  );
+
+  for (let i = 0; i < commandes.length; i++) {
+    const commande = commandes[i] || {};
+
+    // TYPE DE COMMANDE
+    const typeCommande = normalizeTypeCommande(
+      commande.type_commande ??
+      commande.typeCommande ??
+      typePrincipal
     );
-
-  for (
-    let i = 0;
-    i < commandes.length;
-    i++
-  ) {
-    const commande =
-      commandes[i] || {};
-
-    const typeCommande =
-      normalizeTypeCommande(
-        commande.type_commande ??
-        commande.typeCommande ??
-        typePrincipal
-      );
 
     if (!typeCommande) {
       throw new Error(
@@ -361,13 +351,59 @@ function normalizeCommandes(
       );
     }
 
-    commande.type_commande =
-      typeCommande;
+    commande.type_commande = typeCommande;
 
-    commandes[i] =
-      commande;
+    // TYPE DE MARQUE
+    const typeMarque = cleanString(
+      commande.type_marque ?? commande.typeMarque
+    );
+
+    const marquesAutorisees = [
+      "Marque ORZETA",
+      "Private Label",
+      "Création de nouvelle marque",
+    ];
+
+    if (
+      typeMarque !== null &&
+      !marquesAutorisees.includes(typeMarque)
+    ) {
+      throw new Error(
+        `Le type de marque de la commande ${i + 1} est invalide.`
+      );
+    }
+
+    commande.type_marque = typeMarque;
+
+    // TYPE D'ÉTIQUETTE : uniquement Marque ORZETA conditionné
+    const typeEtiquette =
+      typeCommande === "conditionné" &&
+      typeMarque === "Marque ORZETA"
+        ? cleanString(
+            commande.type_etiquette ??
+            commande.typeEtiquette
+          )
+        : null;
+
+    const etiquettesAutorisees = [
+      "SUN",
+      "GROVE",
+      "ORGANIC",
+    ];
+
+    if (
+      typeEtiquette !== null &&
+      !etiquettesAutorisees.includes(typeEtiquette)
+    ) {
+      throw new Error(
+        `Le type d'étiquette de la commande ${i + 1} est invalide.`
+      );
+    }
+
+    commande.type_etiquette = typeEtiquette;
   }
 
+  // IMPORTANT : retourner le tableau après la boucle
   return commandes;
 }
 
@@ -376,42 +412,31 @@ function normalizeCommandes(
 // REFERENCE
 // ============================================================
 
-function generateReference(
-  id,
-  typeCommande
-) {
-  const numero =
-    Number(id) + 1;
+function generateReference(id, typeCommande) {
+  const numero = Number(id) + 1;
 
-  const type =
-    normalizeTypeCommande(
-      typeCommande
-    );
+  const type = normalizeTypeCommande(typeCommande);
 
-  const lettre =
-    type === "vrac"
-      ? "V"
-      : "B";
+  const lettre = type === "vrac" ? "V" : "B";
 
   return `${numero}${lettre}2026`;
 }
 
 
-// ============================================================
-// INSERTION COMMANDE
-// ============================================================
 
-async function insererCommande(
+ // ============================================================
+ // INSERTION COMMANDE
+ // ============================================================
+
+ async function insererCommande(
   connection,
   visiteurId,
   commande,
   numeroCommande
 ) {
-  const typeCommande =
-    normalizeTypeCommande(
-      commande.type_commande ||
-      commande.type
-    );
+  const typeCommande = normalizeTypeCommande(
+    commande.type_commande || commande.type
+  );
 
   if (!typeCommande) {
     throw new Error(
@@ -419,12 +444,29 @@ async function insererCommande(
     );
   }
 
-  const numero =
-    Number(numeroCommande) || 1;
-
+  const numero = Number(numeroCommande) || 1;
 
   // ==========================================================
-  // INSERT
+  // MARQUE ET TYPE D'ÉTIQUETTE
+  // ==========================================================
+
+  const typeMarque =
+    commande.type_marque ??
+    commande.typeMarque ??
+    null;
+
+  const typeEtiquette =
+    typeCommande === "conditionné" &&
+    typeMarque === "Marque ORZETA"
+      ? (
+          commande.type_etiquette ??
+          commande.typeEtiquette ??
+          null
+        )
+      : null;
+
+  // ==========================================================
+  // INSERTION SQL
   // ==========================================================
 
   await connection.execute(
@@ -433,7 +475,7 @@ async function insererCommande(
         visiteur_id,
         numero_commande,
         type_commande,
-  
+
         categorie,
         qualite_grade,
         volume_estime,
@@ -444,14 +486,14 @@ async function insererCommande(
         frequence_commande,
         exigences_specifiques,
         informations_complementaires,
-  
+
         pays_conditionne,
         periode_volume,
         nombre_fcl,
         nom_label,
         canal_distribution,
         volumes_estimes,
-  
+
         type_emballage,
         formats_souhaites,
         emballages_selectionnes,
@@ -459,58 +501,52 @@ async function insererCommande(
         autre_emballage,
         autres_selectionnes,
         autres_emballages,
-  
+
         type_marque,
+        type_etiquette,
         certifications_requises,
         profil_aromatique,
-  
+
         nom_entreprise,
         site_web,
         contact_professionnel,
-  
+
         quantite_commande,
         nombre_palettes,
-  
+
         marche_cible,
         quantite_prevue,
-  
+
         nouvelle_marque_emballages,
         nouvelle_marque_formats,
         nouvelle_marque_autre_emballage,
-  
+
         k232_demande,
         k232_valeur,
         k270_demande,
         k270_valeur
       )
-  
+
       VALUES (
         ?, ?, ?,
-  
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-  
         ?, ?, ?, ?, ?, ?,
-  
         ?, ?, ?, ?, ?, ?, ?,
-  
+        ?, ?, ?, ?,
         ?, ?, ?,
-  
-        ?, ?, ?,
-  
         ?, ?,
-  
         ?, ?,
-  
         ?, ?, ?,
-  
         ?, ?, ?, ?
       )
     `,
     [
+      // Identifiants
       visiteurId,
       numero,
       typeCommande,
-  
+
+      // Informations générales
       commande.categorie || null,
       commande.qualite_grade || null,
       commande.volume_estime ?? null,
@@ -519,105 +555,121 @@ async function insererCommande(
       commande.incoterm || "EXW",
       commande.format_livraison || null,
       commande.frequence_commande || null,
-  
+
       commande.exigences_specifiques
         ? Array.isArray(commande.exigences_specifiques)
           ? JSON.stringify(commande.exigences_specifiques)
           : commande.exigences_specifiques
         : null,
-  
+
       commande.informations_complementaires || null,
-  
-      // =========================
-      // CONDITIONNÉ
-      // =========================
-  
+
+      // Conditionné
       commande.pays_conditionne || null,
-      commande.periode_volume ?? commande.periodeVolume ?? null,
-      commande.nombre_fcl ?? commande.nombreFcl ?? null,
-      commande.nom_label ?? commande.nomLabel ?? null,
-      commande.canal_distribution || commande.canal || null,
-      commande.volumes_estimes ?? commande.volumes_conditionne ?? null,
-  
+      commande.periode_volume ??
+        commande.periodeVolume ??
+        null,
+      commande.nombre_fcl ??
+        commande.nombreFcl ??
+        null,
+      commande.nom_label ??
+        commande.nomLabel ??
+        null,
+      commande.canal_distribution ||
+        commande.canal ||
+        null,
+      commande.volumes_estimes ??
+        commande.volumes_conditionne ??
+        null,
+
+      // Emballages et formats
       commande.type_emballage
         ? JSON.stringify(commande.type_emballage)
         : null,
-  
+
       commande.formats_souhaites
         ? JSON.stringify(commande.formats_souhaites)
         : null,
-  
+
       commande.type_emballage?.emballages
         ? JSON.stringify(commande.type_emballage.emballages)
         : null,
-  
+
       commande.packaging
         ? JSON.stringify(commande.packaging)
         : null,
-  
+
       commande.type_emballage?.autres?.Autre || null,
-  
+
       commande.type_emballage?.autres
         ? JSON.stringify(commande.type_emballage.autres)
         : null,
-  
+
       commande.type_emballage?.autres
         ? JSON.stringify(commande.type_emballage.autres)
         : null,
-  
-      commande.type_marque || null,
-  
+
+      // Marque et type d'étiquette
+      typeMarque,
+      typeEtiquette,
+
+      // Certifications et profil aromatique
       commande.certifications_requises
         ? Array.isArray(commande.certifications_requises)
           ? JSON.stringify(commande.certifications_requises)
           : commande.certifications_requises
         : null,
-  
+
       commande.profil_aromatique
         ? JSON.stringify(commande.profil_aromatique)
         : null,
-  
+
+      // Entreprise
       commande.nom_entreprise || null,
       commande.site_web || null,
       commande.contact_professionnel || null,
-  
+
+      // Quantités
       commande.type_conteneur ||
         commande.quantite_commande ||
         null,
-  
+
       commande.nombre_palettes ?? null,
-  
+
       commande.marche_cible || null,
       commande.quantite_prevue || null,
-  
+
+      // Nouvelle marque
       commande.nouvelle_marque_formats?.emballages
-        ? JSON.stringify(commande.nouvelle_marque_formats.emballages)
+        ? JSON.stringify(
+            commande.nouvelle_marque_formats.emballages
+          )
         : null,
-  
+
       commande.nouvelle_marque_formats?.formats
-        ? JSON.stringify(commande.nouvelle_marque_formats.formats)
+        ? JSON.stringify(
+            commande.nouvelle_marque_formats.formats
+          )
         : null,
-  
+
       commande.nouvelle_marque_formats?.autre || null,
-  
-      // =========================
+
       // K232 / K270
-      // =========================
-  
       commande.k232_demande ? 1 : 0,
-  
+
       commande.k232_demande
         ? commande.k232_valeur || null
         : null,
-  
+
       commande.k270_demande ? 1 : 0,
-  
+
       commande.k270_demande
         ? commande.k270_valeur || null
-        : null,
+        : null
     ]
   );
 }
+
 // ============================================================
 // GET VISITEUR
 // ============================================================
@@ -4754,6 +4806,57 @@ async function ensureCommandesColumn() {
 
 
 // ============================================================
+// MIGRATION COLONNE TYPE_ETIQUETTE (TABLE COMMANDES)
+// ============================================================
+
+async function ensureTypeEtiquetteColumn() {
+
+  const [columns] =
+    await pool.query(
+      `
+        SELECT COUNT(*) AS count
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'commandes'
+          AND COLUMN_NAME = 'type_etiquette'
+      `
+    );
+
+
+  if (
+    Number(
+      columns[0]?.count || 0
+    ) === 0
+  ) {
+
+    console.log(
+      "📦 Création de la colonne type_etiquette..."
+    );
+
+
+    await pool.query(
+      `
+        ALTER TABLE commandes
+        ADD COLUMN type_etiquette VARCHAR(50) NULL
+        AFTER type_marque
+      `
+    );
+
+
+    console.log(
+      "✅ Colonne type_etiquette créée."
+    );
+
+  } else {
+
+    console.log(
+      "✅ Colonne type_etiquette déjà présente."
+    );
+  }
+}
+
+
+// ============================================================
 // START SERVER
 // ============================================================
 
@@ -4792,6 +4895,8 @@ async function startServer() {
     // ========================================================
 
     await ensureCommandesColumn();
+
+    await ensureTypeEtiquetteColumn();
 
 
     // ========================================================

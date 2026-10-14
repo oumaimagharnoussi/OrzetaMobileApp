@@ -125,7 +125,7 @@ const money = (n) => Number(n || 0).toLocaleString("en-US", {
 const moneyEUR = (n, decimals = 2) => `${Number(n || 0).toLocaleString("en-US", {
   minimumFractionDigits: decimals,
   maximumFractionDigits: decimals,
-})} USD`;
+})} EUR`;
 
 // Tarifs vrac indexés par catégorie + format de livraison.
 // Les prix sont conservés à 3 décimales, comme dans la grille fournie.
@@ -1421,7 +1421,7 @@ const response = await fetch(url, {
   <p class="terms">
 
     <b>Currency:</b>
-    USD
+    EUR
 
     &nbsp;&nbsp;&nbsp;
 
@@ -2576,7 +2576,7 @@ const message =
             >
               Currency:
             </Text>{" "}
-            USD
+            EUR
 
             {"\n"}
 
