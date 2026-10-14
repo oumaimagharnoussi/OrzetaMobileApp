@@ -120,6 +120,58 @@ const greenApiToken =
 
 
 // ============================================================
+// GREEN-API - ENVOYER UN PDF À UN NUMÉRO
+// ============================================================
+
+async function sendGreenApiFile({
+  phone,
+  pdfBuffer,
+  filename,
+  caption,
+}) {
+  if (!greenApiIdInstance || !greenApiToken) {
+    throw new Error(
+      "GREENAPI_ID_INSTANCE / GREENAPI_API_TOKEN manquants dans la configuration du serveur."
+    );
+  }
+
+  const form = new FormData();
+
+  form.append("chatId", `${String(phone).replace(/\D/g, "")}@c.us`);
+  form.append("fileName", filename);
+
+  if (caption) {
+    form.append("caption", caption);
+  }
+
+  form.append("file", pdfBuffer, {
+    filename,
+    contentType: "application/pdf",
+    knownLength: pdfBuffer.length,
+  });
+
+  const response = await axios.post(
+    `${greenApiUrl}/waInstance${greenApiIdInstance}/sendFileByUpload/${greenApiToken}`,
+    form,
+    {
+      headers: form.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      timeout: 60000,
+    }
+  );
+
+  if (!response.data?.idMessage) {
+    throw new Error(
+      "Green-API n'a pas confirmé l'envoi du fichier."
+    );
+  }
+
+  return response.data.idMessage;
+}
+
+
+// ============================================================
 // ENVOYER LA DEMANDE DE VALIDATION AU VALIDATEUR (GREEN-API)
 // ============================================================
 
@@ -2118,7 +2170,9 @@ app.get("/validation/:token", async (req, res) => {
               } else if (action === "validate") {
                 window.alert(
                   data.notificationStatus === "processing"
-                    ? "Fiche validée. L'envoi de l'e-mail est en cours."
+                    ? (data.channel === "whatsapp"
+                        ? "Fiche validée. Le PDF est en cours d'envoi au visiteur sur WhatsApp."
+                        : "Fiche validée. L'envoi de l'e-mail est en cours.")
                     : "Fiche validée avec succès."
                 );
               } else {
@@ -2338,7 +2392,7 @@ app.post("/api/validation/:token/validate", async (req, res) => {
       `Best regards,\n` +
       `OLIVED`;
 
-    // 6. Canal WhatsApp : conserver le fonctionnement existant
+    // 6. Canal WhatsApp : envoi automatique du PDF au visiteur (Green-API)
     if (validation.channel === "whatsapp") {
       const telephone =
         visiteur.telephone ||
@@ -2383,25 +2437,73 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         });
       }
 
-      const whatsappUrl =
-        `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-
-      console.log(
-        "[VALIDATION] Lien WhatsApp préparé :",
-        validation.reference
-      );
-
-      return res.json({
+      // Répondre immédiatement au navigateur du validateur
+      res.json({
         success: true,
         message:
-          "Fiche validée. Ouvrez WhatsApp pour poursuivre l'envoi.",
+          "Fiche validée. La génération du PDF et l'envoi WhatsApp au visiteur sont en cours.",
         status: "validated",
         reference: validation.reference,
         channel: "whatsapp",
         notificationSent: false,
+        notificationStatus: "processing",
         notificationError: null,
-        whatsappUrl,
+        whatsappUrl: null,
       });
+
+      // Générer le PDF et l'envoyer au visiteur via Green-API
+      void (async () => {
+        try {
+          const [htmlRows] = await pool.query(
+            `
+              SELECT pdf_html
+              FROM pdf_validations
+              WHERE id = ?
+              LIMIT 1
+            `,
+            [validation.id]
+          );
+
+          if (!htmlRows.length || !htmlRows[0].pdf_html) {
+            throw new Error(
+              "Le contenu HTML de la fiche est introuvable."
+            );
+          }
+
+          const pdfBuffer = await generatePdfFromHtml(
+            htmlRows[0].pdf_html
+          );
+
+          if (!pdfBuffer || !pdfBuffer.length) {
+            throw new Error("Le PDF généré est vide.");
+          }
+
+          const idMessage = await sendGreenApiFile({
+            phone,
+            pdfBuffer,
+            filename: `OLIVED_${validation.reference}.pdf`,
+            caption: message,
+          });
+
+          console.log(
+            "[WHATSAPP] PDF envoyé au visiteur :",
+            validation.reference,
+            "| ID :",
+            idMessage
+          );
+        } catch (whatsappError) {
+          console.error(
+            "[WHATSAPP] ÉCHEC envoi visiteur pour",
+            validation?.reference,
+            ":",
+            whatsappError.response?.data ||
+              whatsappError.stack ||
+              whatsappError.message
+          );
+        }
+      })();
+
+      return;
     }
 
     // 7. Canal email : répondre immédiatement au navigateur
