@@ -1811,11 +1811,11 @@ const toggleEmballageConditionne = (type) => {
   // =====================================================
 
 
-// Profils enregistrés directement, sans passer par la page PDF
-const PROFILS_SANS_PDF = [
-  "fournisseur",
-  "institution",
-  "autre",
+// Seuls ces profils passent par la page PDF (traitement de commande).
+// Tous les autres (y compris aucun profil) sont enregistrés directement.
+const PROFILS_AVEC_PDF = [
+  "intermediaire",
+  "acheteur",
 ];
 
 // Alert.alert ne s'affiche pas sur le web
@@ -1829,7 +1829,7 @@ const afficherMessage = (titre, message) => {
 
 const handleAjouter = async () => {
   const sansPdf =
-    PROFILS_SANS_PDF.includes(profile);
+    !PROFILS_AVEC_PDF.includes(profile);
 
   try {
     // =====================================================
@@ -5625,9 +5625,9 @@ Catégorie
             styles.buttonText
           }
         >
-          {PROFILS_SANS_PDF.includes(profile)
-            ? "Ajouter visiteur"
-            : "Traitement de commande"}
+          {PROFILS_AVEC_PDF.includes(profile)
+            ? "Traitement de commande"
+            : "Ajouter visiteur"}
         </Text>
 
       </TouchableOpacity>
