@@ -3729,7 +3729,7 @@ Catégorie
 {/* TYPE D'ÉTIQUETTE CONDITIONNÉ (champ indépendant, toujours visible) */}
 
     <Text style={styles.label}>
-      Type d'étiquette
+      Game
     </Text>
 
     <View style={styles.pickerContainer}>

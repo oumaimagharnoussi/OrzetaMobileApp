@@ -2943,6 +2943,47 @@ app.post(
 
 
 // ============================================================
+// PRIX DES OFFRES (calculés par la fiche MOTEUR, EXW, EUR)
+// vrac : EUR / litre — conditionné : EUR / unité + unités / FCL 20'
+// ============================================================
+
+const { lireMoteur, grillePrix } = require("./moteur/store");
+
+app.get(
+  "/api/moteur/prix",
+  authenticateToken,
+  requireUser,
+  async (req, res) => {
+
+    try {
+
+      const { donnees, updated_at } =
+        await lireMoteur(pool);
+
+      res.json({
+        success: true,
+        updated_at,
+        ...grillePrix(donnees),
+      });
+
+    } catch (error) {
+
+      console.error(
+        "❌ PRIX MOTEUR :",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Erreur lors du calcul des prix.",
+      });
+    }
+  }
+);
+
+
+// ============================================================
 // GET TOUS LES VISITEURS
 // ============================================================
 

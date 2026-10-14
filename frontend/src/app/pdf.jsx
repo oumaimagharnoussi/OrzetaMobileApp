@@ -84,38 +84,17 @@ const calculerQuantiteConditionnee = (
 };
 
 
-const UNITS_PER_FCL20 = {
-  Tin: {
-    "500 ml": 9600,
-    "1 L": 8400,
-    "3 L": 2800,
-    "5 L": 2000,
-  },
+// Prix conditionné : grille de la fiche MOTEUR (GET /api/moteur/prix),
+// prix EXW en EUR par unité + unités par FCL 20 pieds, par contenant.
+// Les commandes conditionnées sont chiffrées en EVOO.
+const CONDITIONED_PRODUCT = "EVOO";
 
-  PET: {
-    "1 L": 9600,
-    "2 L": 4800,
-    "3 L": 3200,
-    "5 L": 1800,
-  },
-
-  Glass: {
-    "250 ml": 12000,
-    "500 ml": 9600,
-    "750 ml": 7200,
-    "1 L": 6000,
-  },
-
-  BaginBox: {
-    "3 L": 3200,
-    "5 L": 2400,
-  },
-};
-const PRICES_EUR = {
-  PET: { "1 L": 4.57, "2 L": 9.01, "3 L": 13.26, "5 L": 21.83 },
-  Tin: { "500 ml": 3.11, "1 L": 5.12, "3 L": 14.62, "5 L": 23.63 },
-  Glass: { "250 ml": 1.68, "500 ml": 2.93, "750 ml": 4.13, "1 L": 5.43 },
-  BaginBox: { "3 L": 14.80, "5 L": 23.66 },
+// Emballage + format du formulaire → nom du contenant dans la fiche MOTEUR
+const CONDITIONED_CONTAINER_PREFIX = {
+  PET: "PET",
+  Tin: "Bidon métal",
+  Glass: "Bouteille verre foncé",
+  BaginBox: "Bag-in-Box",
 };
 
 const money = (n) => Number(n || 0).toLocaleString("en-US", {
@@ -127,30 +106,21 @@ const moneyEUR = (n, decimals = 2) => `${Number(n || 0).toLocaleString("en-US", 
   maximumFractionDigits: decimals,
 })} EUR`;
 
-// Tarifs vrac indexés par catégorie + format de livraison.
-// Les prix sont conservés à 3 décimales, comme dans la grille fournie.
-const BULK_PRICES_EUR = {
-  EVOO: {
-    "Flexitank 24 000 L": 12.425,
-    "ISO-tank 24 000 L (rotation)": 12.489,
-    "Citerne routière 27 000 L (local)": 12.352,
-    "IBC 1 000 L": 13.286,
-    "Fût acier 200 L": 12.999,
-  },
-  VOO: {
-    "Flexitank 24 000 L": 13.809,
-    "ISO-tank 24 000 L (rotation)": 13.873,
-    "Citerne routière 27 000 L (local)": 13.736,
-    "IBC 1 000 L": 14.670,
-    "Fût acier 200 L": 14.383,
-  },
-  OO: {
-    "Flexitank 24 000 L": 11.858,
-    "ISO-tank 24 000 L (rotation)": 11.921,
-    "Citerne routière 27 000 L (local)": 11.785,
-    "IBC 1 000 L": 12.718,
-    "Fût acier 200 L": 12.432,
-  },
+// Tarifs vrac : grille EXW en EUR / litre calculée par la fiche MOTEUR
+// (GET /api/moteur/prix-vrac). Une modification de l'admin dans la
+// fiche MOTEUR change donc directement les prix de l'offre.
+// Forme : { EVOO: { "Flexitank 24 000 L": 3.621, ... }, VOO: {...}, ... }
+
+// Catégorie du formulaire → code produit du moteur.
+// Remarque : la catégorie « Lampante » correspond au produit CPOO.
+const bulkProductCode = (categorie) => {
+  const raw = normalizeBulkKey(categorie).toUpperCase();
+  if (!raw) return null;
+  if (/LAMPANTE/.test(raw)) return "CPOO";
+
+  return ["EVOO", "VOO", "CPOO", "RPOO", "POO", "ROO", "OO"].find((code) =>
+    raw === code || new RegExp(`\\b${code}\\b`).test(raw)
+  ) || null;
 };
 
 const normalizeBulkKey = (value) => String(value ?? "")
@@ -180,15 +150,12 @@ const canonicalBulkFormat = (value) => {
   return value;
 };
 
-const getBulkPriceEUR = (categorie, formatLivraison) => {
-  const categoryRaw = String(categorie ?? "").trim().toUpperCase();
-  // Accepter aussi les libellés descriptifs, par exemple
-  // "EXTRA VIRGIN OLIVE OIL – EVOO", et en extraire le code tarifaire.
-  const category = ["EVOO", "VOO", "OO"].find((code) =>
-    categoryRaw === code || new RegExp(`\\b${code}\\b`).test(categoryRaw)
-  );
+const getBulkPriceEUR = (categorie, formatLivraison, bulkPrices) => {
+  // Accepte aussi les libellés descriptifs, par exemple
+  // "Extra Virgin Olive Oil – EVOO", et en extrait le code produit.
+  const category = bulkProductCode(categorie);
   const canonicalFormat = canonicalBulkFormat(formatLivraison);
-  const categoryPrices = BULK_PRICES_EUR[category];
+  const categoryPrices = bulkPrices?.[category];
   if (!categoryPrices || !canonicalFormat) return null;
   const wantedFormat = normalizeBulkKey(canonicalFormat);
   const match = Object.entries(categoryPrices).find(([format]) => normalizeBulkKey(format) === wantedFormat);
@@ -232,11 +199,20 @@ const normalizeFormat = (value) => {
 
   return raw.replace(/\bml\b/g, "ml");
 };
-const getPriceEUR = (packaging, format) => {
+// Ligne de la fiche MOTEUR pour un emballage + format (ou null)
+const getConditionedLine = (packaging, format, conditionedPrices) => {
   const kind = normalizePackagingName(packaging);
-  const size = normalizeFormat(format);
-  if (!kind) return null;
-  const price = PRICES_EUR[kind]?.[size];
+  const prefix = CONDITIONED_CONTAINER_PREFIX[kind];
+  if (!prefix) return null;
+
+  const container = `${prefix} ${normalizeFormatLabel(format)}`;
+  return conditionedPrices?.[CONDITIONED_PRODUCT]?.[container] || null;
+};
+
+const getPriceEUR = (packaging, format, conditionedPrices) => {
+  const price = Number(
+    getConditionedLine(packaging, format, conditionedPrices)?.prix_unite
+  );
   return Number.isFinite(price) ? price : null;
 };
 
@@ -307,11 +283,15 @@ const getBulkCapacity = (formatLivraison) => {
   return BULK_FORMAT_CAPACITY_LITRES[canonical] || null;
 };
 
+// Quantité en unités :
+//   FCL 20 = unités/FCL × nombre de FCL       (10 palettes par FCL 20)
+//   FCL 40 = unités/FCL × 2 × nombre de FCL   (20 palettes par FCL 40)
+//   Palettes = unités/FCL ÷ 10 × nombre de palettes
 const getConditionedQuantity = ({
   commande,
   target,
   format,
-  bottleType = "",
+  conditionedPrices,
 }) => {
   // Mode choisi dans le formulaire
   const mode = String(
@@ -337,11 +317,11 @@ const getConditionedQuantity = ({
     commande?.nb_palette
   );
 
-  // À relier aux valeurs de la ligne "Unités/FCL" du fichier Excel.
+  // Colonne « Unités / FCL » (FCL 20 pieds) de la fiche MOTEUR
   const unitesFCL20 = getUnitsPerFCL20(
     target,
     format,
-    bottleType
+    conditionedPrices
   );
 
   if (unitesFCL20 == null || unitesFCL20 <= 0) {
@@ -378,12 +358,10 @@ const getConditionedQuantity = ({
   return null;
 };
 
-const getUnitsPerFCL20 = (target, format, bottleType = "") => {
-  const packaging = normalizePackagingName(target);
-  const size = normalizeFormatLabel(format);
-
+// Unités / FCL 20 pieds de la fiche MOTEUR
+const getUnitsPerFCL20 = (target, format, conditionedPrices) => {
   const units = Number(
-    UNITS_PER_FCL20[packaging]?.[size]
+    getConditionedLine(target, format, conditionedPrices)?.unites_fcl20
   );
 
   return Number.isFinite(units) && units > 0
@@ -391,7 +369,143 @@ const getUnitsPerFCL20 = (target, format, bottleType = "") => {
     : null;
 };
 
-const buildPricingRows = (visiteur) => {
+// Remise conditionné selon le canal de distribution de la commande
+const CANAL_DISCOUNTS = [
+  { canal: "Distributeur importateur", taux: 0.25 },
+  { canal: "HoReCa/Grossiste", taux: 0.15 },
+];
+
+const getCanalDiscount = (commande) => {
+  const canal = normalizeBulkKey(commande?.canal_distribution ?? commande?.canal);
+  return CANAL_DISCOUNTS.find((d) => normalizeBulkKey(d.canal) === canal) || null;
+};
+
+// Lignes de prix d'une sélection d'emballages / formats conditionnés.
+// Utilisé pour le conditionnement classique et pour la nouvelle marque.
+const addConditionedRows = ({
+  rows,
+  commande,
+  numero,
+  fclCount,
+  formatEntries,
+  selectedPackaging,
+  conditionedPrices,
+  section,
+  label,
+}) => {
+  const seenFormats = new Set();
+  const uniqueFormats = formatEntries.filter((entry) => {
+    const key = `${entry.path}|${entry.format}`;
+    if (seenFormats.has(key)) return false;
+    seenFormats.add(key);
+    return true;
+  });
+
+  const packagingNames = selectedPackaging
+    .map((item) => ({ raw: String(item), normalized: normalizePackagingName(item) }))
+    .filter((item) => item.normalized);
+
+  const used = new Set();
+
+  const remise = getCanalDiscount(commande);
+  const remiseLabel = remise
+    ? ` (-${Math.round(remise.taux * 100)}% ${remise.canal})`
+    : "";
+
+  uniqueFormats.forEach((entry, formatIndex) => {
+    const pathLower = String(entry.path || "").toLowerCase();
+
+    const bottleType = /\bdorica\b/i.test(pathLower)
+      ? "DORICA"
+      : /\bmarasca\b/i.test(pathLower)
+        ? "MARASCA"
+        : "";
+
+    let packaging = null;
+
+    const pathMatch = packagingNames.find((item) =>
+      pathLower.includes(String(item.raw).toLowerCase()) ||
+      pathLower.includes(item.normalized.toLowerCase())
+    );
+
+    if (pathMatch) packaging = pathMatch.normalized;
+    if (!packaging && /\bpet\b/i.test(pathLower)) packaging = "PET";
+    if (!packaging && /tin|metal|bidon/i.test(pathLower)) packaging = "Tin";
+    if (!packaging && /glass|verre|dorica|marasca/i.test(pathLower)) packaging = "Glass";
+    if (!packaging && /bag.?in.?box/i.test(pathLower)) packaging = "BaginBox";
+
+    const targets = packaging
+      ? [packaging]
+      : packagingNames.map((item) => item.normalized);
+
+    targets.forEach((target) => {
+      const key = `${numero}|${target || ""}|${bottleType}|${entry.format}`;
+
+      if (used.has(key)) return;
+      used.add(key);
+
+      const prixCatalogue = target
+        ? getPriceEUR(target, entry.format, conditionedPrices)
+        : null;
+
+      // Remise canal de distribution appliquée sur le prix unitaire
+      const price = prixCatalogue != null && remise
+        ? prixCatalogue * (1 - remise.taux)
+        : prixCatalogue;
+
+      const quantiteTotale = getConditionedQuantity({
+        commande,
+        target,
+        format: entry.format,
+        conditionedPrices,
+      });
+
+      const quantity = quantiteTotale != null
+        ? `${quantiteTotale.toLocaleString("en-US")} units`
+        : "À confirmer";
+
+      const description =
+        target === "Glass" && bottleType
+          ? `QR ${numero} — ${label} - ${entry.format} ${bottleType} Glass${remiseLabel}`
+          : `QR ${numero} — ${label} - ${entry.format} ${target || "Packaging to confirm"}${remiseLabel}`;
+
+      rows.push({
+        key: `commande-${numero}-${section}-${target || "emballage"}-${bottleType}-${entry.format}-${formatIndex}`,
+        section,
+        description,
+        price,
+        precision: 2,
+        quantity,
+        total:
+          price != null && quantiteTotale != null
+            ? price * quantiteTotale
+            : null,
+      });
+    });
+  });
+
+  if (uniqueFormats.length === 0) {
+    const selected = packagingNames.map((item) => item.normalized).join(", ");
+    rows.push({
+      key: `commande-${numero}-${section}-sans-format`,
+      section,
+      description: `QR ${numero} — ${label}${selected ? ` — ${selected}` : " — conditionnement à préciser"}`,
+      price: null,
+      quantity: fclCount ? `${fclCount} FCL 20’` : String(commande?.volumes_estimes ?? commande?.volumes_conditionne ?? "À confirmer"),
+      total: null,
+    });
+  }
+};
+
+const estNouvelleMarque = (commande) =>
+  normalizeBulkKey(commande?.type_marque) === normalizeBulkKey("Création de nouvelle marque");
+
+// prices = { vrac, conditionne } renvoyé par GET /api/moteur/prix
+// Chaque ligne a une `section` : "standard" ou "nouvelle_marque".
+const buildPricingRows = (visiteur, prices) => {
+  const bulkPrices = prices?.vrac;
+  const conditionedPrices = prices?.conditionne;
+
   const commandes = Array.isArray(visiteur?.commandes) && visiteur.commandes.length
     ? visiteur.commandes
     : (visiteur && (
@@ -408,7 +522,7 @@ const buildPricingRows = (visiteur) => {
       .trim()
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[̀-ͯ]/g, "");
 
     const numero = commande?.numero_commande || index + 1;
     const fclCount = getFclCount(commande);
@@ -430,9 +544,10 @@ const buildPricingRows = (visiteur) => {
       visiteur?.formatLivraison ??
       "";
 
-    // Vrac : prix par litre selon la catégorie et le mode de livraison.
+    // Vrac : prix EXW par litre (fiche MOTEUR) selon la catégorie
+    // et le mode de livraison.
     if (type === "vrac" || (categorie && formatLivraison && !/conditionn/.test(type))) {
-      const price = getBulkPriceEUR(categorie, formatLivraison);
+      const price = getBulkPriceEUR(categorie, formatLivraison, bulkPrices);
       const canonicalFormat = canonicalBulkFormat(formatLivraison);
       const estimatedVolume = positiveNumber(
         commande?.volume_estime ?? commande?.volumes_estimes ??
@@ -448,6 +563,7 @@ const buildPricingRows = (visiteur) => {
 
       rows.push({
         key: `commande-${numero}-vrac-${categorie || "categorie"}-${normalizeBulkKey(String(formatLivraison))}`,
+        section: "standard",
         description: `QR ${numero} — ${categorie || "Catégorie à confirmer"} — ${String(formatLivraison || canonicalFormat || "Format livraison à confirmer")}`,
         price,
         precision: 3,
@@ -486,98 +602,51 @@ const buildPricingRows = (visiteur) => {
           ...collectFormats(formatsSouhaites),
         ];
 
-    const seenFormats = new Set();
-    const uniqueFormats = formatEntries.filter((entry) => {
-      const key = `${entry.path}|${entry.format}`;
-      if (seenFormats.has(key)) return false;
-      seenFormats.add(key);
-      return true;
-    });
+    // Une commande « nouvelle marque » sans emballage classique
+    // n'a de lignes que dans le tableau nouvelle marque.
+    const sansEmballageClassique =
+      formatEntries.length === 0 && selectedPackaging.length === 0;
 
-    const packagingNames = selectedPackaging
-      .map((item) => ({ raw: String(item), normalized: normalizePackagingName(item) }))
-      .filter((item) => item.normalized);
-
-    const used = new Set();
-
-    
-
-    uniqueFormats.forEach((entry, formatIndex) => {
-      const pathLower = String(entry.path || "").toLowerCase();
-    
-      const bottleType = /\bdorica\b/i.test(pathLower)
-        ? "DORICA"
-        : /\bmarasca\b/i.test(pathLower)
-          ? "MARASCA"
-          : "";
-    
-      let packaging = null;
-    
-      const pathMatch = packagingNames.find((item) =>
-        pathLower.includes(String(item.raw).toLowerCase()) ||
-        pathLower.includes(item.normalized.toLowerCase())
-      );
-    
-      if (pathMatch) packaging = pathMatch.normalized;
-      if (!packaging && /\bpet\b/i.test(pathLower)) packaging = "PET";
-      if (!packaging && /tin|metal|bidon/i.test(pathLower)) packaging = "Tin";
-      if (!packaging && /glass|verre|dorica|marasca/i.test(pathLower)) packaging = "Glass";
-      if (!packaging && /bag.?in.?box/i.test(pathLower)) packaging = "BaginBox";
-    
-      const targets = packaging
-        ? [packaging]
-        : packagingNames.map((item) => item.normalized);
-    
-      targets.forEach((target) => {
-        const key = `${numero}|${target || ""}|${bottleType}|${entry.format}`;
-    
-        if (used.has(key)) return;
-        used.add(key);
-    
-        const price = target
-          ? getPriceEUR(target, entry.format)
-          : null;
-    
-        const quantiteTotale = getConditionedQuantity({
-          commande,
-          target,
-          format: entry.format,
-          bottleType,
-        });
-    
-        const quantity = quantiteTotale != null
-          ? `${quantiteTotale.toLocaleString("en-US")} units`
-          : "À confirmer";
-    
-        const description =
-          target === "Glass" && bottleType
-            ? `QR ${numero} — Extra Virgin Olive Oil - ${entry.format} ${bottleType} Glass`
-            : `QR ${numero} — Extra Virgin Olive Oil - ${entry.format} ${target || "Packaging to confirm"}`;
-    
-        rows.push({
-          key: `commande-${numero}-${target || "emballage"}-${bottleType}-${entry.format}-${formatIndex}`,
-          description,
-          price,
-          precision: 2,
-          quantity,
-          total:
-            price != null && quantiteTotale != null
-              ? price * quantiteTotale
-              : null,
-        });
+    if (!(estNouvelleMarque(commande) && sansEmballageClassique)) {
+      addConditionedRows({
+        rows,
+        commande,
+        numero,
+        fclCount,
+        formatEntries,
+        selectedPackaging,
+        conditionedPrices,
+        section: "standard",
+        label: "Extra Virgin Olive Oil",
       });
-    });
-    
+    }
 
+    // Nouvelle marque : tableau séparé, selon les emballages / formats
+    // choisis dans la partie « Création de nouvelle marque ».
+    if (estNouvelleMarque(commande)) {
+      const nmFormatsRaw = parseJSON(commande?.nouvelle_marque_formats, {});
+      const nmFormats = nmFormatsRaw?.formats ?? nmFormatsRaw;
 
-    if (uniqueFormats.length === 0) {
-      const selected = packagingNames.map((item) => item.normalized).join(", ");
-      rows.push({
-        key: `commande-${numero}-sans-format`,
-        description: `QR ${numero} — Huile d'olive vierge extra${selected ? ` — ${selected}` : " — conditionnement à préciser"}`,
-        price: null,
-        quantity: fclCount ? `${fclCount} FCL 20’` : String(commande?.volumes_estimes ?? commande?.volumes_conditionne ?? "À confirmer"),
-        total: null,
+      const nmEmballagesRaw = parseJSON(
+        commande?.nouvelle_marque_emballages ?? nmFormatsRaw?.emballages,
+        []
+      );
+      const nmEmballages = Array.isArray(nmEmballagesRaw)
+        ? nmEmballagesRaw
+        : nmEmballagesRaw
+          ? [nmEmballagesRaw]
+          : [];
+
+      addConditionedRows({
+        rows,
+        commande,
+        numero,
+        fclCount,
+        formatEntries: collectFormats(nmFormats),
+        selectedPackaging: nmEmballages,
+        conditionedPrices,
+        section: "nouvelle_marque",
+        label: "Extra Virgin Olive Oil (new brand)",
       });
     }
   });
@@ -864,10 +933,62 @@ const response = await fetch(url, {
     );
   }, [visiteur]);
 
+  // ===================================================
+  // PRIX VRAC + CONDITIONNÉ (fiche MOTEUR)
+  // ===================================================
+
+  const [moteurPrices, setMoteurPrices] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadMoteurPrices = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/api/moteur/prix`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.message || `HTTP ${response.status}`);
+        }
+
+        if (active) setMoteurPrices({ vrac: data.vrac || {}, conditionne: data.conditionne || {} });
+      } catch (error) {
+        // Sans grille, les prix s'affichent « À confirmer »
+        console.error("ERREUR PRIX MOTEUR :", error?.message || error);
+      }
+    };
+
+    loadMoteurPrices();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Une seule source de données pour l'aperçu et le PDF imprimé.
   const pricingRows = useMemo(
-    () => buildPricingRows(visiteur),
-    [visiteur]
+    () => buildPricingRows(visiteur, moteurPrices),
+    [visiteur, moteurPrices]
+  );
+
+  // Deux tableaux : conditionnement / vrac, puis nouvelle marque
+  const standardRows = useMemo(
+    () => pricingRows.filter((row) => row.section !== "nouvelle_marque"),
+    [pricingRows]
+  );
+
+  const newBrandRows = useMemo(
+    () => pricingRows.filter((row) => row.section === "nouvelle_marque"),
+    [pricingRows]
   );
 
   const getLogoBase64 = async () => {
@@ -942,16 +1063,43 @@ const response = await fetch(url, {
         }
       );
 
-    const rows = pricingRows.length
-      ? pricingRows.map((item) => `
+    const rowsHtml = (items) => items.map((item) => `
           <tr>
             <td>${esc(item.description)}</td>
             <td class="num">${item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}</td>
             <td class="num">${esc(item.quantity)}</td>
             <td class="num">${item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}</td>
           </tr>
-        `).join("")
-      : `<tr><td colspan="4">Aucune commande ou aucun format sélectionné.</td></tr>`;
+        `).join("");
+
+    const rows = standardRows.length
+      ? rowsHtml(standardRows)
+      : newBrandRows.length
+        ? `<tr><td colspan="4">Voir le tableau « New brand » ci-dessous.</td></tr>`
+        : `<tr><td colspan="4">Aucune commande ou aucun format sélectionné.</td></tr>`;
+
+    // Tableau supplémentaire pour la création de nouvelle marque
+    const newBrandTable = newBrandRows.length
+      ? `
+  <h3>
+    PRICING – NEW BRAND
+  </h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Unit Price EXW Sfax (EUR)</th>
+        <th>Quantity</th>
+        <th>Total EXW Sfax (EUR)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml(newBrandRows)}
+    </tbody>
+  </table>
+`
+      : "";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1417,6 +1565,8 @@ const response = await fetch(url, {
     </tbody>
 
   </table>
+
+  ${newBrandTable}
 
   <p class="terms">
 
@@ -2553,7 +2703,7 @@ const message =
 
               {/* TABLE ROWS */}
 
-              {pricingRows.map((item) => (
+              {standardRows.map((item) => (
                 <View key={item.key} style={styles.tableRow}>
                   <Text style={[styles.td, { width: 250 }]}>{item.description}</Text>
                   <Text style={[styles.td, { width: 125, textAlign: "right" }]}>
@@ -2567,6 +2717,40 @@ const message =
               ))}
             </View>
           </ScrollView>
+
+          {/* TABLEAU NOUVELLE MARQUE */}
+
+          {newBrandRows.length > 0 && (
+            <>
+              <Text style={[styles.body, styles.bold, { marginTop: 16 }]}>
+                PRICING – NEW BRAND
+              </Text>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator>
+                <View>
+                  <View style={styles.tableHead}>
+                    <Text style={[styles.th, { width: 250 }]}>Description</Text>
+                    <Text style={[styles.th, { width: 125 }]}>Unit Price EXW Sfax (EUR)</Text>
+                    <Text style={[styles.th, { width: 105 }]}>Quantity</Text>
+                    <Text style={[styles.th, { width: 135 }]}>Total EXW Sfax (EUR)</Text>
+                  </View>
+
+                  {newBrandRows.map((item) => (
+                    <View key={item.key} style={styles.tableRow}>
+                      <Text style={[styles.td, { width: 250 }]}>{item.description}</Text>
+                      <Text style={[styles.td, { width: 125, textAlign: "right" }]}>
+                        {item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}
+                      </Text>
+                      <Text style={[styles.td, { width: 105, textAlign: "right" }]}>{item.quantity}</Text>
+                      <Text style={[styles.td, { width: 135, textAlign: "right" }]}>
+                        {item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            </>
+          )}
 
           <Text
             style={styles.body}

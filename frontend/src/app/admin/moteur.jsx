@@ -7,7 +7,8 @@ import {
   ScrollView,
   TextInput,
   StyleSheet,
-  Alert,
+  Alert as AlertNatif,
+  Platform,
   ActivityIndicator,
   FlatList,
 } from "react-native";
@@ -17,6 +18,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 import { apiFetch } from "../../services/api";
+
+// Alert.alert n'affiche rien sur le web : on utilise window.alert
+const Alert = {
+  alert: (titre, message, boutons) =>
+    Platform.OS === "web"
+      ? window.alert(`${titre}\n\n${message}`)
+      : AlertNatif.alert(titre, message, boutons),
+};
 
 // =====================================================
 // FORMATAGE
@@ -289,9 +298,18 @@ export default function AdminMoteur() {
       }
     };
 
+    const question =
+      "Remettre toutes les valeurs du fichier Excel d'origine ? Vos modifications seront perdues.";
+
+    // Alert.alert avec boutons ne fonctionne pas sur le web
+    if (Platform.OS === "web") {
+      if (window.confirm(question)) action();
+      return;
+    }
+
     Alert.alert(
       "Réinitialiser",
-      "Remettre toutes les valeurs du fichier Excel d'origine ? Vos modifications seront perdues.",
+      question,
       [
         { text: "Annuler", style: "cancel" },
         { text: "Réinitialiser", style: "destructive", onPress: action },

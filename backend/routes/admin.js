@@ -469,44 +469,12 @@ const {
   calculerContenants
 } = require("../moteur/engine");
 
-const MOTEUR_DEFAUT = require("../moteur/defaults.json");
-
-let moteurTablePrete = false;
-
-async function ensureMoteurTable(db) {
-  if (moteurTablePrete) return;
-
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS moteur_config (
-      id INT PRIMARY KEY,
-      donnees LONGTEXT NOT NULL,
-      updated_by INT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `);
-
-  moteurTablePrete = true;
-}
-
-async function lireMoteur(db) {
-  await ensureMoteurTable(db);
-
-  const [rows] = await db.query(
-    "SELECT donnees, updated_at FROM moteur_config WHERE id = 1"
-  );
-
-  if (rows.length === 0) {
-    return {
-      donnees: structuredClone(MOTEUR_DEFAUT),
-      updated_at: null
-    };
-  }
-
-  return {
-    donnees: JSON.parse(rows[0].donnees),
-    updated_at: rows[0].updated_at
-  };
-}
+const {
+  MOTEUR_DEFAUT,
+  copie,
+  ensureMoteurTable,
+  lireMoteur
+} = require("../moteur/store");
 
 function reponseMoteur(donnees, updated_at) {
   const { coutCalcule, produits } = calculerProduits(donnees);
@@ -550,7 +518,7 @@ function fusionnerMoteur(actuel, recu) {
     return v;
   };
 
-  const resultat = structuredClone(actuel);
+  const resultat = copie(actuel);
 
   // SCÉNARIO
   if (recu.scenario) {
@@ -737,7 +705,7 @@ router.post(
       );
 
       res.json(
-        reponseMoteur(structuredClone(MOTEUR_DEFAUT), null)
+        reponseMoteur(copie(MOTEUR_DEFAUT), null)
       );
 
     } catch (error) {
