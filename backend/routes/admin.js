@@ -459,4 +459,298 @@ router.put(
 );
 
 
+// ==========================================
+// MOTEUR DE CALCUL (fiche MOTEUR Excel)
+// ==========================================
+
+const {
+  calculerMoteur,
+  calculerProduits,
+  calculerContenants
+} = require("../moteur/engine");
+
+const MOTEUR_DEFAUT = require("../moteur/defaults.json");
+
+let moteurTablePrete = false;
+
+async function ensureMoteurTable(db) {
+  if (moteurTablePrete) return;
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS moteur_config (
+      id INT PRIMARY KEY,
+      donnees LONGTEXT NOT NULL,
+      updated_by INT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+
+  moteurTablePrete = true;
+}
+
+async function lireMoteur(db) {
+  await ensureMoteurTable(db);
+
+  const [rows] = await db.query(
+    "SELECT donnees, updated_at FROM moteur_config WHERE id = 1"
+  );
+
+  if (rows.length === 0) {
+    return {
+      donnees: structuredClone(MOTEUR_DEFAUT),
+      updated_at: null
+    };
+  }
+
+  return {
+    donnees: JSON.parse(rows[0].donnees),
+    updated_at: rows[0].updated_at
+  };
+}
+
+function reponseMoteur(donnees, updated_at) {
+  const { coutCalcule, produits } = calculerProduits(donnees);
+
+  const parametres = {};
+  for (const p of donnees.parametres) {
+    parametres[p.cle] = Number(p.valeur) || 0;
+  }
+
+  return {
+    success: true,
+    donnees,
+    updated_at,
+    calculs: {
+      calculateur: coutCalcule,
+      produits,
+      contenants: calculerContenants(donnees, parametres)
+    },
+    ...calculerMoteur(donnees)
+  };
+}
+
+// Recopie uniquement les champs modifiables, en convertissant les nombres.
+// La structure (lignes, clés) reste celle de l'enregistrement actuel.
+function fusionnerMoteur(actuel, recu) {
+  const numOuNull = (v) =>
+    v === "" || v === null || v === undefined ? null : Number(v);
+
+  const verifierNombre = (v, champ) => {
+    const x = numOuNull(v);
+    if (x !== null && !Number.isFinite(x)) {
+      throw new Error(`Valeur numérique invalide : ${champ}`);
+    }
+    return x;
+  };
+
+  const choix = (v, autorises, champ) => {
+    if (!autorises.includes(v)) {
+      throw new Error(`Valeur invalide pour ${champ} : ${v}`);
+    }
+    return v;
+  };
+
+  const resultat = structuredClone(actuel);
+
+  // SCÉNARIO
+  if (recu.scenario) {
+    const s = recu.scenario;
+    const ports = resultat.destinations.map((d) => d.port);
+
+    resultat.scenario = {
+      marche: choix(s.marche, ["Local", "Export"], "marché"),
+      incoterm: choix(s.incoterm, ["EXW", "FOB", "CFR", "CIF", "Livré local"], "incoterm"),
+      destination: choix(s.destination, ports, "destination"),
+      taille: choix(s.taille, ["20 pieds", "40 pieds"], "conteneur"),
+      devise: choix(s.devise, ["TND", "EUR", "USD"], "devise"),
+      marge_forcee: verifierNombre(s.marge_forcee, "marge forcée")
+    };
+  }
+
+  // PARAMÈTRES (par clé)
+  if (Array.isArray(recu.parametres)) {
+    for (const p of resultat.parametres) {
+      const r = recu.parametres.find((x) => x.cle === p.cle);
+      if (!r) continue;
+
+      p.valeur =
+        p.cle === "ModeMarge"
+          ? choix(r.valeur, ["Marge sur coût (markup)", "Marge sur prix de vente"], "mode de marge")
+          : verifierNombre(r.valeur, p.libelle) ?? 0;
+    }
+  }
+
+  // Sections tabulaires : on garde l'ordre et les clés existantes
+  const sections = {
+    destinations: {
+      cle: "port",
+      nombres: ["fret20", "fret40", "transit"]
+    },
+    calculateur: {
+      cle: "cle",
+      nombres: ["prix_olives", "rendement", "trituration", "credit_sous_produits"]
+    },
+    produits: {
+      cle: "code",
+      nombres: [
+        "matiere_saisie", "prix_achat_impose", "freinte_transfo", "cout_transfo",
+        "part_coupage", "duree_stockage", "freinte_stockage", "marge_vrac_local",
+        "marge_vrac_export", "marge_cond_local", "marge_cond_export"
+      ],
+      textes: { vente_cond_autorisee: ["Oui", "Non"] }
+    },
+    contenants: {
+      cle: "code",
+      nombres: [
+        "volume_l", "contenant_bouchon", "etiquettes", "unites_carton", "cout_carton",
+        "mise_cond", "unites_palette", "cout_palette", "palettes_fcl20", "facteur_40_20"
+      ]
+    }
+  };
+
+  // Champs qui peuvent rester vides (sinon 0)
+  const facultatifs = ["prix_achat_impose", "matiere_saisie"];
+
+  for (const [nom, def] of Object.entries(sections)) {
+    if (!Array.isArray(recu[nom])) continue;
+
+    for (const ligne of resultat[nom]) {
+      const r = recu[nom].find((x) => x[def.cle] === ligne[def.cle]);
+      if (!r) continue;
+
+      for (const champ of def.nombres) {
+        if (!(champ in r)) continue;
+
+        const v = verifierNombre(r[champ], `${ligne[def.cle]} / ${champ}`);
+        ligne[champ] = facultatifs.includes(champ) ? v : v ?? 0;
+      }
+
+      for (const [champ, autorises] of Object.entries(def.textes || {})) {
+        if (champ in r) {
+          ligne[champ] = choix(r[champ], autorises, champ);
+        }
+      }
+    }
+  }
+
+  return resultat;
+}
+
+
+// ==========================================
+// CONSULTER LE MOTEUR
+// ==========================================
+
+router.get(
+  "/moteur",
+  async (req, res) => {
+
+    try {
+
+      const { donnees, updated_at } =
+        await lireMoteur(req.app.locals.db);
+
+      res.json(reponseMoteur(donnees, updated_at));
+
+    } catch (error) {
+
+      console.error("MOTEUR GET ERROR:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
+
+// ==========================================
+// MODIFIER LE MOTEUR
+// ==========================================
+
+router.put(
+  "/moteur",
+  async (req, res) => {
+
+    try {
+
+      const db = req.app.locals.db;
+
+      const { donnees: actuel } = await lireMoteur(db);
+
+      let donnees;
+
+      try {
+        donnees = fusionnerMoteur(actuel, req.body?.donnees || {});
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+
+      await db.query(
+        `
+        INSERT INTO moteur_config (id, donnees, updated_by)
+        VALUES (1, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          donnees = VALUES(donnees),
+          updated_by = VALUES(updated_by)
+        `,
+        [JSON.stringify(donnees), req.user.id]
+      );
+
+      const { updated_at } = await lireMoteur(db);
+
+      res.json(reponseMoteur(donnees, updated_at));
+
+    } catch (error) {
+
+      console.error("MOTEUR PUT ERROR:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
+
+// ==========================================
+// RÉINITIALISER AUX VALEURS DU FICHIER EXCEL
+// ==========================================
+
+router.post(
+  "/moteur/reinitialiser",
+  async (req, res) => {
+
+    try {
+
+      const db = req.app.locals.db;
+
+      await ensureMoteurTable(db);
+
+      await db.query(
+        "DELETE FROM moteur_config WHERE id = 1"
+      );
+
+      res.json(
+        reponseMoteur(structuredClone(MOTEUR_DEFAUT), null)
+      );
+
+    } catch (error) {
+
+      console.error("MOTEUR RESET ERROR:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
+
 module.exports = router;

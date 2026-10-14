@@ -401,6 +401,26 @@ function normalizeCommandes(value, typeCommandePrincipal) {
     }
 
     commande.type_etiquette = typeEtiquette;
+
+    // TYPE D'ÉTIQUETTE CONDITIONNÉ : champ indépendant, toute marque
+    const typeEtiquetteConditionne =
+      typeCommande === "conditionné"
+        ? cleanString(
+            commande.type_etiquette_conditionne ??
+            commande.typeEtiquetteConditionne
+          )
+        : null;
+
+    if (
+      typeEtiquetteConditionne !== null &&
+      !etiquettesAutorisees.includes(typeEtiquetteConditionne)
+    ) {
+      throw new Error(
+        `Le type d'étiquette conditionné de la commande ${i + 1} est invalide.`
+      );
+    }
+
+    commande.type_etiquette_conditionne = typeEtiquetteConditionne;
   }
 
   // IMPORTANT : retourner le tableau après la boucle
@@ -465,6 +485,15 @@ function generateReference(id, typeCommande) {
         )
       : null;
 
+  const typeEtiquetteConditionne =
+    typeCommande === "conditionné"
+      ? (
+          commande.type_etiquette_conditionne ??
+          commande.typeEtiquetteConditionne ??
+          null
+        )
+      : null;
+
   // ==========================================================
   // INSERTION SQL
   // ==========================================================
@@ -484,6 +513,8 @@ function generateReference(id, typeCommande) {
         incoterm,
         format_livraison,
         frequence_commande,
+        periode_recurrence,
+        nombre_commandes_recurrence,
         exigences_specifiques,
         informations_complementaires,
 
@@ -504,6 +535,7 @@ function generateReference(id, typeCommande) {
 
         type_marque,
         type_etiquette,
+        type_etiquette_conditionne,
         certifications_requises,
         profil_aromatique,
 
@@ -529,10 +561,10 @@ function generateReference(id, typeCommande) {
 
       VALUES (
         ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
         ?, ?, ?,
         ?, ?,
         ?, ?,
@@ -555,6 +587,18 @@ function generateReference(id, typeCommande) {
       commande.incoterm || "EXW",
       commande.format_livraison || null,
       commande.frequence_commande || null,
+
+      // Récurrence (uniquement si fréquence = recurrence)
+      commande.frequence_commande === "recurrence"
+        ? commande.periode_recurrence || null
+        : null,
+
+      commande.frequence_commande === "recurrence" &&
+      Number.isFinite(Number(commande.nombre_commandes_recurrence)) &&
+      commande.nombre_commandes_recurrence !== null &&
+      commande.nombre_commandes_recurrence !== ""
+        ? Number(commande.nombre_commandes_recurrence)
+        : null,
 
       commande.exigences_specifiques
         ? Array.isArray(commande.exigences_specifiques)
@@ -612,6 +656,7 @@ function generateReference(id, typeCommande) {
       // Marque et type d'étiquette
       typeMarque,
       typeEtiquette,
+      typeEtiquetteConditionne,
 
       // Certifications et profil aromatique
       commande.certifications_requises
@@ -4806,52 +4851,63 @@ async function ensureCommandesColumn() {
 
 
 // ============================================================
-// MIGRATION COLONNE TYPE_ETIQUETTE (TABLE COMMANDES)
+// MIGRATION COLONNES ÉTIQUETTE (TABLE COMMANDES)
 // ============================================================
 
 async function ensureTypeEtiquetteColumn() {
 
-  const [columns] =
-    await pool.query(
-      `
-        SELECT COUNT(*) AS count
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'commandes'
-          AND COLUMN_NAME = 'type_etiquette'
-      `
-    );
+  const colonnes = [
+    { name: "type_etiquette", after: "type_marque", type: "VARCHAR(50)" },
+    { name: "type_etiquette_conditionne", after: "type_etiquette", type: "VARCHAR(50)" },
+    { name: "periode_recurrence", after: "frequence_commande", type: "VARCHAR(20)" },
+    { name: "nombre_commandes_recurrence", after: "periode_recurrence", type: "INT" },
+  ];
+
+  for (const colonne of colonnes) {
+
+    const [columns] =
+      await pool.query(
+        `
+          SELECT COUNT(*) AS count
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'commandes'
+            AND COLUMN_NAME = ?
+        `,
+        [colonne.name]
+      );
 
 
-  if (
-    Number(
-      columns[0]?.count || 0
-    ) === 0
-  ) {
+    if (
+      Number(
+        columns[0]?.count || 0
+      ) === 0
+    ) {
 
-    console.log(
-      "📦 Création de la colonne type_etiquette..."
-    );
-
-
-    await pool.query(
-      `
-        ALTER TABLE commandes
-        ADD COLUMN type_etiquette VARCHAR(50) NULL
-        AFTER type_marque
-      `
-    );
+      console.log(
+        `📦 Création de la colonne ${colonne.name}...`
+      );
 
 
-    console.log(
-      "✅ Colonne type_etiquette créée."
-    );
+      await pool.query(
+        `
+          ALTER TABLE commandes
+          ADD COLUMN ${colonne.name} ${colonne.type} NULL
+          AFTER ${colonne.after}
+        `
+      );
 
-  } else {
 
-    console.log(
-      "✅ Colonne type_etiquette déjà présente."
-    );
+      console.log(
+        `✅ Colonne ${colonne.name} créée.`
+      );
+
+    } else {
+
+      console.log(
+        `✅ Colonne ${colonne.name} déjà présente.`
+      );
+    }
   }
 }
 

@@ -1538,18 +1538,6 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
     ];
 
     // ===================================================
-    // VÉRIFICATION QUALIFICATION
-    // ===================================================
-
-    if (qualification === 0) {
-      Alert.alert(
-        "Attention",
-        "Veuillez sélectionner une note de 1 à 5 étoiles."
-      );
-      return;
-    }
-
-    // ===================================================
     // TYPE EMBALLAGE CONDITIONNÉ
     // ===================================================
     //

@@ -54,6 +54,17 @@ export default function AdminHome() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        style={styles.button}
+        onPress={() =>
+          router.push("/admin/moteur")
+        }
+      >
+        <Text style={styles.buttonText}>
+          Fiche MOTEUR (coûts & prix)
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={styles.logout}
         onPress={handleLogout}
       >

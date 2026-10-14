@@ -1546,14 +1546,6 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
   const handleAjouter = async () => {
     try {
       // ================================================
-      // QUALIFICATION
-      // ================================================
-      if (!qualification || qualification < 1 || qualification > 5) {
-        Alert.alert("Attention", "Veuillez sélectionner une note de 1 à 5 étoiles.");
-        return;
-      }
-
-      // ================================================
       // COMMANDES À ENREGISTRER
       // ================================================
       const commandeCourante = typeCommande ? buildCurrentCommande() : null;
@@ -1598,7 +1590,8 @@ const [autreVolumeEstime, setAutreVolumeEstime] = useState("");
         langue_communication: langueCommunication || null,
         profile: profile || null,
         type_commande: typePrincipal,
-        qualification: Number(qualification),
+        // Qualification facultative
+        qualification: qualification > 0 ? Number(qualification) : null,
         commandes: commandesFinales,
         nombre_commandes: commandesFinales.length,
       };

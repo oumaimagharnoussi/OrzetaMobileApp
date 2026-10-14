@@ -61,6 +61,7 @@ export default function HomeScreen() {
   const [certifications, setCertifications] = useState([]);
 
 const [typeEtiquette, setTypeEtiquette] = useState("");
+const [typeEtiquetteConditionne, setTypeEtiquetteConditionne] = useState("");
 
 
   const handleLogout = () => {
@@ -329,6 +330,8 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
   const [incoterm, setIncoterm] = useState("EXW");
   const [formatLivraison, setFormatLivraison] = useState("");
   const [frequenceCommande, setFrequenceCommande] = useState("");
+  const [periodeRecurrence, setPeriodeRecurrence] = useState("");
+  const [nombreCommandesRecurrence, setNombreCommandesRecurrence] = useState("");
   const [exigencesSpecifiques, setExigencesSpecifiques] = useState([]);
   const [informationsComplementaires, setInformationsComplementaires] =
     useState("");
@@ -422,6 +425,8 @@ const [k270Valeur, setK270Valeur] = useState("");
     setIncoterm("");
     setFormatLivraison("");
     setFrequenceCommande("");
+    setPeriodeRecurrence("");
+    setNombreCommandesRecurrence("");
     setExigencesSpecifiques([]);
     setCertificationsRequises([]);
     setAutreCertification("");
@@ -461,6 +466,7 @@ const [k270Valeur, setK270Valeur] = useState("");
 
     setTypeMarque("");
     setTypeEtiquette("");
+    setTypeEtiquetteConditionne("");
     setNomLabel("");
     setCertificationsRequises([]);
     setAutreCertification("");
@@ -1093,6 +1099,8 @@ setK270Valeur("");
       setIncoterm("");
       setFormatLivraison("");
       setFrequenceCommande("");
+      setPeriodeRecurrence("");
+      setNombreCommandesRecurrence("");
       setExigencesSpecifiques([]);
       setInformationsComplementaires("");
 
@@ -1163,6 +1171,8 @@ setK270Valeur("");
       setIncoterm("");
       setFormatLivraison("");
       setFrequenceCommande("");
+      setPeriodeRecurrence("");
+      setNombreCommandesRecurrence("");
       setExigencesSpecifiques([]);
       setInformationsComplementaires("");
     }
@@ -1489,6 +1499,20 @@ const toggleEmballageConditionne = (type) => {
         typeCommande === "vrac"
           ? frequenceCommande || null
           : null,
+
+      periode_recurrence:
+        typeCommande === "vrac" &&
+        frequenceCommande === "recurrence"
+          ? periodeRecurrence || null
+          : null,
+
+      nombre_commandes_recurrence:
+        typeCommande === "vrac" &&
+        frequenceCommande === "recurrence" &&
+        nombreCommandesRecurrence?.trim() &&
+        !isNaN(Number(nombreCommandesRecurrence))
+          ? Number(nombreCommandesRecurrence)
+          : null,
   
       exigences_specifiques:
         typeCommande === "vrac" &&
@@ -1566,6 +1590,11 @@ const toggleEmballageConditionne = (type) => {
           typeMarque === "Marque ORZETA"
             ? typeEtiquette || null
             : null,
+
+      type_etiquette_conditionne:
+        typeCommande === "conditionné"
+          ? typeEtiquetteConditionne || null
+          : null,
   
       nom_label:
         typeCommande === "conditionné" &&
@@ -2809,10 +2838,50 @@ return (
                             label="Commandes contrat cadre"
                             value="contrat-cadre"
                           />
-          
+
+                          <Picker.Item
+                            label="Récurrence"
+                            value="recurrence"
+                          />
+
                         </Picker>
-          
+
                       </View>
+
+{/* RÉCURRENCE : NOMBRE DE COMMANDES PAR MOIS / PAR AN */}
+
+{frequenceCommande === "recurrence" && (
+  <View style={{ marginTop: 10 }}>
+
+    <Text style={styles.label}>
+      Nombre de commandes
+    </Text>
+
+    <View style={styles.pickerContainer}>
+      <Picker
+        selectedValue={periodeRecurrence}
+        onValueChange={setPeriodeRecurrence}
+      >
+        <Picker.Item label="Sélectionner" value="" />
+        <Picker.Item label="Par mois" value="Par mois" />
+        <Picker.Item label="Par année" value="Par année" />
+      </Picker>
+    </View>
+
+    <TextInput
+      style={styles.input}
+      placeholder={
+        periodeRecurrence === "Par année"
+          ? "Nombre de commandes par année"
+          : "Nombre de commandes par mois"
+      }
+      value={nombreCommandesRecurrence}
+      onChangeText={setNombreCommandesRecurrence}
+      keyboardType="numeric"
+    />
+
+  </View>
+)}
 
            {/* CATÉGORIE */}
 
@@ -3656,6 +3725,39 @@ Catégorie
 
   </View>
 )}
+
+{/* TYPE D'ÉTIQUETTE CONDITIONNÉ (champ indépendant, toujours visible) */}
+
+    <Text style={styles.label}>
+      Type d'étiquette
+    </Text>
+
+    <View style={styles.pickerContainer}>
+      <Picker
+        selectedValue={typeEtiquetteConditionne}
+        onValueChange={setTypeEtiquetteConditionne}
+      >
+        <Picker.Item
+          label="Sélectionner une étiquette"
+          value=""
+        />
+
+        <Picker.Item
+          label="SUN"
+          value="SUN"
+        />
+
+        <Picker.Item
+          label="GROVE"
+          value="GROVE"
+        />
+
+        <Picker.Item
+          label="ORGANIC"
+          value="ORGANIC"
+        />
+      </Picker>
+    </View>
 
             {/* =================================================
                 TYPE D'EMBALLAGE CONDITIONNÉ
