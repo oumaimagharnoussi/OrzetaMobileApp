@@ -60,7 +60,7 @@ export default function AdminHome() {
         }
       >
         <Text style={styles.buttonText}>
-          Fiche MOTEUR (coûts & prix)
+          OLIVED Simulateur (coûts & prix)
         </Text>
       </TouchableOpacity>
 
