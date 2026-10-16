@@ -85,9 +85,20 @@ const calculerQuantiteConditionnee = (
 
 
 // Prix conditionné : grille de la fiche MOTEUR (GET /api/moteur/prix),
-// prix EXW en EUR par unité + unités par FCL 20 pieds, par contenant.
-// Les commandes conditionnées sont chiffrées en EVOO.
+// prix EXW en EUR par unité + unités par FCL 20 pieds, par produit et
+// contenant (comme le choix produit + contenant de la fiche SIMULATEUR).
+// Produit de la commande (champ categorie) ; EVOO par défaut pour les
+// commandes enregistrées avant l'ajout du choix du produit.
 const CONDITIONED_PRODUCT = "EVOO";
+
+const conditionedProduct = (commande) =>
+  bulkProductCode(commande?.categorie) || CONDITIONED_PRODUCT;
+
+// Libellé du produit : "Virgin Olive Oil – VOO" → "Virgin Olive Oil"
+const conditionedProductLabel = (commande) => {
+  const nom = String(commande?.categorie || "").split(/\s+[–-]\s+/)[0].trim();
+  return nom || "Extra Virgin Olive Oil";
+};
 
 // Emballage + format du formulaire → nom du contenant dans la fiche MOTEUR
 const CONDITIONED_CONTAINER_PREFIX = {
@@ -199,20 +210,23 @@ const normalizeFormat = (value) => {
 
   return raw.replace(/\bml\b/g, "ml");
 };
-// Ligne de la fiche MOTEUR pour un emballage + format (ou null)
-const getConditionedLine = (packaging, format, conditionedPrices) => {
+// Ligne de la fiche MOTEUR pour un produit + emballage + format (ou null)
+const getConditionedLine = (packaging, format, conditionedPrices, produit = CONDITIONED_PRODUCT) => {
   const kind = normalizePackagingName(packaging);
   const prefix = CONDITIONED_CONTAINER_PREFIX[kind];
   if (!prefix) return null;
 
   const container = `${prefix} ${normalizeFormatLabel(format)}`;
-  return conditionedPrices?.[CONDITIONED_PRODUCT]?.[container] || null;
+  return conditionedPrices?.[produit]?.[container] || null;
 };
 
-const getPriceEUR = (packaging, format, conditionedPrices) => {
-  const price = Number(
-    getConditionedLine(packaging, format, conditionedPrices)?.prix_unite
-  );
+// Prix EUR / unité ; null si inconnu ou si le produit n'est pas
+// autorisé en conditionné (colonne « Autorisé » du MOTEUR)
+const getPriceEUR = (packaging, format, conditionedPrices, produit) => {
+  const line = getConditionedLine(packaging, format, conditionedPrices, produit);
+  if (!line || line.autorise === 0) return null;
+
+  const price = Number(line.prix_unite);
   return Number.isFinite(price) ? price : null;
 };
 
@@ -292,6 +306,7 @@ const getConditionedQuantity = ({
   target,
   format,
   conditionedPrices,
+  produit,
 }) => {
   // Mode choisi dans le formulaire
   const mode = String(
@@ -321,7 +336,8 @@ const getConditionedQuantity = ({
   const unitesFCL20 = getUnitsPerFCL20(
     target,
     format,
-    conditionedPrices
+    conditionedPrices,
+    produit
   );
 
   if (unitesFCL20 == null || unitesFCL20 <= 0) {
@@ -359,9 +375,9 @@ const getConditionedQuantity = ({
 };
 
 // Unités / FCL 20 pieds de la fiche MOTEUR
-const getUnitsPerFCL20 = (target, format, conditionedPrices) => {
+const getUnitsPerFCL20 = (target, format, conditionedPrices, produit) => {
   const units = Number(
-    getConditionedLine(target, format, conditionedPrices)?.unites_fcl20
+    getConditionedLine(target, format, conditionedPrices, produit)?.unites_fcl20
   );
 
   return Number.isFinite(units) && units > 0
@@ -407,6 +423,8 @@ const addConditionedRows = ({
 
   const used = new Set();
 
+  const produit = conditionedProduct(commande);
+
   const remise = getCanalDiscount(commande);
   const remiseLabel = remise
     ? ` (-${Math.round(remise.taux * 100)}% ${remise.canal})`
@@ -445,8 +463,12 @@ const addConditionedRows = ({
       used.add(key);
 
       const prixCatalogue = target
-        ? getPriceEUR(target, entry.format, conditionedPrices)
+        ? getPriceEUR(target, entry.format, conditionedPrices, produit)
         : null;
+
+      // Produit réservé au vrac (ex. CPOO) : pas de prix conditionné
+      const nonAutorise =
+        getConditionedLine(target, entry.format, conditionedPrices, produit)?.autorise === 0;
 
       // Remise canal de distribution appliquée sur le prix unitaire
       const price = prixCatalogue != null && remise
@@ -458,6 +480,7 @@ const addConditionedRows = ({
         target,
         format: entry.format,
         conditionedPrices,
+        produit,
       });
 
       const quantity = quantiteTotale != null
@@ -465,9 +488,10 @@ const addConditionedRows = ({
         : "À confirmer";
 
       const description =
-        target === "Glass" && bottleType
+        (target === "Glass" && bottleType
           ? `QR ${numero} — ${label} - ${entry.format} ${bottleType} Glass${remiseLabel}`
-          : `QR ${numero} — ${label} - ${entry.format} ${target || "Packaging to confirm"}${remiseLabel}`;
+          : `QR ${numero} — ${label} - ${entry.format} ${target || "Packaging to confirm"}${remiseLabel}`) +
+        (nonAutorise ? " (bulk only)" : "");
 
       rows.push({
         key: `commande-${numero}-${section}-${target || "emballage"}-${bottleType}-${entry.format}-${formatIndex}`,
@@ -617,7 +641,7 @@ const buildPricingRows = (visiteur, prices) => {
         selectedPackaging,
         conditionedPrices,
         section: "standard",
-        label: "Extra Virgin Olive Oil",
+        label: conditionedProductLabel(commande),
       });
     }
 
@@ -646,7 +670,7 @@ const buildPricingRows = (visiteur, prices) => {
         selectedPackaging: nmEmballages,
         conditionedPrices,
         section: "nouvelle_marque",
-        label: "Extra Virgin Olive Oil (new brand)",
+        label: `${conditionedProductLabel(commande)} (new brand)`,
       });
     }
   });

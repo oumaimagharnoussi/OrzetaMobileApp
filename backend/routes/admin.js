@@ -464,6 +464,7 @@ router.put(
 // ==========================================
 
 const {
+  simuler,
   calculerMoteur,
   calculerProduits,
   calculerContenants
@@ -676,6 +677,53 @@ router.put(
     } catch (error) {
 
       console.error("MOTEUR PUT ERROR:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Erreur serveur"
+      });
+    }
+  }
+);
+
+
+// ==========================================
+// SIMULATEUR (onglet SIMULATEUR de l'Excel)
+// body : { entree: { produit, contenant, quantite, unite, remise,
+//                    marche, incoterm, destination, taille, devise,
+//                    marge_forcee },
+//          donnees?: brouillon non enregistré (facultatif) }
+// ==========================================
+
+router.post(
+  "/moteur/simuler",
+  async (req, res) => {
+
+    try {
+
+      const { donnees: actuel } = await lireMoteur(req.app.locals.db);
+
+      let donnees = actuel;
+
+      try {
+        if (req.body?.donnees) {
+          donnees = fusionnerMoteur(actuel, req.body.donnees);
+        }
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+
+      res.json({
+        success: true,
+        ...simuler(donnees, req.body?.entree || {})
+      });
+
+    } catch (error) {
+
+      console.error("MOTEUR SIMULER ERROR:", error);
 
       res.status(500).json({
         success: false,

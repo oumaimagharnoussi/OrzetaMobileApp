@@ -22,6 +22,17 @@ import { useAuth } from "../context/AuthContext";
 //const API_URL = "http://192.168.1.146:5000";
 const API_URL = "https://orzetamobileapp.onrender.com";
 
+// Produits proposés en conditionné : codes de la fiche MOTEUR
+// (CPOO, huile de grignons brute, est réservée au vrac)
+const PRODUITS_CONDITIONNE = [
+  "Extra Virgin Olive Oil – EVOO",
+  "Virgin Olive Oil – VOO",
+  "Olive Oil – OO",
+  "Refined Olive Oil – ROO",
+  "Refined Olive Pomace Oil – RPOO",
+  "Olive Pomace Oil – POO",
+];
+
 // =====================================================
 // COMPOSANT
 // =====================================================
@@ -314,6 +325,7 @@ const renderFormatCheckbox = (type, format, sousType = null) => {
   // VRAC
   // =====================================================
 
+  // Vrac : catégorie ; conditionné : produit (PRODUITS_CONDITIONNE)
   const [categorie, setCategorie] = useState("");
   const [qualiteGrade, setQualiteGrade] = useState("");
   const [volumeEstime, setVolumeEstime] = useState("");
@@ -1740,10 +1752,8 @@ console.log(
       // VRAC
       // =================================================
 
-      categorie:
-        typeCommande === "vrac"
-          ? categorie.trim() || null
-          : null,
+      // Vrac : catégorie ; conditionné : produit de la fiche MOTEUR
+      categorie: categorie.trim() || null,
 
       qualite_grade:
         typeCommande === "vrac"
@@ -3404,6 +3414,9 @@ Acidité
                       Commande {index + 1} → Conditionné
                     </Text>
                     <Text style={styles.savedCommandText}>
+                      Produit : {commande.categorie || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
                       Pays : {commande.pays_conditionne || "—"}
                     </Text>
                     <Text style={styles.savedCommandText}>
@@ -3420,6 +3433,32 @@ Acidité
             <Text style={styles.currentCommandTitle}>
               Commande {commandes.length + 1} → Conditionné
             </Text>
+
+            {/* PRODUIT (ligne de la fiche MOTEUR utilisée pour le prix) */}
+
+            <Text style={styles.label}>
+              Produit
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={categorie}
+                onValueChange={setCategorie}
+              >
+                <Picker.Item
+                  label="Sélectionner un produit"
+                  value=""
+                />
+
+                {PRODUITS_CONDITIONNE.map((item) => (
+                  <Picker.Item
+                    key={item}
+                    label={item}
+                    value={item}
+                  />
+                ))}
+              </Picker>
+            </View>
 
             {/* PAYS */}
 

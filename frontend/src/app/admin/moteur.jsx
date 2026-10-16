@@ -126,6 +126,7 @@ const CHAMPS_DESTINATIONS = [
 ];
 
 const ONGLETS = [
+  "Simulateur",
   "Tableau",
   "Scénario",
   "Paramètres",
@@ -236,12 +237,31 @@ export default function AdminMoteur() {
   const [brouillon, setBrouillon] = useState(null);
   const [modifie, setModifie] = useState(false);
 
-  const [onglet, setOnglet] = useState("Tableau");
+  const [onglet, setOnglet] = useState("Simulateur");
+
+  // Saisie de l'onglet Simulateur (cellules jaunes de l'Excel)
+  const [simEntree, setSimEntree] = useState(null);
+  const [simulation, setSimulation] = useState(null);
+  const [simErreur, setSimErreur] = useState(null);
   const [filtreProduit, setFiltreProduit] = useState("Tous");
   const [filtreFamille, setFiltreFamille] = useState("Tous");
 
   function appliquer(data) {
     setResultat(data);
+
+    setSimEntree((e) => e || {
+      produit: data.donnees.produits[0]?.code,
+      contenant: data.donnees.contenants[0]?.designation,
+      marche: data.donnees.scenario.marche,
+      incoterm: data.donnees.scenario.incoterm,
+      destination: data.donnees.scenario.destination,
+      taille: data.donnees.scenario.taille,
+      devise: data.donnees.scenario.devise,
+      marge_forcee: data.donnees.scenario.marge_forcee,
+      quantite: 1,
+      unite: "Conteneurs",
+      remise: 0,
+    });
     setBrouillon(JSON.parse(JSON.stringify(data.donnees)));
     setModifie(false);
   }
@@ -315,6 +335,42 @@ export default function AdminMoteur() {
         { text: "Réinitialiser", style: "destructive", onPress: action },
       ]
     );
+  }
+
+  // Recalcul du simulateur à chaque changement de saisie
+  // (les modifications non enregistrées sont prises en compte)
+  useEffect(() => {
+    if (!simEntree || !brouillon) return;
+
+    let actif = true;
+
+    const minuterie = setTimeout(async () => {
+      try {
+        const data = await apiFetch("/api/admin/moteur/simuler", {
+          method: "POST",
+          body: JSON.stringify({
+            entree: simEntree,
+            donnees: modifie ? brouillon : undefined,
+          }),
+        });
+
+        if (actif) {
+          setSimulation(data);
+          setSimErreur(null);
+        }
+      } catch (error) {
+        if (actif) setSimErreur(error.message);
+      }
+    }, 300);
+
+    return () => {
+      actif = false;
+      clearTimeout(minuterie);
+    };
+  }, [simEntree, brouillon, modifie]);
+
+  function majSim(champ, valeur) {
+    setSimEntree((e) => ({ ...e, [champ]: valeur }));
   }
 
   // Modification d'une valeur du brouillon
@@ -459,6 +515,209 @@ export default function AdminMoteur() {
           </View>
         </ScrollView>
       </View>
+    );
+  }
+
+  function renderSimulateur() {
+    const e = simEntree;
+    const sim = simulation;
+    const r = sim?.resultats;
+    const dv = sim?.scenario?.devise || e.devise;
+    const ok = sim?.controle?.startsWith("✔");
+    const na = (v, dec) => (v === null ? "n/a" : fmt(v, dec));
+
+    const ligneRes = (label, valeur, unite, fort) => (
+      <View style={styles.resLigne} key={label}>
+        <Text style={[styles.resLabel, fort && styles.cellBold]}>{label}</Text>
+        <Text style={[styles.resValeur, fort && styles.cellBold]}>{valeur}</Text>
+        <Text style={styles.resUnite}>{unite}</Text>
+      </View>
+    );
+
+    // Tableau horizontal : titres + lignes de valeurs
+    const tableau = (titres, lignes, largeurs) => (
+      <ScrollView horizontal>
+        <View>
+          <View style={[styles.row, styles.headerRow]}>
+            {titres.map((t, i) => (
+              <Text key={t} style={[styles.cell, styles.headerCell, { width: largeurs[i] }]}>
+                {t}
+              </Text>
+            ))}
+          </View>
+
+          {lignes.map((l, i) => (
+            <View key={l.cle} style={[styles.row, i % 2 === 1 && styles.rowAlt, l.fort && styles.rowTotal]}>
+              {l.valeurs.map((v, j) => (
+                <Text
+                  key={j}
+                  style={[
+                    styles.cell,
+                    { width: largeurs[j] },
+                    j > 0 && styles.cellNum,
+                    (l.fort || j === 0) && styles.cellBold,
+                  ]}
+                >
+                  {v}
+                </Text>
+              ))}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    );
+
+    return (
+      <ScrollView contentContainerStyle={styles.form}>
+        <Text style={styles.aide}>
+          Choisissez le produit et le contenant : le simulateur lit la ligne
+          correspondante de la fiche MOTEUR et applique quantité, remise et incoterm.
+        </Text>
+
+        <Text style={styles.section}>1. SCÉNARIO</Text>
+
+        <ChampChoix label="Produit" valeur={e.produit}
+          options={brouillon.produits.map((p) => p.code)}
+          onChange={(v) => majSim("produit", v)} />
+
+        {!!sim?.designation_produit && (
+          <Text style={styles.note}>{sim.designation_produit}</Text>
+        )}
+
+        <ChampChoix label="Contenant" valeur={e.contenant}
+          options={brouillon.contenants.map((c) => c.designation)}
+          onChange={(v) => majSim("contenant", v)} />
+
+        {!!sim?.famille && <Text style={styles.note}>Famille : {sim.famille}</Text>}
+
+        <ChampChoix label="Marché" valeur={e.marche} options={["Local", "Export"]}
+          onChange={(v) => majSim("marche", v)} />
+
+        <ChampChoix label="Incoterm" valeur={e.incoterm}
+          options={["EXW", "FOB", "CFR", "CIF", "Livré local"]}
+          onChange={(v) => majSim("incoterm", v)} />
+
+        <ChampChoix label="Destination (port) – si CFR / CIF" valeur={e.destination}
+          options={brouillon.destinations.map((d) => d.port)}
+          onChange={(v) => majSim("destination", v)} />
+
+        <ChampChoix label="Conteneur maritime" valeur={e.taille}
+          options={["20 pieds", "40 pieds"]}
+          onChange={(v) => majSim("taille", v)} />
+
+        <ChampChoix label="Devise d'affichage" valeur={e.devise}
+          options={["TND", "EUR", "USD"]}
+          onChange={(v) => majSim("devise", v)} />
+
+        <ChampNombre label="Quantité" valeur={e.quantite}
+          onChange={(v) => majSim("quantite", v)} />
+
+        <ChampChoix label="Unité de quantité" valeur={e.unite}
+          options={["Tonnes", "Unités", "Conteneurs"]}
+          onChange={(v) => majSim("unite", v)} />
+
+        <ChampNombre label="Marge forcée – vide = marge cible du produit"
+          valeur={e.marge_forcee} pct optionnel
+          onChange={(v) => majSim("marge_forcee", v)} />
+
+        {!!r && (
+          <Text style={styles.note}>Marge appliquée : {fmtPct(r.marge_appliquee)}</Text>
+        )}
+
+        <ChampNombre label="Remise commerciale sur le prix EXW" valeur={e.remise} pct
+          onChange={(v) => majSim("remise", v)} />
+
+        {!!sim?.controle && (
+          <Text style={[styles.controle, ok ? styles.controleOk : styles.controleKo]}>
+            {sim.controle}
+          </Text>
+        )}
+
+        {!!simErreur && <Text style={styles.alerte}>{simErreur}</Text>}
+
+        {!!r && (
+          <>
+            <Text style={styles.section}>2. RÉSULTATS CLÉS</Text>
+
+            <View style={styles.carte}>
+              {ligneRes("Coût de revient départ usine", fmt(r.cout_revient_tnd_kg, 3), "TND/kg")}
+              {ligneRes("Prix catalogue / kg (avant remise)", fmt(r.prix_catalogue_kg, 3), dv)}
+              {ligneRes("PRIX NET / kg", fmt(r.prix_net_kg, 3), dv, true)}
+              {ligneRes("PRIX NET PAR UNITÉ", fmt(r.prix_net_unite, 2), dv, true)}
+              {ligneRes("Prix net par litre", fmt(r.prix_net_litre, 3), dv)}
+              {ligneRes("Prix net par tonne", fmt(r.prix_net_tonne, 0), dv)}
+              {ligneRes("Quantité totale", fmt(r.quantite_kg, 0), "kg")}
+              {ligneRes("Nombre d'unités", fmt(r.unites, 0), "unités")}
+              {ligneRes("Conteneurs (capacité FCL) nécessaires", fmt(r.conteneurs, 0), "FCL")}
+              {ligneRes("Taux de remplissage", fmtPct(r.remplissage, 0), "")}
+              {ligneRes("MONTANT TOTAL DE L'OFFRE", fmt(r.montant_total, 0), dv, true)}
+              {ligneRes("Marge brute totale, après commission", fmt(r.marge_brute_totale_tnd, 0), "TND")}
+              {ligneRes("Marge réalisée sur coût (markup)", fmtPct(r.marge_sur_cout), "")}
+              {ligneRes("Marge réalisée sur prix de vente", fmtPct(r.marge_sur_prix), "")}
+            </View>
+
+            <Text style={styles.section}>3. DÉCOMPOSITION DU COÛT ET DU PRIX</Text>
+
+            {tableau(
+              ["Composante", "TND / kg", "% du prix final", `${dv} / kg`, `Par unité (${dv})`, `Total (${dv})`],
+              sim.composantes.map((c) => ({
+                cle: c.cle,
+                fort: c.total,
+                valeurs: [
+                  c.libelle,
+                  fmt(c.tnd_kg, 3),
+                  fmtPct(c.pct_prix_final),
+                  fmt(c.devise_kg, 3),
+                  fmt(c.devise_unite, 2),
+                  fmt(c.devise_total, 0),
+                ],
+              })),
+              [260, 100, 100, 100, 100, 100]
+            )}
+
+            <Text style={styles.section}>4. COMPARATIF DES INCOTERMS (prix net de remise)</Text>
+
+            {tableau(
+              ["Incoterm", "TND / kg", `${dv} / kg`, `Par unité (${dv})`, `Par tonne (${dv})`, `Total offre (${dv})`],
+              sim.comparatif.map((c) => ({
+                cle: c.incoterm,
+                fort: c.incoterm === sim.scenario.incoterm,
+                valeurs: [
+                  c.incoterm,
+                  na(c.tnd_kg, 3),
+                  na(c.devise_kg, 3),
+                  na(c.devise_unite, 2),
+                  na(c.devise_tonne, 0),
+                  na(c.devise_total, 0),
+                ],
+              })),
+              [100, 100, 100, 100, 100, 110]
+            )}
+
+            <Text style={styles.section}>5. SENSIBILITÉ À LA MARGE</Text>
+
+            {tableau(
+              ["Marge testée", `Prix net / kg (${dv})`, `Par unité (${dv})`, `Par tonne (${dv})`, `Montant total (${dv})`, "Marge brute totale (TND)"],
+              sim.sensibilite.map((s) => ({
+                cle: String(s.marge),
+                valeurs: [
+                  fmtPct(s.marge, 0),
+                  fmt(s.devise_kg, 3),
+                  fmt(s.devise_unite, 2),
+                  fmt(s.devise_tonne, 0),
+                  fmt(s.devise_total, 0),
+                  fmt(s.marge_brute_tnd, 0),
+                ],
+              })),
+              [100, 110, 110, 110, 120, 130]
+            )}
+
+            <Text style={[styles.note, { marginTop: 6 }]}>
+              Marge 0 % = seuil de rentabilité.
+            </Text>
+          </>
+        )}
+      </ScrollView>
     );
   }
 
@@ -650,6 +909,7 @@ export default function AdminMoteur() {
   }
 
   const contenu = {
+    Simulateur: renderSimulateur,
     Tableau: renderTableau,
     "Scénario": renderScenario,
     "Paramètres": renderParametres,
@@ -786,6 +1046,16 @@ const styles = StyleSheet.create({
 
   note: { fontSize: 11, color: "#777", marginTop: -4, marginBottom: 8 },
   alerte: { color: "#b00", marginTop: 8 },
+
+  controle: { padding: 10, borderRadius: 8, marginTop: 8, fontWeight: "bold" },
+  controleOk: { backgroundColor: "#e6f2e1", color: "#2f6b1f" },
+  controleKo: { backgroundColor: "#fde4e1", color: "#b00" },
+
+  resLigne: { flexDirection: "row", alignItems: "center", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
+  resLabel: { flex: 1, fontSize: 13, color: "#333" },
+  resValeur: { fontSize: 13, color: "#222", textAlign: "right", minWidth: 90 },
+  resUnite: { fontSize: 12, color: "#666", width: 60, marginLeft: 6 },
+  rowTotal: { backgroundColor: "#eef3e6" },
 
   barre: {
     flexDirection: "row",

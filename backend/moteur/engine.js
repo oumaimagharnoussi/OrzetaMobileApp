@@ -311,7 +311,215 @@ function calculerMoteur(donnees) {
 }
 
 
+// ============================================================
+// SIMULATEUR (onglet SIMULATEUR de l'Excel)
+//
+// Le produit et le contenant choisis désignent une ligne du
+// MOTEUR (S_Row) ; on y applique quantité, remise et incoterm.
+// `entree` : { produit, contenant, quantite, unite, remise,
+//              + champs du scénario (marche, incoterm, ...) }
+// ============================================================
+
+const NIVEAUX_MARGE = [0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.15];
+
+function simuler(donnees, entree = {}) {
+  const p = lireParametres(donnees);
+
+  const scenario = { ...donnees.scenario };
+  for (const champ of ["marche", "incoterm", "destination", "taille", "devise"]) {
+    if (entree[champ]) scenario[champ] = entree[champ];
+  }
+  if ("marge_forcee" in entree) {
+    scenario.marge_forcee = isNum(entree.marge_forcee) ? Number(entree.marge_forcee) : null;
+  }
+
+  const { scenario: sc, lignes } = calculerMoteur({ ...donnees, scenario });
+
+  const ligne = lignes.find(
+    (l) => l.produit === entree.produit && l.contenant === entree.contenant
+  );
+
+  const prod = (donnees.produits || []).find((x) => x.code === entree.produit);
+
+  const base = {
+    scenario: sc,
+    produit: entree.produit,
+    designation_produit: prod ? prod.designation_fr : "",
+    contenant: entree.contenant,
+    famille: ligne ? ligne.famille : "",
+    ligne_moteur: ligne ? lignes.indexOf(ligne) + 1 : null,
+  };
+
+  if (!ligne) {
+    return { ...base, controle: "⚠ Combinaison produit/contenant introuvable" };
+  }
+
+  const fx = sc.fx;
+  const remise = n(entree.remise);
+  const quantite = n(entree.quantite);
+  const unite = entree.unite || "Conteneurs";
+
+  const G = ligne.kg_net_unite;
+  const W = ligne.kg_net_fcl;
+  const T = ligne.commission;
+
+  // Quantité totale en kg (G11), unités (G12), conteneurs (G13)
+  const kgTotal =
+    unite === "Tonnes" ? quantite * 1000 :
+    unite === "Unités" ? quantite * G :
+    quantite * W;
+
+  const unites = G > 0 ? Math.ceil(kgTotal / G - 1e-9) : 0;
+  const conteneurs = W > 0 ? Math.ceil(kgTotal / W - 1e-9) : 0;
+  const remplissage = conteneurs > 0 && W > 0 ? kgTotal / (conteneurs * W) : 0;
+
+  // 3. Décomposition (TND/kg) : C29 → C43
+  const exwNet = ligne.prix_exw_catalogue * (1 - remise);                   // C38
+  const assurance =
+    (exwNet + ligne.frais_fob_kg + ligne.fret_maritime_kg) * ligne.coef_assurance; // C41
+
+  const coutRevient = ligne.cout_revient_exw;                               // C35
+  const margeBrute = exwNet * (1 - T) - coutRevient;                        // C36
+  const commission = exwNet * T;                                            // C37
+  const prixFinal =
+    exwNet + ligne.frais_fob_kg + ligne.fret_maritime_kg + assurance +
+    ligne.transport_local_kg;                                               // C43
+
+  const composantes = [
+    ["huile", "Huile d'olive (matière, freintes & pertes incluses)", ligne.huile_apres_pertes],
+    ["stockage", "Stockage", ligne.stockage],
+    ["qualite", "Contrôle qualité & analyses", ligne.qualite_labo],
+    ["frais_financiers", "Frais financiers", ligne.frais_financiers],
+    ["emballage", "Contenant & emballage", ligne.emballage_kg],
+    ["frais_generaux", "Frais généraux & structure", ligne.frais_generaux],
+    ["cout_revient", "COÛT DE REVIENT DÉPART USINE (EXW)", coutRevient, true],
+    ["marge_brute", "Marge brute (après commission)", margeBrute],
+    ["commission", "Commission agent / courtier", commission],
+    ["prix_exw_net", "PRIX EXW NET (après remise)", exwNet, true],
+    ["frais_fob", "Frais FOB (transport port, THC, douane, empotage)", ligne.frais_fob_kg],
+    ["fret", "Fret maritime", ligne.fret_maritime_kg],
+    ["assurance", "Assurance cargaison", assurance],
+    ["transport_local", "Transport local (livraison)", ligne.transport_local_kg],
+    ["prix_final", "PRIX FINAL SELON INCOTERM", prixFinal, true],
+  ].map(([cle, libelle, tnd, total]) => {
+    const devise = fx > 0 ? tnd / fx : 0;
+    return {
+      cle,
+      libelle,
+      total: !!total,
+      tnd_kg: tnd,
+      pct_prix_final: prixFinal !== 0 ? tnd / prixFinal : 0,
+      devise_kg: devise,
+      devise_unite: devise * G,
+      devise_total: devise * kgTotal,
+    };
+  });
+
+  // 2. Résultats clés (G5 → G18)
+  const prixNetKg = fx > 0 ? prixFinal / fx : 0;
+  const resultats = {
+    cout_revient_tnd_kg: coutRevient,
+    prix_catalogue_kg:
+      fx > 0
+        ? ((ligne.prix_exw_catalogue + ligne.frais_fob_kg + ligne.fret_maritime_kg) *
+            (1 + ligne.coef_assurance) + ligne.transport_local_kg) / fx
+        : 0,
+    prix_net_kg: prixNetKg,
+    prix_net_unite: prixNetKg * G,
+    prix_net_litre: prixNetKg * p.Densite,
+    prix_net_tonne: prixNetKg * 1000,
+    quantite_kg: kgTotal,
+    unites,
+    conteneurs,
+    remplissage,
+    montant_total: prixNetKg * kgTotal,
+    marge_brute_totale_tnd: margeBrute * kgTotal,
+    marge_sur_cout: coutRevient !== 0 ? margeBrute / coutRevient : 0,
+    marge_sur_prix: exwNet - commission !== 0 ? margeBrute / (exwNet - commission) : 0,
+    marge_appliquee: ligne.marge_appliquee,
+  };
+
+  // 4. Comparatif des incoterms (C48 → C52), prix net de remise
+  const exportMarche = sc.marche === "Export";
+  const fobKg = W > 0 ? sc.frais_fob_fcl / W : 0;
+  const fretKg = W > 0 ? (sc.fret_brut_usd * p.FX_USD) / W : 0;
+  const avecFret = exportMarche && sc.fret_brut_usd > 0;
+
+  const comparatif = [
+    ["EXW", exwNet],
+    ["FOB", exportMarche ? exwNet + fobKg : null],
+    ["CFR", avecFret ? exwNet + fobKg + fretKg : null],
+    ["CIF", avecFret ? (exwNet + fobKg + fretKg) * (1 + p.AssurBase * p.TauxAssur) : null],
+    ["Livré local",
+      sc.marche === "Local"
+        ? exwNet + (ligne.famille === "Vrac" ? p.TrLocVrac : p.TrLocCond)
+        : null],
+  ].map(([incoterm, tnd]) => {
+    const devise = tnd !== null && fx > 0 ? tnd / fx : null;
+    return {
+      incoterm,
+      tnd_kg: tnd,
+      devise_kg: devise,
+      devise_unite: devise !== null ? devise * G : null,
+      devise_tonne: devise !== null ? devise * 1000 : null,
+      devise_total: devise !== null ? devise * kgTotal : null,
+    };
+  });
+
+  // 5. Sensibilité à la marge (C57 → G64)
+  const modePrix = String(
+    (donnees.parametres || []).find((x) => x.cle === "ModeMarge")?.valeur || ""
+  );
+
+  const sensibilite = NIVEAUX_MARGE.map((m) => {
+    const R = coutRevient;
+    const exw =
+      ((modePrix === "Marge sur prix de vente" ? R / (1 - m) : R * (1 + m)) / (1 - T)) *
+      (1 - remise);
+    const tnd =
+      (exw + ligne.frais_fob_kg + ligne.fret_maritime_kg) * (1 + ligne.coef_assurance) +
+      ligne.transport_local_kg;
+    const devise = fx > 0 ? tnd / fx : 0;
+
+    return {
+      marge: m,
+      devise_kg: devise,
+      devise_unite: devise * G,
+      devise_tonne: devise * 1000,
+      devise_total: devise * kgTotal,
+      marge_brute_tnd: (exw * (1 - T) - R) * kgTotal,
+    };
+  });
+
+  // Contrôle de cohérence (C18)
+  let controle = "✔ Scénario cohérent";
+  if (!ligne.autorise) {
+    controle = "⚠ Produit non destiné à la vente conditionnée (vrac uniquement)";
+  } else if (sc.marche === "Local" && ["FOB", "CFR", "CIF"].includes(sc.incoterm)) {
+    controle = "⚠ Incoterm export incompatible avec le marché Local (choisir EXW ou Livré local)";
+  } else if (exportMarche && sc.incoterm === "Livré local") {
+    controle = "⚠ « Livré local » incompatible avec Export (choisir EXW, FOB, CFR ou CIF)";
+  } else if (exportMarche && ["CFR", "CIF"].includes(sc.incoterm) && sc.fret_usd === 0) {
+    controle = "⚠ Destination sans tarif de fret : voir PARAMETRES";
+  } else if (exportMarche && sc.incoterm !== "EXW" && remplissage < 0.9) {
+    controle = `⚠ Conteneur sous-rempli (${Math.round(remplissage * 100)}%) : fret réel supérieur`;
+  }
+
+  return {
+    ...base,
+    entree: { quantite, unite, remise },
+    controle,
+    autorise: ligne.autorise,
+    resultats,
+    composantes,
+    comparatif,
+    sensibilite,
+  };
+}
+
+
 module.exports = {
+  simuler,
   calculerMoteur,
   calculerProduits,
   calculerContenants,
