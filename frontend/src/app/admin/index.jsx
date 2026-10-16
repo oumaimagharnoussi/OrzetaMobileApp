@@ -65,6 +65,17 @@ export default function AdminHome() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        style={styles.button}
+        onPress={() =>
+          router.push("/archives")
+        }
+      >
+        <Text style={styles.buttonText}>
+          Fiches PDF validées
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={styles.logout}
         onPress={handleLogout}
       >

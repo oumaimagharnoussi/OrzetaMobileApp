@@ -29,12 +29,20 @@ import {
 import * as Print from "expo-print";
 import { Asset } from "expo-asset";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import {
+  listerArchives,
+  ouvrirArchive,
+  LIBELLES_SOURCE,
+  formatTaille,
+  formatDate,
+} from "../services/pdfArchives";
 // =====================================================
 // CONFIGURATION
 // =====================================================
 
-//const API_URL = "http://192.168.1.146:5000";
-const API_URL = "https://orzetamobileapp.onrender.com";
+// Adresse du serveur : voir services/api.js (EXPO_PUBLIC_API_URL)
+import { API_URL } from "../services/api";
 
 const ORANGE = "#5C681F";
 
@@ -810,6 +818,43 @@ export default function PDFScreen() {
   const visitorId = Array.isArray(id)
     ? id[0]
     : id;
+
+  // ===================================================
+  // FICHES VALIDÉES (archivées par le serveur à la
+  // validation : base + fichier)
+  // ===================================================
+
+  const [archives, setArchives] = useState([]);
+
+  const chargerArchives = async () => {
+    try {
+      if (visitorId) {
+        setArchives(await listerArchives({ visiteurId: visitorId }));
+      }
+    } catch (error) {
+      // Liste facultative : pas d'écran d'erreur si elle est indisponible
+      console.warn("Fiches validées indisponibles :", error?.message || error);
+    }
+  };
+
+  useEffect(() => {
+    chargerArchives();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visitorId]);
+
+  // Alert.alert n'affiche rien sur le web
+  const notifier = (titre, message) =>
+    Platform.OS === "web"
+      ? window.alert(`${titre}\n\n${message}`)
+      : Alert.alert(titre, message);
+
+  const ouvrirFiche = async (archiveId, telecharger = false) => {
+    try {
+      await ouvrirArchive(archiveId, { telecharger });
+    } catch (error) {
+      notifier("Erreur", error?.message || "Impossible d'ouvrir la fiche.");
+    }
+  };
 
   // ===================================================
   // CHARGER VISITEUR
@@ -1806,7 +1851,7 @@ const response = await fetch(url, {
       // GÉNÉRER LE HTML DU DOCUMENT
       // =========================================
       const content = await html();
-  
+
       if (
         !content ||
         !content.trim()
@@ -1957,7 +2002,7 @@ const response = await fetch(url, {
       // ================================
   
       const content = await html();
-  
+
       // ================================
       // CRÉER LA DEMANDE DE VALIDATION
       // ================================
@@ -2190,11 +2235,11 @@ const message =
   
       // Générer le HTML complet avec le logo local
       const content = await html();
-  
+
       console.log(
         "======================================="
       );
-  
+
       console.log(
         "ENVOI EMAIL"
       );
@@ -2984,6 +3029,64 @@ const message =
           </Text>
         </TouchableOpacity>
 
+        {/* FICHES VALIDÉES (archivées automatiquement à la validation) */}
+
+        <View style={styles.archivesBloc}>
+          <View style={styles.archivesEntete}>
+            <Text style={styles.archivesTitre}>
+              Fiches validées ({archives.length})
+            </Text>
+
+            {archives.length > 0 && (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/archives",
+                    params: { visiteur: visitorId },
+                  })
+                }
+              >
+                <Text style={styles.archivesLien}>Tout voir</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {archives.length === 0 && (
+            <Text style={styles.archivesVide}>
+              Aucune fiche validée pour ce visiteur. La fiche est
+              enregistrée automatiquement dès qu'elle est validée.
+            </Text>
+          )}
+
+          {archives.slice(0, 5).map((a) => (
+            <View key={a.id} style={styles.archiveLigne}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.archiveNom}>
+                  v{a.version} · {a.nom_fichier}
+                </Text>
+                <Text style={styles.archiveDetails}>
+                  {formatDate(a.created_at)} · {LIBELLES_SOURCE[a.source] || a.source}
+                  {" "}· {formatTaille(a.taille)}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.archiveBouton}
+                onPress={() => ouvrirFiche(a.id)}
+              >
+                <Ionicons name="eye-outline" size={18} color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.archiveBouton, styles.archiveBoutonSecondaire]}
+                onPress={() => ouvrirFiche(a.id, true)}
+              >
+                <Ionicons name="download-outline" size={18} color="#5C681F" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
         {/* BACK */}
 
         <TouchableOpacity
@@ -3472,6 +3575,74 @@ const styles =
       maxWidth: 900,
       marginTop: 16,
       gap: 10,
+    },
+
+    // =================================================
+    // FICHES SAUVEGARDÉES
+    // =================================================
+
+    archivesBloc: {
+      backgroundColor: "#fff",
+      borderRadius: 10,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: "#e3e3e3",
+    },
+
+    archivesEntete: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+
+    archivesTitre: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#222",
+    },
+
+    archivesLien: {
+      color: ORANGE,
+      fontWeight: "700",
+    },
+
+    archivesVide: {
+      color: "#777",
+      fontSize: 12,
+    },
+
+    archiveLigne: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: "#ddd",
+    },
+
+    archiveNom: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#222",
+    },
+
+    archiveDetails: {
+      fontSize: 11,
+      color: "#777",
+      marginTop: 2,
+    },
+
+    archiveBouton: {
+      backgroundColor: ORANGE,
+      padding: 8,
+      borderRadius: 8,
+      marginLeft: 8,
+    },
+
+    archiveBoutonSecondaire: {
+      backgroundColor: "#fff",
+      borderWidth: 1,
+      borderColor: ORANGE,
     },
 
     primary: {

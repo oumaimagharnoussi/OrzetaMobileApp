@@ -21,8 +21,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // URL BACKEND
 // =====================================================
 
-//const API_URL = "http://192.168.1.146:5000";
-const API_URL = "https://orzetamobileapp.onrender.com";
+// Adresse du serveur : voir services/api.js (EXPO_PUBLIC_API_URL)
+import { API_URL } from "../services/api";
 // Produits proposés en conditionné : codes de la fiche MOTEUR
 // (CPOO, huile de grignons brute, est réservée au vrac)
 const PRODUITS_CONDITIONNE = [
@@ -2159,20 +2159,37 @@ return (
         DÉCONNEXION
     ================================================= */}
 
-    <TouchableOpacity
-      style={styles.logoutButton}
-      onPress={handleLogout}
-    >
-      <Ionicons
-        name="log-out-outline"
-        size={20}
-        color="#c62828"
-      />
+    <View style={styles.headerButtons}>
+      <TouchableOpacity
+        style={styles.archivesButton}
+        onPress={() => router.push("/archives")}
+      >
+        <Ionicons
+          name="document-text-outline"
+          size={20}
+          color="#5C681F"
+        />
 
-      <Text style={styles.logoutText}>
-        Déconnexion
-      </Text>
-    </TouchableOpacity>
+        <Text style={styles.archivesButtonText}>
+          Fiches validées
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        <Ionicons
+          name="log-out-outline"
+          size={20}
+          color="#c62828"
+        />
+
+        <Text style={styles.logoutText}>
+          Déconnexion
+        </Text>
+      </TouchableOpacity>
+    </View>
 
     {/* =================================================
         TITRE
@@ -6148,6 +6165,30 @@ contactText: {
     fontSize: 16,
     fontWeight: "700",
   },
+  headerButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+  },
+
+  archivesButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#5C681F",
+    borderRadius: 8,
+  },
+
+  archivesButtonText: {
+    marginLeft: 6,
+    color: "#5C681F",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
   logoutButton: {
     alignSelf: "flex-end",
     flexDirection: "row",

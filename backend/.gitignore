@@ -2,3 +2,6 @@
 node_modules/
 
 .env
+
+# Copies fichier des fiches PDF archivées (la base garde l original)
+archives_pdf/

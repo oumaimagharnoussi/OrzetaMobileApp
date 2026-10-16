@@ -4,11 +4,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // URL BACKEND
 // ============================================================
 
-// PC + téléphone sur le même Wi-Fi
-export const API_URL = "https://orzetamobileapp.onrender.com";//const API_URL = "http://192.168.1.146:5000";
-
-// Pour le web local, tu peux utiliser :
-// export const API_URL = "http://localhost:5000";
+// Serveur Render par défaut. Pour tester avec le serveur local, lancer
+// l'app avec la variable EXPO_PUBLIC_API_URL, par exemple :
+//   EXPO_PUBLIC_API_URL=http://localhost:5000          (web sur le PC)
+//   EXPO_PUBLIC_API_URL=http://192.168.1.146:5000      (téléphone, même Wi-Fi)
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL || "https://orzetamobileapp.onrender.com";
 
 
 // ============================================================

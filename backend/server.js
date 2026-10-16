@@ -301,6 +301,28 @@ const {
 
 
 // ============================================================
+// ARCHIVES DES FICHES PDF (base + fichiers)
+// ============================================================
+
+const {
+  ensureArchivesTable,
+  archiverPdf,
+  creerRouterArchives,
+  envoyerFichierArchive,
+} = require("./archives/pdfArchives");
+
+// Ouverture d'un PDF archivé par lien signé (voir /api/pdf-archives/:id/lien)
+app.get("/api/pdf-fichier/:jeton", envoyerFichierArchive);
+
+app.use(
+  "/api/pdf-archives",
+  authenticateToken,
+  requireUser,
+  creerRouterArchives({ generatePdfFromHtml })
+);
+
+
+// ============================================================
 // HELPERS
 // ============================================================
 
@@ -2252,6 +2274,31 @@ app.get("/validation/:token", async (req, res) => {
 // ============================================================
 
 
+// Archive une fiche validée lorsque aucun PDF n'est généré pour l'envoi
+// (ex. numéro WhatsApp manquant) : la fiche validée reste consultable.
+function archiverFicheValideeSansEnvoi(validation) {
+  void (async () => {
+    try {
+      const [htmlRows] = await pool.query(
+        "SELECT pdf_html FROM pdf_validations WHERE id = ? LIMIT 1",
+        [validation.id]
+      );
+
+      if (!htmlRows.length || !htmlRows[0].pdf_html) return;
+
+      await archiverPdf(pool, {
+        visiteurId: validation.visitor_id,
+        reference: validation.reference,
+        html: htmlRows[0].pdf_html,
+        source: "validation",
+        generatePdfFromHtml,
+      });
+    } catch (error) {
+      console.error("ARCHIVE PDF (validation) :", error.message);
+    }
+  })();
+}
+
 app.post("/api/validation/:token/validate", async (req, res) => {
   let validation;
 
@@ -2409,6 +2456,8 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         visiteur.whatsapp;
 
       if (!telephone) {
+        archiverFicheValideeSansEnvoi(validation);
+
         return res.json({
           success: true,
           status: "validated",
@@ -2434,6 +2483,8 @@ app.post("/api/validation/:token/validate", async (req, res) => {
       }
 
       if (phone.length < 8 || phone.length > 15) {
+        archiverFicheValideeSansEnvoi(validation);
+
         return res.json({
           success: true,
           status: "validated",
@@ -2487,6 +2538,17 @@ app.post("/api/validation/:token/validate", async (req, res) => {
             throw new Error("Le PDF généré est vide.");
           }
 
+          // Archiver la fiche validée (base + fichier)
+          archiverPdf(pool, {
+            visiteurId: validation.visitor_id,
+            reference: validation.reference,
+            html: htmlRows[0].pdf_html,
+            pdfBuffer,
+            source: "validation",
+          }).catch((error) =>
+            console.error("ARCHIVE PDF (validation) :", error.message)
+          );
+
           const idMessage = await sendGreenApiFile({
             phone,
             pdfBuffer,
@@ -2538,6 +2600,8 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         );
 
         if (!visiteur.email) {
+          archiverFicheValideeSansEnvoi(validation);
+
           throw new Error(
             "L'adresse e-mail du visiteur est manquante."
           );
@@ -2571,6 +2635,17 @@ app.post("/api/validation/:token/validate", async (req, res) => {
         if (!pdfBuffer || !pdfBuffer.length) {
           throw new Error("Le PDF généré est vide.");
         }
+
+        // Archiver la fiche validée (base + fichier)
+        archiverPdf(pool, {
+          visiteurId: validation.visitor_id,
+          reference: validation.reference,
+          html: htmlRows[0].pdf_html,
+          pdfBuffer,
+          source: "validation",
+        }).catch((error) =>
+          console.error("ARCHIVE PDF (validation) :", error.message)
+        );
 
         console.log(
           "[EMAIL] PDF généré, envoi via Brevo :",
@@ -5251,6 +5326,8 @@ async function startServer() {
     await ensureCommandesColumn();
 
     await ensureTypeEtiquetteColumn();
+
+    await ensureArchivesTable(pool);
 
 
     // ========================================================
