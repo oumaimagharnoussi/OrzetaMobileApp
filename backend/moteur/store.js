@@ -32,7 +32,11 @@ async function lireMoteur(db) {
     "SELECT donnees, updated_at FROM moteur_config WHERE id = 1"
   );
 
-  if (rows.length === 0) {
+  const donnees = rows.length > 0 ? JSON.parse(rows[0].donnees) : null;
+
+  // Aucune modification, ou modifications faites sur une ancienne
+  // version du fichier Excel : on repart du fichier actuel
+  if (!donnees || donnees.version !== MOTEUR_DEFAUT.version) {
     return {
       donnees: copie(MOTEUR_DEFAUT),
       updated_at: null
@@ -40,7 +44,7 @@ async function lireMoteur(db) {
   }
 
   return {
-    donnees: JSON.parse(rows[0].donnees),
+    donnees,
     updated_at: rows[0].updated_at
   };
 }
