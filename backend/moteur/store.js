@@ -91,9 +91,15 @@ function grillePrix(donnees) {
     };
   }
 
+  const densite = Number(
+    (donnees.parametres || []).find((p) => p.cle === "Densite")?.valeur
+  );
+
   return {
     devise: "EUR",
     incoterm: "EXW",
+    // kg / litre : conversion des volumes vrac saisis en tonnes
+    densite: densite > 0 ? densite : null,
     marche: donnees.scenario?.marche || null,
     vrac,
     conditionne

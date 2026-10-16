@@ -205,7 +205,7 @@ const normalizeFormat = (value) => {
     return `${ml[1]} ml`;
   }
 
-  const litres = raw.match(/^(1|2|3|5)\s*l$/);
+  const litres = raw.match(/^(\d+)\s*l$/);
   if (litres) return `${litres[1]} L`;
 
   return raw.replace(/\bml\b/g, "ml");
@@ -230,14 +230,16 @@ const getPriceEUR = (packaging, format, conditionedPrices, produit) => {
   return Number.isFinite(price) ? price : null;
 };
 
-const isFormat = (value) => /^(250\s*ml|500\s*ml|750\s*ml|0[.,](250|500|750)\s*l|1\s*l|2\s*l|3\s*l|5\s*l)$/i.test(normalizeFormat(value));
+// Tout volume « N ml » ou « N L » : les formats absents de la fiche
+// MOTEUR (ex. Tin 20 L) restent dans l'offre avec un prix « À confirmer »
+const isFormat = (value) => /^(\d+(\.\d+)?)\s*(ml|l)$/i.test(normalizeFormat(value));
 const normalizeFormatLabel = (value) => {
   const raw = normalizeFormat(value).toLowerCase().replace(/,/g, ".");
   const ml = raw.match(/^(250|500|750)\s*ml$/);
   if (ml) return `${ml[1]} ml`;
   const decimal = raw.match(/^0\.(250|500|750)\s*l$/);
   if (decimal) return `${Number(decimal[1])} ml`;
-  const liter = raw.match(/^(1|2|3|5)\s*l$/);
+  const liter = raw.match(/^(\d+)\s*l$/);
   if (liter) return `${liter[1]} L`;
   return normalizeFormat(value);
 };
@@ -528,6 +530,8 @@ const estNouvelleMarque = (commande) =>
 // Chaque ligne a une `section` : "standard" ou "nouvelle_marque".
 const buildPricingRows = (visiteur, prices) => {
   const bulkPrices = prices?.vrac;
+  // Densité de l'huile (kg/L, PARAMETRES du MOTEUR) : tonnes → litres
+  const densite = Number(prices?.densite) > 0 ? Number(prices.densite) : 0.916;
   const conditionedPrices = prices?.conditionne;
 
   const commandes = Array.isArray(visiteur?.commandes) && visiteur.commandes.length
@@ -573,13 +577,19 @@ const buildPricingRows = (visiteur, prices) => {
     if (type === "vrac" || (categorie && formatLivraison && !/conditionn/.test(type))) {
       const price = getBulkPriceEUR(categorie, formatLivraison, bulkPrices);
       const canonicalFormat = canonicalBulkFormat(formatLivraison);
-      const estimatedVolume = positiveNumber(
+      // « Volume estimé en tonne » du formulaire, converti en litres
+      // puisque le prix vrac est en EUR / litre
+      const tonnes = positiveNumber(
         commande?.volume_estime ?? commande?.volumes_estimes ??
         commande?.volumes_conditionne ?? commande?.quantite_commande
       );
       const capacity = getBulkCapacity(formatLivraison);
-      const volumeLitres = estimatedVolume || (capacity && fclCount ? capacity * fclCount : null);
-      const quantity = volumeLitres
+      const volumeLitres = tonnes
+        ? (tonnes * 1000) / densite
+        : (capacity && fclCount ? capacity * fclCount : null);
+      const quantity = tonnes
+        ? `${tonnes.toLocaleString("en-US")} T (${Math.round(volumeLitres).toLocaleString("en-US")} L)`
+        : volumeLitres
         ? `${volumeLitres.toLocaleString("en-US")} L`
         : fclCount
           ? `${fclCount} FCL 20’`
@@ -666,7 +676,11 @@ const buildPricingRows = (visiteur, prices) => {
         commande,
         numero,
         fclCount,
-        formatEntries: collectFormats(nmFormats),
+        // Formats cochés + formats saisis dans « Autre » (par emballage)
+        formatEntries: [
+          ...collectFormats(nmFormats),
+          ...collectFormats(nmFormatsRaw?.autres_formats),
+        ],
         selectedPackaging: nmEmballages,
         conditionedPrices,
         section: "nouvelle_marque",
@@ -984,7 +998,11 @@ const response = await fetch(url, {
           throw new Error(data?.message || `HTTP ${response.status}`);
         }
 
-        if (active) setMoteurPrices({ vrac: data.vrac || {}, conditionne: data.conditionne || {} });
+        if (active) setMoteurPrices({
+          vrac: data.vrac || {},
+          conditionne: data.conditionne || {},
+          densite: data.densite,
+        });
       } catch (error) {
         // Sans grille, les prix s'affichent « À confirmer »
         console.error("ERREUR PRIX MOTEUR :", error?.message || error);
