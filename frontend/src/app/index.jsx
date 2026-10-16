@@ -23,6 +23,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 //const API_URL = "http://192.168.1.146:5000";
 const API_URL = "https://orzetamobileapp.onrender.com";
+// Produits proposés en conditionné : codes de la fiche MOTEUR
+// (CPOO, huile de grignons brute, est réservée au vrac)
+const PRODUITS_CONDITIONNE = [
+  "Extra Virgin Olive Oil – EVOO",
+  "Virgin Olive Oil – VOO",
+  "Olive Oil – OO",
+  "Refined Olive Oil – ROO",
+  "Refined Olive Pomace Oil – RPOO",
+  "Olive Pomace Oil – POO",
+];
+
 // =====================================================
 // COMPOSANT
 // =====================================================
@@ -420,6 +431,7 @@ const [k270Valeur, setK270Valeur] = useState("");
     // VRAC
     setCategorie("");
     setQualiteGrade("");
+    setGenre("");
     setVolumeEstime("");
     setDestination("");
     setDestinationport("");
@@ -1459,14 +1471,18 @@ const toggleEmballageConditionne = (type) => {
       // VRAC
       // =========================
   
-      categorie:
-        typeCommande === "vrac"
-          ? categorie?.trim() || null
-          : null,
+      // Vrac : catégorie ; conditionné : produit de la fiche MOTEUR
+      categorie: categorie?.trim() || null,
   
       qualite_grade:
         typeCommande === "vrac"
           ? qualiteGrade?.trim() || null
+          : null,
+
+      // Genre de l'huile (Conventionnelle / Biologique) : propre à la commande
+      genre:
+        typeCommande === "vrac"
+          ? genre?.trim() || null
           : null,
   
       volume_estime:
@@ -1930,7 +1946,6 @@ const handleAjouter = async () => {
       adresse_societe:
         adresseSociete?.trim() || null,
       fonction: fonction?.trim() || null,
-      genre: genre?.trim() || null,
       langue_communication:
         langueCommunication || null,
         profile: profile?.trim() || null,
@@ -2820,6 +2835,9 @@ return (
                       Catégorie : {commande.categorie || "—"}
                     </Text>
                     <Text style={styles.savedCommandText}>
+                      Genre : {commande.genre || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
                       Volume : {commande.volume_estime ?? "—"}
                     </Text>
                     <Text style={styles.savedCommandText}>
@@ -3574,6 +3592,9 @@ Catégorie
                       Commande {index + 1} → Conditionné
                     </Text>
                     <Text style={styles.savedCommandText}>
+                      Produit : {commande.categorie || "—"}
+                    </Text>
+                    <Text style={styles.savedCommandText}>
                       Pays : {commande.pays_conditionne || "—"}
                     </Text>
                     <Text style={styles.savedCommandText}>
@@ -3590,6 +3611,32 @@ Catégorie
             <Text style={styles.currentCommandTitle}>
               Commande {commandes.length + 1} → Conditionné
             </Text>
+
+            {/* PRODUIT (ligne de la fiche MOTEUR utilisée pour le prix) */}
+
+            <Text style={styles.label}>
+              Produit
+            </Text>
+
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={categorie}
+                onValueChange={setCategorie}
+              >
+                <Picker.Item
+                  label="Sélectionner un produit"
+                  value=""
+                />
+
+                {PRODUITS_CONDITIONNE.map((item) => (
+                  <Picker.Item
+                    key={item}
+                    label={item}
+                    value={item}
+                  />
+                ))}
+              </Picker>
+            </View>
 
             {/* PAYS */}
 

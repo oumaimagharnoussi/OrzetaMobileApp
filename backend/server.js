@@ -432,7 +432,9 @@ function normalizeTypeCommande(value) {
 // NORMALISATION COMMANDES
 // ============================================================
 
-function normalizeCommandes(value, typeCommandePrincipal) {
+// genreParDefaut : genre envoyé au niveau du visiteur par les anciennes
+// versions de l'app ; il est reporté sur les commandes vrac sans genre.
+function normalizeCommandes(value, typeCommandePrincipal, genreParDefaut = null) {
   if (
     value === undefined ||
     value === null ||
@@ -496,6 +498,10 @@ function normalizeCommandes(value, typeCommandePrincipal) {
     }
 
     commande.type_commande = typeCommande;
+
+    if (!commande.genre && genreParDefaut && typeCommande === "vrac") {
+      commande.genre = genreParDefaut;
+    }
 
     // TYPE DE MARQUE
     const typeMarque = cleanString(
@@ -651,6 +657,7 @@ function generateReference(id, typeCommande) {
 
         categorie,
         qualite_grade,
+        genre,
         volume_estime,
         destination,
         destinationport,
@@ -705,7 +712,7 @@ function generateReference(id, typeCommande) {
 
       VALUES (
         ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -725,6 +732,8 @@ function generateReference(id, typeCommande) {
       // Informations générales
       commande.categorie || null,
       commande.qualite_grade || null,
+      // Genre de l'huile (Conventionnelle / Biologique) : propre à la commande
+      commande.genre || null,
       commande.volume_estime ?? null,
       commande.destination || null,
       commande.destinationport?.trim() || null,
@@ -2875,7 +2884,8 @@ app.post(
           normalizedCommandes =
             normalizeCommandes(
               commandes,
-              type_commande
+              type_commande,
+              genre
             );
 
         } catch (error) {
@@ -2916,7 +2926,6 @@ app.post(
           societe,
           adresse_societe,
           fonction,
-          genre,
           langue_communication,
           profile,
           type_commande,
@@ -2931,7 +2940,7 @@ app.post(
       
         VALUES (
           ?, ?, ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?
         )
         `,
@@ -2946,7 +2955,6 @@ app.post(
           societe || null,
           adresse_societe || null,
           fonction || null,
-          genre || null,
           langue_communication || null,
           profile || null,
           type_commande || null,
@@ -3529,7 +3537,8 @@ app.put(
           normalized =
             normalizeCommandes(
               body.commandes,
-              newType
+              newType,
+              body.genre
             );
 
         } catch (error) {
@@ -3614,7 +3623,6 @@ app.put(
         "societe",
         "adresse_societe",
         "fonction",
-        "genre",
         "langue_communication",
         "profile",
         "type_commande",
@@ -5131,6 +5139,7 @@ async function ensureTypeEtiquetteColumn() {
     { name: "type_etiquette_conditionne", after: "type_etiquette", type: "VARCHAR(50)" },
     { name: "periode_recurrence", after: "frequence_commande", type: "VARCHAR(20)" },
     { name: "nombre_commandes_recurrence", after: "periode_recurrence", type: "INT" },
+    { name: "genre", after: "qualite_grade", type: "VARCHAR(50)" },
   ];
 
   for (const colonne of colonnes) {
@@ -5171,6 +5180,25 @@ async function ensureTypeEtiquetteColumn() {
       console.log(
         `✅ Colonne ${colonne.name} créée.`
       );
+
+      // Le genre était enregistré sur le visiteur : on le recopie
+      // une seule fois sur ses commandes vrac existantes
+      if (colonne.name === "genre") {
+        const [resultat] = await pool.query(
+          `
+            UPDATE commandes c
+            JOIN visiteurs v ON v.id = c.visiteur_id
+            SET c.genre = v.genre
+            WHERE c.genre IS NULL
+              AND v.genre IS NOT NULL
+              AND c.type_commande = 'vrac'
+          `
+        );
+
+        console.log(
+          `✅ Genre recopié sur ${resultat.affectedRows} commande(s).`
+        );
+      }
 
     } else {
 
