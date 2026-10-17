@@ -640,12 +640,25 @@ const buildPricingRows = (visiteur, prices) => {
       selectedPackaging = [emballagesSelectionnes];
     }
 
+    // Ne garder que les formats de l'emballage coché : une commande
+    // peut contenir les formats d'un emballage choisi puis abandonné.
+    const packagingRetenu =
+      packaging && typeof packaging === "object" && !Array.isArray(packaging) &&
+      selectedPackaging.length > 0
+        ? Object.fromEntries(
+            Object.entries(packaging).filter(([emballage]) =>
+              selectedPackaging.includes(emballage)
+            )
+          )
+        : packaging;
+
     // Utiliser le JSON `packaging` en priorité : il associe chaque format à son emballage.
-    const primaryFormats = collectFormats(packaging);
+    const primaryFormats = collectFormats(packagingRetenu);
     const formatEntries = primaryFormats.length
       ? primaryFormats
       : [
-          ...collectFormats(commande?.formats_emballage),
+          // Déjà filtré par emballage coché via `packagingRetenu`
+          ...(selectedPackaging.length > 0 ? [] : collectFormats(commande?.formats_emballage)),
           ...collectFormats(formatsSouhaites),
         ];
 

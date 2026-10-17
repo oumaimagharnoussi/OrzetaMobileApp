@@ -1243,76 +1243,31 @@ setK270Valeur("");
 
 
   
+// Un seul type d'emballage : choisir un autre type (ou désélectionner)
+// efface les formats et les « Autre » du choix précédent, sinon la
+// fiche PDF afficherait encore l'ancien emballage.
 const toggleEmballageConditionne = (type) => {
-  setEmballagesSelectionnes((prev) => {
-    const isSelected = prev.includes(type);
+  setEmballagesSelectionnes((prev) =>
+    prev.includes(type) ? [] : [type]
+  );
 
-    // Si le type est déjà sélectionné, on le désélectionne
-    if (isSelected) {
-      return [];
-    }
+  setFormatsEmballage({});
 
-    // Un seul type d'emballage autorisé
-    return [type];
+  setAutresSelectionnes({
+    Tin: false,
+    PET: false,
+    Glass: false,
+    BaginBox: false,
   });
 
-  setFormatsEmballage((prev) => {
-    const updated = { ...prev };
-    delete updated[type];
-    return updated;
+  setAutresEmballages({
+    Tin: "",
+    PET: "",
+    Glass: "",
+    BaginBox: "",
   });
 
-  if (type === "Tin") {
-    setAutresSelectionnes((prev) => ({
-      ...prev,
-      Tin: false,
-    }));
-
-    setAutresEmballages((prev) => ({
-      ...prev,
-      Tin: "",
-    }));
-  }
-
-  if (type === "PET") {
-    setAutresSelectionnes((prev) => ({
-      ...prev,
-      PET: false,
-    }));
-
-    setAutresEmballages((prev) => ({
-      ...prev,
-      PET: "",
-    }));
-  }
-
-  if (type === "Glass") {
-    setAutresSelectionnes((prev) => ({
-      ...prev,
-      Glass: false,
-    }));
-
-    setAutresEmballages((prev) => ({
-      ...prev,
-      Glass: "",
-    }));
-  }
-
-  if (type === "BaginBox") {
-    setAutresSelectionnes((prev) => ({
-      ...prev,
-      BaginBox: false,
-    }));
-
-    setAutresEmballages((prev) => ({
-      ...prev,
-      BaginBox: "",
-    }));
-  }
-
-  if (type === "Autre") {
-    setAutreEmballage((prev) => prev);
-  }
+  setAutreEmballage("");
 };
 
   // =====================================================
