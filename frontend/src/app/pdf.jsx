@@ -125,6 +125,10 @@ const moneyEUR = (n, decimals = 2) => `${Number(n || 0).toLocaleString("en-US", 
   maximumFractionDigits: decimals,
 })} EUR`;
 
+// Colonne « Discount » : remise canal appliquée au total de la ligne
+const discountLabel = (item) =>
+  item.remise ? `-${Math.round(item.remise * 100)}%` : "—";
+
 // Tarifs vrac : grille EXW en EUR / litre calculée par la fiche MOTEUR
 // (GET /api/moteur/prix-vrac). Une modification de l'admin dans la
 // fiche MOTEUR change donc directement les prix de l'offre.
@@ -480,10 +484,10 @@ const addConditionedRows = ({
       const nonAutorise =
         getConditionedLine(target, entry.format, conditionedPrices, produit)?.autorise === 0;
 
-      // Remise canal de distribution appliquée sur le prix unitaire
-      const price = prixCatalogue != null && remise
-        ? prixCatalogue * (1 - remise.taux)
-        : prixCatalogue;
+      // Prix unitaire = prix catalogue du MOTEUR / SIMULATEUR (sans remise) ;
+      // la remise canal de distribution n'est appliquée que sur le total
+      const price = prixCatalogue;
+      const tauxRemise = remise ? remise.taux : 0;
 
       const quantiteTotale = getConditionedQuantity({
         commande,
@@ -509,10 +513,11 @@ const addConditionedRows = ({
         description,
         price,
         precision: 2,
+        remise: tauxRemise,
         quantity,
         total:
           price != null && quantiteTotale != null
-            ? price * quantiteTotale
+            ? price * quantiteTotale * (1 - tauxRemise)
             : null,
       });
     });
@@ -1154,6 +1159,7 @@ const response = await fetch(url, {
           <tr>
             <td>${esc(item.description)}</td>
             <td class="num">${item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}</td>
+            <td class="num">${esc(discountLabel(item))}</td>
             <td class="num">${esc(item.quantity)}</td>
             <td class="num">${item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}</td>
           </tr>
@@ -1162,8 +1168,8 @@ const response = await fetch(url, {
     const rows = standardRows.length
       ? rowsHtml(standardRows)
       : newBrandRows.length
-        ? `<tr><td colspan="4">Voir le tableau « New brand » ci-dessous.</td></tr>`
-        : `<tr><td colspan="4">Aucune commande ou aucun format sélectionné.</td></tr>`;
+        ? `<tr><td colspan="5">Voir le tableau « New brand » ci-dessous.</td></tr>`
+        : `<tr><td colspan="5">Aucune commande ou aucun format sélectionné.</td></tr>`;
 
     // Tableau supplémentaire pour la création de nouvelle marque
     const newBrandTable = newBrandRows.length
@@ -1177,6 +1183,7 @@ const response = await fetch(url, {
       <tr>
         <th>Description</th>
         <th>Unit Price EXW Sfax (EUR)</th>
+        <th>Discount</th>
         <th>Quantity</th>
         <th>Total EXW Sfax (EUR)</th>
       </tr>
@@ -1631,6 +1638,10 @@ const response = await fetch(url, {
 
         <th>
           Unit Price EXW Sfax (EUR)
+        </th>
+
+        <th>
+          Discount
         </th>
 
         <th>
@@ -2723,6 +2734,17 @@ const message =
                   style={[
                     styles.th,
                     {
+                      width: 80,
+                    },
+                  ]}
+                >
+                  Discount
+                </Text>
+
+                <Text
+                  style={[
+                    styles.th,
+                    {
                       width: 105,
                     },
                   ]}
@@ -2751,6 +2773,7 @@ const message =
                   <Text style={[styles.td, { width: 125, textAlign: "right" }]}>
                     {item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}
                   </Text>
+                  <Text style={[styles.td, { width: 80, textAlign: "right" }]}>{discountLabel(item)}</Text>
                   <Text style={[styles.td, { width: 105, textAlign: "right" }]}>{item.quantity}</Text>
                   <Text style={[styles.td, { width: 135, textAlign: "right" }]}>
                     {item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}
@@ -2773,6 +2796,7 @@ const message =
                   <View style={styles.tableHead}>
                     <Text style={[styles.th, { width: 250 }]}>Description</Text>
                     <Text style={[styles.th, { width: 125 }]}>Unit Price EXW Sfax (EUR)</Text>
+                    <Text style={[styles.th, { width: 80 }]}>Discount</Text>
                     <Text style={[styles.th, { width: 105 }]}>Quantity</Text>
                     <Text style={[styles.th, { width: 135 }]}>Total EXW Sfax (EUR)</Text>
                   </View>
@@ -2783,6 +2807,7 @@ const message =
                       <Text style={[styles.td, { width: 125, textAlign: "right" }]}>
                         {item.price == null ? "À confirmer" : moneyEUR(item.price, item.precision || 2)}
                       </Text>
+                      <Text style={[styles.td, { width: 80, textAlign: "right" }]}>{discountLabel(item)}</Text>
                       <Text style={[styles.td, { width: 105, textAlign: "right" }]}>{item.quantity}</Text>
                       <Text style={[styles.td, { width: 135, textAlign: "right" }]}>
                         {item.total == null ? "À confirmer" : moneyEUR(item.total, item.precision || 2)}
