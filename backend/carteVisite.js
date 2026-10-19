@@ -4,6 +4,9 @@
 // - QR code : jsQR (vCard, MECARD ou lien du site)
 // ============================================================
 
+const dns = require("dns").promises;
+const net = require("net");
+const axios = require("axios");
 const { createWorker } = require("tesseract.js");
 const { Jimp } = require("jimp");
 const jsQR = require("jsqr");
@@ -110,9 +113,77 @@ function siteDepuisUrl(url) {
 // QR CODE
 // ============================================================
 
+// Noir et blanc avec contraste étiré + seuil automatique (Otsu) :
+// permet de lire un QR peu contrasté (ex. vert foncé sur fond sombre)
+function binariser(pixels) {
+  const n = pixels.length / 4;
+  const lum = new Float32Array(n);
+  let min = 255;
+  let max = 0;
+
+  for (let i = 0; i < n; i++) {
+    const v =
+      0.299 * pixels[4 * i] +
+      0.587 * pixels[4 * i + 1] +
+      0.114 * pixels[4 * i + 2];
+    lum[i] = v;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+
+  const etendue = max - min || 1;
+  const hist = new Array(256).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    lum[i] = ((lum[i] - min) / etendue) * 255;
+    hist[Math.round(lum[i])]++;
+  }
+
+  let somme = 0;
+  for (let t = 0; t < 256; t++) somme += t * hist[t];
+
+  let sommeFond = 0;
+  let poidsFond = 0;
+  let meilleur = 0;
+  let seuil = 128;
+
+  for (let t = 0; t < 256; t++) {
+    poidsFond += hist[t];
+    if (!poidsFond) continue;
+
+    const poidsForme = n - poidsFond;
+    if (!poidsForme) break;
+
+    sommeFond += t * hist[t];
+
+    const ecart =
+      poidsFond *
+      poidsForme *
+      (sommeFond / poidsFond - (somme - sommeFond) / poidsForme) ** 2;
+
+    if (ecart > meilleur) {
+      meilleur = ecart;
+      seuil = t;
+    }
+  }
+
+  const sortie = new Uint8ClampedArray(pixels.length);
+
+  for (let i = 0; i < n; i++) {
+    const v = lum[i] > seuil ? 255 : 0;
+    sortie[4 * i] = v;
+    sortie[4 * i + 1] = v;
+    sortie[4 * i + 2] = v;
+    sortie[4 * i + 3] = 255;
+  }
+
+  return sortie;
+}
+
 function lireQrCode(image) {
   // Essayer plusieurs tailles, de la plus rapide à la plus précise :
-  // un QR flou se lit parfois mieux en réduit, un petit QR en grand
+  // un QR flou se lit parfois mieux en réduit, un petit QR en grand.
+  // Pour chaque taille : image normale, puis version noir et blanc.
   for (const largeur of [700, 1000, null]) {
     if (largeur && image.bitmap.width <= largeur) continue;
 
@@ -120,14 +191,18 @@ function lireQrCode(image) {
       ? image.clone().resize({ w: largeur })
       : image;
 
-    const resultat = jsQR(
-      new Uint8ClampedArray(copie.bitmap.data),
-      copie.bitmap.width,
-      copie.bitmap.height
-    );
+    const pixels = new Uint8ClampedArray(copie.bitmap.data);
 
-    if (resultat?.data) {
-      return resultat.data.trim();
+    for (const donnees of [pixels, binariser(pixels)]) {
+      const resultat = jsQR(
+        donnees,
+        copie.bitmap.width,
+        copie.bitmap.height
+      );
+
+      if (resultat?.data) {
+        return resultat.data.trim();
+      }
     }
   }
 
@@ -145,18 +220,43 @@ function analyserQrCode(contenu) {
       .replace(/\r?\n[ \t]/g, "")
       .split(/\r?\n/);
 
-    const valeur = (cle) => {
-      const l = lignes.find((x) =>
-        new RegExp(`^${cle}[;:]`, "i").test(x)
+    // Valeur brute d'une propriété (préférence éventuelle : ex. CELL)
+    const brut = (cle, preference) => {
+      const candidates = lignes.filter((x) =>
+        new RegExp(`^(?:item\\d+\\.)?${cle}[;:]`, "i").test(x)
       );
+
+      const l =
+        (preference &&
+          candidates.find((x) =>
+            new RegExp(preference, "i").test(x.substring(0, x.indexOf(":")))
+          )) ||
+        candidates[0];
+
       return l ? l.substring(l.indexOf(":") + 1).trim() : null;
     };
 
+    // Composants séparés par « ; » (sauf « \; ») puis déséchappés
+    const composants = (texte) =>
+      String(texte || "")
+        .split(/(?<!\\);/)
+        .map((x) =>
+          x
+            .replace(/\\n/gi, " ")
+            .replace(/\\([,;\\])/g, "$1")
+            .trim()
+        );
+
+    const valeur = (cle, preference) => {
+      const v = brut(cle, preference);
+      return v ? composants(v).join(" ").trim() || null : null;
+    };
+
     const fn = valeur("FN");
-    const n = valeur("N");
+    const n = brut("N");
 
     if (n) {
-      const [nom, prenom] = n.split(";");
+      const [nom, prenom] = composants(n);
       champs.nom = nom || null;
       champs.prenom = prenom || null;
     } else if (fn) {
@@ -166,15 +266,25 @@ function analyserQrCode(contenu) {
     }
 
     champs.email = valeur("EMAIL");
-    champs.telephone = valeur("TEL");
-    champs.societe = valeur("ORG")?.split(";")[0] || null;
+    champs.telephone = valeur("TEL", "CELL|MOBILE");
+    champs.societe = composants(brut("ORG"))[0] || null;
     champs.fonction = valeur("TITLE");
-    champs.site = siteDepuisUrl(valeur("URL"));
+    champs.site = siteDepuisUrl(brut("URL"));
 
-    const adr = valeur("ADR");
+    // ADR : boîte postale ; complément ; rue ; ville ; région ; code ; pays
+    const adr = brut("ADR");
     if (adr) {
+      const [, , rue, ville, region, code, pays] = composants(adr);
+
       champs.adresse_societe =
-        adr.split(";").map((x) => x.trim()).filter(Boolean).join(", ");
+        [
+          rue,
+          [code, ville].filter(Boolean).join(" "),
+          region,
+          pays,
+        ]
+          .filter(Boolean)
+          .join(", ") || null;
     }
 
     return champs;
@@ -537,7 +647,7 @@ async function lireCarteVisite(imageBuffer) {
   return {
     texte: ocr.texte,
     qr,
-    champs: analyserCarte(ocr.lignes, qr),
+    champs: await analyserCarteComplete(ocr.lignes, qr),
   };
 }
 
@@ -577,6 +687,177 @@ function analyserCarte(lignesOcr, qr) {
   }
 
   delete champs._domaineEmailPro;
+
+  return champs;
+}
+
+// ============================================================
+// CARTE DE VISITE EN LIGNE (QR code contenant un lien)
+// Le lien est ouvert par le serveur : vCard si la page en propose
+// une, sinon téléphone / e-mail / nom trouvés dans la page.
+// ============================================================
+
+// Refuser les adresses internes (protection du serveur)
+function adresseInterne(ip) {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split(".").map(Number);
+    return (
+      a === 10 ||
+      a === 127 ||
+      a === 0 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127)
+    );
+  }
+
+  const v6 = ip.toLowerCase();
+  return (
+    v6 === "::1" ||
+    v6 === "::" ||
+    v6.startsWith("fc") ||
+    v6.startsWith("fd") ||
+    v6.startsWith("fe80") ||
+    v6.startsWith("::ffff:")
+  );
+}
+
+async function telechargerPagePublique(adresse, redirections = 0) {
+  const url = new URL(adresse);
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Lien non pris en charge.");
+  }
+
+  if (url.port && !["80", "443"].includes(url.port)) {
+    throw new Error("Port non autorisé.");
+  }
+
+  const { address } = await dns.lookup(url.hostname);
+
+  if (adresseInterne(address)) {
+    throw new Error("Adresse non autorisée.");
+  }
+
+  const reponse = await axios.get(url.href, {
+    timeout: 8000,
+    maxRedirects: 0,
+    maxContentLength: 2_000_000,
+    responseType: "text",
+    transformResponse: (x) => x,
+    validateStatus: () => true,
+    headers: { "User-Agent": "Mozilla/5.0 (OLIVED carte de visite)" },
+  });
+
+  // Suivre les redirections en revérifiant chaque adresse
+  if (
+    reponse.status >= 300 &&
+    reponse.status < 400 &&
+    reponse.headers.location &&
+    redirections < 3
+  ) {
+    return telechargerPagePublique(
+      new URL(reponse.headers.location, url).href,
+      redirections + 1
+    );
+  }
+
+  if (reponse.status !== 200) {
+    throw new Error(`Page inaccessible (${reponse.status}).`);
+  }
+
+  return { url: url.href, contenu: String(reponse.data || "") };
+}
+
+const estVcard = (texte) => /BEGIN:VCARD/i.test(String(texte).slice(0, 1000));
+
+function decoderHtml(texte) {
+  return String(texte || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&#0*39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (m, c) => String.fromCharCode(Number(c)))
+    .trim();
+}
+
+async function lireCarteEnLigne(lien) {
+  if (!/^https?:\/\//i.test(String(lien || "").trim())) return {};
+
+  try {
+    const page = await telechargerPagePublique(lien.trim());
+
+    if (estVcard(page.contenu)) {
+      return analyserQrCode(page.contenu);
+    }
+
+    const html = page.contenu;
+
+    // Lien vers une vCard (.vcf, vcf=1, vcard…)
+    const lienVcard = html.match(
+      /href=["']([^"']*(?:\.vcf|[?&](?:amp;)?vcf=|vcard)[^"']*)["']/i
+    );
+
+    if (lienVcard) {
+      try {
+        const vcard = await telechargerPagePublique(
+          new URL(decoderHtml(lienVcard[1]), page.url).href
+        );
+
+        if (estVcard(vcard.contenu)) {
+          return analyserQrCode(vcard.contenu);
+        }
+      } catch (error) {
+        console.warn("[CARTE EN LIGNE] vCard illisible :", error.message);
+      }
+    }
+
+    // Sinon : informations visibles dans la page
+    const champs = {};
+
+    const tel = html.match(/href=["']tel:([^"']+)["']/i);
+    if (tel) champs.telephone = decodeURIComponent(tel[1]).trim();
+
+    const mail = html.match(/href=["']mailto:([^"'?]+)/i);
+    if (mail) champs.email = decodeURIComponent(mail[1]).trim().toLowerCase();
+
+    const titre =
+      html.match(/property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
+      html.match(/content=["']([^"']+)["'][^>]*property=["']og:title["']/i) ||
+      html.match(/<title[^>]*>([^<]+)<\/title>/i);
+
+    if (titre) {
+      // « Mohamed ZOUARI — Orzeta » -> nom de la personne
+      const nomComplet = decoderHtml(titre[1]).split(/\s[—–|-]\s/)[0].trim();
+      const mots = nomComplet.split(/\s+/).filter(Boolean);
+
+      if (mots.length >= 2 && mots.length <= 4) {
+        champs.prenom = mots[0];
+        champs.nom = mots.slice(1).join(" ");
+      }
+    }
+
+    return champs;
+  } catch (error) {
+    console.warn("[CARTE EN LIGNE] Lien illisible :", error.message);
+    return {};
+  }
+}
+
+// Champs de la carte + informations de la carte en ligne (prioritaires)
+async function analyserCarteComplete(lignesOcr, qr) {
+  const champs = analyserCarte(lignesOcr, qr);
+  const enLigne = await lireCarteEnLigne(qr);
+
+  Object.entries(enLigne).forEach(([cle, valeur]) => {
+    if (valeur) champs[cle] = valeur;
+  });
+
+  if (enLigne.telephone) {
+    Object.assign(champs, separerIndicatif(enLigne.telephone));
+  }
 
   return champs;
 }
@@ -658,6 +939,8 @@ async function enregistrerCarteVisite(db, {
 module.exports = {
   lireCarteVisite,
   analyserCarte,
+  analyserCarteComplete,
+  lireCarteEnLigne,
   prechargerOcr,
   ensureCartesVisiteTable,
   enregistrerCarteVisite,

@@ -301,7 +301,7 @@ const {
 
 const {
   lireCarteVisite,
-  analyserCarte,
+  analyserCarteComplete,
   prechargerOcr,
   ensureCartesVisiteTable,
   enregistrerCarteVisite,
@@ -2889,7 +2889,7 @@ app.post(
 app.post(
   "/api/carte-visite/analyser",
   authenticateToken,
-  (req, res) => {
+  async (req, res) => {
     try {
       const { lignes, qr } = req.body || {};
 
@@ -2900,7 +2900,9 @@ app.post(
         });
       }
 
-      const champs = analyserCarte(
+      // Si le QR code contient un lien (carte de visite en ligne),
+      // ses informations complètent / remplacent celles lues
+      const champs = await analyserCarteComplete(
         lignes.map(String).slice(0, 200),
         qr ? String(qr).slice(0, 2000) : null
       );

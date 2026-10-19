@@ -60,14 +60,85 @@ function dessiner(image, largeurMax) {
   return { canvas, ctx };
 }
 
+// Noir et blanc avec contraste étiré + seuil automatique (Otsu) :
+// permet de lire un QR peu contrasté (ex. vert foncé sur fond sombre)
+function binariser(pixels) {
+  const n = pixels.length / 4;
+  const lum = new Float32Array(n);
+  let min = 255;
+  let max = 0;
+
+  for (let i = 0; i < n; i++) {
+    const v =
+      0.299 * pixels[4 * i] +
+      0.587 * pixels[4 * i + 1] +
+      0.114 * pixels[4 * i + 2];
+    lum[i] = v;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+
+  const etendue = max - min || 1;
+  const hist = new Array(256).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    lum[i] = ((lum[i] - min) / etendue) * 255;
+    hist[Math.round(lum[i])]++;
+  }
+
+  let somme = 0;
+  for (let t = 0; t < 256; t++) somme += t * hist[t];
+
+  let sommeFond = 0;
+  let poidsFond = 0;
+  let meilleur = 0;
+  let seuil = 128;
+
+  for (let t = 0; t < 256; t++) {
+    poidsFond += hist[t];
+    if (!poidsFond) continue;
+
+    const poidsForme = n - poidsFond;
+    if (!poidsForme) break;
+
+    sommeFond += t * hist[t];
+
+    const ecart =
+      poidsFond *
+      poidsForme *
+      (sommeFond / poidsFond - (somme - sommeFond) / poidsForme) ** 2;
+
+    if (ecart > meilleur) {
+      meilleur = ecart;
+      seuil = t;
+    }
+  }
+
+  const sortie = new Uint8ClampedArray(pixels.length);
+
+  for (let i = 0; i < n; i++) {
+    const v = lum[i] > seuil ? 255 : 0;
+    sortie[4 * i] = v;
+    sortie[4 * i + 1] = v;
+    sortie[4 * i + 2] = v;
+    sortie[4 * i + 3] = 255;
+  }
+
+  return sortie;
+}
+
 function lireQrCode(image) {
-  // De la plus rapide à la plus précise
+  // De la plus rapide à la plus précise ; pour chaque taille :
+  // image normale, puis version noir et blanc
   for (const taille of [700, 1000, TAILLE_MAX_OCR]) {
     const { canvas, ctx } = dessiner(image, taille);
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const resultat = jsQR(pixels.data, canvas.width, canvas.height);
 
-    if (resultat?.data) return resultat.data.trim();
+    for (const donnees of [pixels.data, binariser(pixels.data)]) {
+      const resultat = jsQR(donnees, canvas.width, canvas.height);
+
+      if (resultat?.data) return resultat.data.trim();
+    }
   }
 
   return null;
