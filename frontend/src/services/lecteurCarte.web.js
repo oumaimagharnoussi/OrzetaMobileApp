@@ -127,14 +127,47 @@ function binariser(pixels) {
   return sortie;
 }
 
+// Image en niveaux de « saturation » (vivacité de la couleur) :
+// sépare un QR coloré (ex. vert) d'un fond gris de même luminosité
+function saturation(pixels) {
+  const n = pixels.length / 4;
+  const sat = new Float32Array(n);
+  let max = 1;
+
+  for (let i = 0; i < n; i++) {
+    const r = pixels[4 * i];
+    const g = pixels[4 * i + 1];
+    const b = pixels[4 * i + 2];
+    sat[i] = Math.max(r, g, b) - Math.min(r, g, b);
+    if (sat[i] > max) max = sat[i];
+  }
+
+  const sortie = new Uint8ClampedArray(pixels.length);
+
+  for (let i = 0; i < n; i++) {
+    const v = (sat[i] / max) * 255;
+    sortie[4 * i] = v;
+    sortie[4 * i + 1] = v;
+    sortie[4 * i + 2] = v;
+    sortie[4 * i + 3] = 255;
+  }
+
+  return sortie;
+}
+
 function lireQrCode(image) {
-  // De la plus rapide à la plus précise ; pour chaque taille :
-  // image normale, puis version noir et blanc
-  for (const taille of [400, 550, 700, 1000, TAILLE_MAX_OCR]) {
+  // En petit, la trame d'une photo d'écran (moiré) disparaît ; en grand,
+  // un petit QR sur une carte se lit. Pour chaque taille : image
+  // normale, noir et blanc, saturation.
+  for (const taille of [250, 300, 400, 550, 700, 1000, TAILLE_MAX_OCR]) {
     const { canvas, ctx } = dessiner(image, taille);
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    for (const donnees of [pixels.data, binariser(pixels.data)]) {
+    for (const donnees of [
+      pixels.data,
+      binariser(pixels.data),
+      saturation(pixels.data),
+    ]) {
       const resultat = jsQR(donnees, canvas.width, canvas.height);
 
       if (resultat?.data) return resultat.data.trim();

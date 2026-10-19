@@ -180,11 +180,39 @@ function binariser(pixels) {
   return sortie;
 }
 
+// Image en niveaux de « saturation » (vivacité de la couleur) :
+// sépare un QR coloré (ex. vert) d'un fond gris de même luminosité
+function saturation(pixels) {
+  const n = pixels.length / 4;
+  const sat = new Float32Array(n);
+  let max = 1;
+
+  for (let i = 0; i < n; i++) {
+    const r = pixels[4 * i];
+    const g = pixels[4 * i + 1];
+    const b = pixels[4 * i + 2];
+    sat[i] = Math.max(r, g, b) - Math.min(r, g, b);
+    if (sat[i] > max) max = sat[i];
+  }
+
+  const sortie = new Uint8ClampedArray(pixels.length);
+
+  for (let i = 0; i < n; i++) {
+    const v = (sat[i] / max) * 255;
+    sortie[4 * i] = v;
+    sortie[4 * i + 1] = v;
+    sortie[4 * i + 2] = v;
+    sortie[4 * i + 3] = 255;
+  }
+
+  return sortie;
+}
+
 function lireQrCode(image) {
-  // Essayer plusieurs tailles, de la plus rapide à la plus précise :
-  // un QR flou se lit parfois mieux en réduit, un petit QR en grand.
-  // Pour chaque taille : image normale, puis version noir et blanc.
-  for (const largeur of [400, 550, 700, 1000, null]) {
+  // Essayer plusieurs tailles : en petit, la trame d'une photo d'écran
+  // (moiré) disparaît ; en grand, un petit QR sur une carte se lit.
+  // Pour chaque taille : image normale, noir et blanc, saturation.
+  for (const largeur of [250, 300, 400, 550, 700, 1000, null]) {
     if (largeur && image.bitmap.width <= largeur) continue;
 
     const copie = largeur
@@ -193,7 +221,11 @@ function lireQrCode(image) {
 
     const pixels = new Uint8ClampedArray(copie.bitmap.data);
 
-    for (const donnees of [pixels, binariser(pixels)]) {
+    for (const donnees of [
+      pixels,
+      binariser(pixels),
+      saturation(pixels),
+    ]) {
       const resultat = jsQR(
         donnees,
         copie.bitmap.width,
@@ -790,7 +822,7 @@ async function lireCarteEnLigne(lien) {
     const page = await telechargerPagePublique(lien.trim());
 
     if (estVcard(page.contenu)) {
-      return analyserQrCode(page.contenu);
+      return { ...analyserQrCode(page.contenu), _vcard: true };
     }
 
     const html = page.contenu;
@@ -807,7 +839,7 @@ async function lireCarteEnLigne(lien) {
         );
 
         if (estVcard(vcard.contenu)) {
-          return analyserQrCode(vcard.contenu);
+          return { ...analyserQrCode(vcard.contenu), _vcard: true };
         }
       } catch (error) {
         console.warn("[CARTE EN LIGNE] vCard illisible :", error.message);
@@ -846,16 +878,36 @@ async function lireCarteEnLigne(lien) {
   }
 }
 
-// Champs de la carte + informations de la carte en ligne (prioritaires)
+// Champs de la carte + informations de la carte en ligne.
+// Une vCard (fiche contact) est prioritaire ; une simple page web
+// (ex. site de l'entreprise) ne fait que compléter les champs vides,
+// pour ne pas remplacer le mobile ou l'e-mail personnels de la carte.
 async function analyserCarteComplete(lignesOcr, qr) {
   const champs = analyserCarte(lignesOcr, qr);
-  const enLigne = await lireCarteEnLigne(qr);
+  const { _vcard: estFicheContact, ...enLigne } = await lireCarteEnLigne(qr);
+
+  let telephoneEnLigne = false;
+
+  // Nom et prénom vont ensemble : une page web ne les remplit que si
+  // aucun des deux n'a été lu sur la carte
+  const nomDejaLu = Boolean(champs.nom || champs.prenom);
 
   Object.entries(enLigne).forEach(([cle, valeur]) => {
-    if (valeur) champs[cle] = valeur;
+    if (!valeur) return;
+
+    const remplacer = estFicheContact
+      ? true
+      : cle === "nom" || cle === "prenom"
+        ? !nomDejaLu
+        : !champs[cle];
+
+    if (remplacer) {
+      champs[cle] = valeur;
+      if (cle === "telephone") telephoneEnLigne = true;
+    }
   });
 
-  if (enLigne.telephone) {
+  if (telephoneEnLigne) {
     Object.assign(champs, separerIndicatif(enLigne.telephone));
   }
 
