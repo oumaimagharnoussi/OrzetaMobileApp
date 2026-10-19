@@ -11,6 +11,39 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import {
+  ImageManipulator,
+  SaveFormat,
+} from "expo-image-manipulator";
+
+// Taille maximale (plus grand côté) de la photo envoyée au serveur :
+// suffisant pour lire la carte, et beaucoup plus rapide à envoyer et à lire
+const TAILLE_MAX_CARTE = 1400;
+
+// Réduit et compresse la photo sur le téléphone avant l'envoi
+async function preparerPhotoCarte(photo) {
+  const largeur = photo.width || 0;
+  const hauteur = photo.height || 0;
+
+  let contexte = ImageManipulator.manipulate(photo.uri);
+
+  if (Math.max(largeur, hauteur) > TAILLE_MAX_CARTE) {
+    contexte =
+      largeur >= hauteur
+        ? contexte.resize({ width: TAILLE_MAX_CARTE })
+        : contexte.resize({ height: TAILLE_MAX_CARTE });
+  }
+
+  const image = await contexte.renderAsync();
+
+  const resultat = await image.saveAsync({
+    compress: 0.7,
+    format: SaveFormat.JPEG,
+    base64: true,
+  });
+
+  return resultat.base64;
+}
 
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -1855,8 +1888,8 @@ const scannerCarteVisite = async (source = "camera") => {
 
     const options = {
       mediaTypes: ["images"],
-      quality: 0.7,
-      base64: true,
+      // La photo est réduite ensuite par preparerPhotoCarte
+      quality: 1,
     };
 
     const resultat =
@@ -1869,15 +1902,14 @@ const scannerCarteVisite = async (source = "camera") => {
     }
 
     const photo = resultat.assets[0];
-    const imageBase64 =
-      photo.base64 ||
-      (photo.uri?.startsWith("data:") ? photo.uri : null);
+
+    setScanEnCours(true);
+
+    const imageBase64 = await preparerPhotoCarte(photo);
 
     if (!imageBase64) {
       throw new Error("Photo illisible.");
     }
-
-    setScanEnCours(true);
 
     const token = await AsyncStorage.getItem("token");
 

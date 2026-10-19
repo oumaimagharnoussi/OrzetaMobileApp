@@ -90,6 +90,10 @@ function nettoyerLigne(ligne) {
     .replace(/\s+/g, " ")
     .replace(/^[^A-Za-zÀ-ÿ0-9(+]+/, "")
     .replace(/[^A-Za-zÀ-ÿ0-9).]+$/, "")
+    // Fragments parasites de 1-2 lettres minuscules en début ou fin
+    // de ligne (« li Business Development Executive »)
+    .replace(/^(?:[a-zà-ÿ]{1,2} )+(?=[A-ZÀ-Ý])/, "")
+    .replace(/(?: [a-zà-ÿ]{1,2})+$/, "")
     .trim();
 }
 
@@ -105,23 +109,15 @@ function siteDepuisUrl(url) {
 // QR CODE
 // ============================================================
 
-async function lireQrCode(imageBuffer) {
-  let image;
+function lireQrCode(image) {
+  // Essayer plusieurs tailles, de la plus rapide à la plus précise :
+  // un QR flou se lit parfois mieux en réduit, un petit QR en grand
+  for (const largeur of [700, 1000, null]) {
+    if (largeur && image.bitmap.width <= largeur) continue;
 
-  try {
-    image = await Jimp.read(imageBuffer);
-  } catch {
-    return null;
-  }
-
-  // Essayer plusieurs tailles : un petit QR se lit mieux en grand,
-  // un QR flou se lit parfois mieux en réduit
-  for (const largeur of [null, 1000, 700]) {
-    const copie = image.clone();
-
-    if (largeur && copie.bitmap.width > largeur) {
-      copie.resize({ w: largeur });
-    }
+    const copie = largeur
+      ? image.clone().resize({ w: largeur })
+      : image;
 
     const resultat = jsQR(
       new Uint8ClampedArray(copie.bitmap.data),
@@ -446,10 +442,38 @@ function analyserTexteCarte(lignesBrutes) {
 // LECTURE COMPLÈTE
 // ============================================================
 
-async function lireOcr(imageBuffer) {
-  const worker = await createWorker(["eng", "fra"]);
+// Plus grand côté de l'image lue par l'OCR : au-delà, la lecture
+// est beaucoup plus lente sans être plus précise
+const TAILLE_MAX_OCR = 1400;
 
-  try {
+// Le moteur OCR est chargé une seule fois puis réutilisé
+// (le recharger à chaque carte prend plusieurs secondes sur Render)
+let workerPromise = null;
+
+function getWorker() {
+  if (!workerPromise) {
+    workerPromise = createWorker(["eng", "fra"]).catch((error) => {
+      workerPromise = null;
+      throw error;
+    });
+  }
+
+  return workerPromise;
+}
+
+// Appelé au démarrage du serveur : le premier scan est aussi rapide
+function prechargerOcr() {
+  return getWorker()
+    .then(() => console.log("✅ Lecteur de cartes de visite prêt"))
+    .catch((error) =>
+      console.error("❌ Préchargement OCR :", error.message)
+    );
+}
+
+async function lireOcr(imageBuffer) {
+  const worker = await getWorker();
+
+  {
     const { data } = await worker.recognize(
       imageBuffer,
       {},
@@ -480,17 +504,34 @@ async function lireOcr(imageBuffer) {
       texte: data.text,
       lignes: lignes.length ? lignes : String(data.text || "").split("\n"),
     };
-  } finally {
-    // Libérer la mémoire (important sur Render)
-    await worker.terminate();
   }
 }
 
 async function lireCarteVisite(imageBuffer) {
-  const [ocr, qr] = await Promise.all([
-    lireOcr(imageBuffer),
-    lireQrCode(imageBuffer).catch(() => null),
-  ]);
+  // Décoder et réduire l'image une seule fois
+  const image = await Jimp.read(imageBuffer);
+
+  if (Math.max(image.bitmap.width, image.bitmap.height) > TAILLE_MAX_OCR) {
+    if (image.bitmap.width >= image.bitmap.height) {
+      image.resize({ w: TAILLE_MAX_OCR });
+    } else {
+      image.resize({ h: TAILLE_MAX_OCR });
+    }
+  }
+
+  let qr = null;
+  try {
+    qr = lireQrCode(image);
+  } catch {
+    qr = null;
+  }
+
+  const imageOcr = await image
+    .clone()
+    .greyscale()
+    .getBuffer("image/jpeg", { quality: 85 });
+
+  const ocr = await lireOcr(imageOcr);
 
   const champsOcr = analyserTexteCarte(ocr.lignes);
   const champsQr = analyserQrCode(qr);
@@ -605,6 +646,7 @@ async function enregistrerCarteVisite(db, {
 
 module.exports = {
   lireCarteVisite,
+  prechargerOcr,
   ensureCartesVisiteTable,
   enregistrerCarteVisite,
   analyserTexteCarte,

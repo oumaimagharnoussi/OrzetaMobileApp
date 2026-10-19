@@ -301,6 +301,7 @@ const {
 
 const {
   lireCarteVisite,
+  prechargerOcr,
   ensureCartesVisiteTable,
   enregistrerCarteVisite,
 } = require("./carteVisite");
@@ -5477,6 +5478,9 @@ async function startServer() {
     await ensureArchivesTable(pool);
 
     await ensureCartesVisiteTable(pool);
+
+    // Charger le lecteur de cartes en arrière-plan
+    prechargerOcr();
 
 
     // ========================================================
