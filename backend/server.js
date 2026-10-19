@@ -3850,6 +3850,10 @@ app.put(
         "profile",
         "type_commande",
         "qualification",
+        "demande_echantillon",
+        "adresse_echantillon",
+        "personne_reception_echantillon",
+        "tel_reception_echantillon",
       ];
 
 
@@ -3871,6 +3875,41 @@ app.put(
         // ======================================================
         // QUALIFICATION
         // ======================================================
+
+        // Valeur vide envoyée par le formulaire : effacer le champ
+        if (
+          (field === "qualification" ||
+            field === "type_commande") &&
+          (body[field] === null ||
+            body[field] === "" ||
+            body[field] === 0)
+        ) {
+
+          fields.push(
+            `${field} = NULL`
+          );
+
+          continue;
+        }
+
+
+        if (
+          field === "demande_echantillon"
+        ) {
+
+          fields.push(
+            "demande_echantillon = ?"
+          );
+
+          values.push(
+            body[field] === "oui"
+              ? "oui"
+              : "non"
+          );
+
+          continue;
+        }
+
 
         if (
           field === "qualification"

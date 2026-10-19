@@ -3130,7 +3130,11 @@ const message =
         <TouchableOpacity
           style={styles.back}
           onPress={() =>
-            router.back()
+            // Revenir au formulaire déjà rempli ; sinon (page ouverte
+            // directement) aller au formulaire
+            router.canGoBack()
+              ? router.back()
+              : router.replace("/")
           }
         >
           <Text

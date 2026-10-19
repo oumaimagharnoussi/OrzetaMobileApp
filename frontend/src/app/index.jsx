@@ -88,6 +88,9 @@ export default function HomeScreen() {
   // Photo de la carte de visite, enregistrée avec le visiteur
   const [carteVisiteImage, setCarteVisiteImage] = useState(null);
   const [carteVisiteQr, setCarteVisiteQr] = useState(null);
+  // Visiteur déjà enregistré (retour depuis la page PDF) :
+  // un nouvel envoi le modifie au lieu de créer un doublon
+  const [visiteurEnregistreId, setVisiteurEnregistreId] = useState(null);
   const [email, setEmail] = useState("");
   const [site, setSite] = useState("");
   const [origine, setOrigine] = useState("");
@@ -1975,6 +1978,38 @@ const scannerCarteVisite = async (source = "camera") => {
   }
 };
 
+// =====================================================
+// VIDER LE FORMULAIRE (nouveau visiteur)
+// =====================================================
+
+const reinitialiserFormulaire = () => {
+  setNom("");
+  setPrenom("");
+  setTelephone("");
+  setEmail("");
+  setSite("");
+  setOrigine("");
+  setIndicatif("+216");
+  setSociete("");
+  setAdresseSociete("");
+  setFonction("");
+  setLangueCommunication("");
+  setGenre("");
+  setProfile("");
+  setTypeCommande("");
+  setCommandes([]);
+  setQualification(0);
+  setDemandeEchantillon("non");
+  setAdresseEchantillon("");
+  setPersonneReceptionEchantillon("");
+  setTelReceptionEchantillon("");
+  setCarteVisiteImage(null);
+  setCarteVisiteQr(null);
+  setVisiteurEnregistreId(null);
+
+  resetCommandeFields();
+};
+
 const handleAjouter = async () => {
   const sansPdf =
     !PROFILS_AVEC_PDF.includes(profile);
@@ -2161,10 +2196,14 @@ tel_reception_echantillon:
     // ENVOI BACKEND
     // =====================================================
 
+    const modification = Boolean(visiteurEnregistreId);
+
     const response = await fetch(
-      `${API_URL}/api/visiteurs`,
+      modification
+        ? `${API_URL}/api/visiteurs/${visiteurEnregistreId}`
+        : `${API_URL}/api/visiteurs`,
       {
-        method: "POST",
+        method: modification ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -2220,44 +2259,31 @@ tel_reception_echantillon:
     // OUVERTURE PDF
     // =====================================================
 
+    const idVisiteur = modification
+      ? visiteurEnregistreId
+      : data.id;
+
     if (sansPdf) {
       afficherMessage(
         "Succès",
-        "Le visiteur a été ajouté avec succès."
+        modification
+          ? "Le visiteur a été modifié avec succès."
+          : "Le visiteur a été ajouté avec succès."
       );
+
+      reinitialiserFormulaire();
     } else {
+      // Le formulaire n'est PAS vidé : en revenant en arrière depuis
+      // la page PDF, on retrouve le visiteur et ses commandes
+      setVisiteurEnregistreId(idVisiteur);
+
       router.push({
         pathname: "/pdf",
         params: {
-          id: String(data.id),
+          id: String(idVisiteur),
         },
       });
     }
-
-    // =====================================================
-    // RESET VISITEUR
-    // =====================================================
-
-    setNom("");
-    setPrenom("");
-    setTelephone("");
-    setEmail("");
-    setSite("");
-    setOrigine("");
-    setIndicatif("+216");
-    setSociete("");
-    setAdresseSociete("");
-    setFonction("");
-    setLangueCommunication("");
-    setGenre("");
-    setProfile("");
-    setTypeCommande("");
-    setCommandes([]);
-    setQualification(0);
-    setCarteVisiteImage(null);
-    setCarteVisiteQr(null);
-
-    resetCommandeFields();
 
   } catch (error) {
     console.error(
@@ -2336,6 +2362,30 @@ return (
     <Text style={styles.title}>
       Formulaire Visiteur
     </Text>
+
+    {visiteurEnregistreId && (
+      <View style={styles.modeModification}>
+        <Ionicons
+          name="create-outline"
+          size={20}
+          color="#5C681F"
+        />
+
+        <Text style={styles.modeModificationText}>
+          Visiteur déjà enregistré : vos corrections seront
+          enregistrées sur la même fiche.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.nouveauVisiteurButton}
+          onPress={reinitialiserFormulaire}
+        >
+          <Text style={styles.nouveauVisiteurText}>
+            Nouveau visiteur
+          </Text>
+        </TouchableOpacity>
+      </View>
+    )}
 
     {/* =================================================
         SCANNER CARTE DE VISITE
@@ -6349,6 +6399,38 @@ contactText: {
     paddingVertical: 14,
     borderRadius: 10,
     marginBottom: 20,
+  },
+
+  modeModification: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    backgroundColor: "#eef2dc",
+    borderColor: "#5C681F",
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+
+  modeModificationText: {
+    flex: 1,
+    minWidth: 180,
+    color: "#5C681F",
+    fontSize: 14,
+  },
+
+  nouveauVisiteurButton: {
+    backgroundColor: "#5C681F",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+
+  nouveauVisiteurText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 
   carteJointe: {
