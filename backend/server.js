@@ -4073,6 +4073,7 @@ app.put(
 app.delete(
   "/api/visiteurs/:id",
   authenticateToken,
+  requireAdmin,
   async (req, res) => {
 
     try {
@@ -4099,13 +4100,53 @@ app.delete(
       await getVisitorById(id);
 
 
-      await pool.execute(
-        `
-          DELETE FROM visiteurs
-          WHERE id = ?
-        `,
-        [id]
-      );
+      // Supprimer le visiteur et ses données liées en une seule
+      // transaction (les fiches PDF archivées sont conservées)
+      const connection =
+        await pool.getConnection();
+
+      try {
+
+        await connection.beginTransaction();
+
+        for (const table of [
+          "commandes",
+          "pdf_validations",
+          "cartes_visite",
+        ]) {
+
+          const colonne =
+            table === "commandes" ||
+            table === "cartes_visite"
+              ? "visiteur_id"
+              : "visitor_id";
+
+          await connection.execute(
+            `DELETE FROM ${table} WHERE ${colonne} = ?`,
+            [id]
+          );
+        }
+
+        await connection.execute(
+          `
+            DELETE FROM visiteurs
+            WHERE id = ?
+          `,
+          [id]
+        );
+
+        await connection.commit();
+
+      } catch (error) {
+
+        await connection.rollback();
+
+        throw error;
+
+      } finally {
+
+        connection.release();
+      }
 
 
       res.json({

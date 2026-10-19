@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +24,7 @@ export default function AdminVisiteurs() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("Tous");
+  const [suppressionId, setSuppressionId] = useState(null);
 
   // =====================================================
   // CHARGER LES VISITEURS
@@ -55,6 +57,72 @@ export default function AdminVisiteurs() {
   useEffect(() => {
     loadVisiteurs();
   }, []);
+
+  // =====================================================
+  // SUPPRIMER UN VISITEUR
+  // =====================================================
+
+  // Alert.alert ne s'affiche pas sur le web
+  function confirmer(titre, message, onConfirm) {
+    if (Platform.OS === "web") {
+      if (window.confirm(`${titre}
+
+${message}`)) onConfirm();
+      return;
+    }
+
+    Alert.alert(titre, message, [
+      { text: "Annuler", style: "cancel" },
+      { text: "Supprimer", style: "destructive", onPress: onConfirm },
+    ]);
+  }
+
+  function informer(titre, message) {
+    if (Platform.OS === "web") {
+      window.alert(`${titre}
+
+${message}`);
+    } else {
+      Alert.alert(titre, message);
+    }
+  }
+
+  function demanderSuppression(item) {
+    confirmer(
+      "Supprimer le visiteur",
+      `Voulez-vous vraiment supprimer « ${item.nom || "ce visiteur"} » ?
+
+` +
+        "Ses commandes et sa carte de visite seront aussi supprimées. " +
+        "Cette action est définitive.",
+      () => supprimerVisiteur(item)
+    );
+  }
+
+  async function supprimerVisiteur(item) {
+    try {
+      setSuppressionId(item.id);
+
+      await apiFetch(`/api/visiteurs/${item.id}`, {
+        method: "DELETE",
+      });
+
+      setVisiteurs((liste) =>
+        liste.filter((v) => v.id !== item.id)
+      );
+
+      informer("Supprimé", "Le visiteur a été supprimé.");
+    } catch (error) {
+      console.error("Erreur suppression visiteur :", error);
+
+      informer(
+        "Erreur",
+        error.message || "Impossible de supprimer le visiteur."
+      );
+    } finally {
+      setSuppressionId(null);
+    }
+  }
 
   // =====================================================
   // RECHERCHE + FILTRE
@@ -510,6 +578,10 @@ export default function AdminVisiteurs() {
               Date
             </Text>
 
+            <Text style={[styles.headerCell, styles.colAction]}>
+              Action
+            </Text>
+
           </View>
 
           {/* LIGNES */}
@@ -596,6 +668,24 @@ export default function AdminVisiteurs() {
                         item.date_creation
                     )}
                   </Text>
+
+                  <View style={[styles.actionCell, styles.colAction]}>
+                    {suppressionId === item.id ? (
+                      <ActivityIndicator color="#c62828" />
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => demanderSuppression(item)}
+                        disabled={suppressionId !== null}
+                        accessibilityLabel="Supprimer ce visiteur"
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={22}
+                          color="#c62828"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
                 </View>
 
@@ -875,6 +965,15 @@ const styles = StyleSheet.create({
 
   colDate: {
     width: 130,
+  },
+
+  colAction: {
+    width: 80,
+  },
+
+  actionCell: {
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // =====================================================
