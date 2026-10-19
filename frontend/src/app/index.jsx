@@ -52,6 +52,9 @@ export default function HomeScreen() {
   const [telephone, setTelephone] = useState("");
   const [indicatif, setIndicatif] = useState("+216");
   const [scanEnCours, setScanEnCours] = useState(false);
+  // Photo de la carte de visite, enregistrée avec le visiteur
+  const [carteVisiteImage, setCarteVisiteImage] = useState(null);
+  const [carteVisiteQr, setCarteVisiteQr] = useState(null);
   const [email, setEmail] = useState("");
   const [site, setSite] = useState("");
   const [origine, setOrigine] = useState("");
@@ -1805,26 +1808,61 @@ const afficherMessage = (titre, message) => {
 // SCANNER UNE CARTE DE VISITE
 // =====================================================
 
-const scannerCarteVisite = async () => {
+// Choix : prendre une photo ou choisir une photo existante
+const choisirSourceCarte = () => {
+  // Sur le web, le navigateur du téléphone propose lui-même
+  // « Prendre une photo » ou « Photothèque »
+  if (Platform.OS === "web") {
+    scannerCarteVisite("galerie");
+    return;
+  }
+
+  Alert.alert(
+    "Carte de visite",
+    "Comment voulez-vous ajouter la carte ?",
+    [
+      {
+        text: "Prendre une photo",
+        onPress: () => scannerCarteVisite("camera"),
+      },
+      {
+        text: "Choisir une photo existante",
+        onPress: () => scannerCarteVisite("galerie"),
+      },
+      { text: "Annuler", style: "cancel" },
+    ]
+  );
+};
+
+const scannerCarteVisite = async (source = "camera") => {
   try {
     if (Platform.OS !== "web") {
       const permission =
-        await ImagePicker.requestCameraPermissionsAsync();
+        source === "camera"
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
         afficherMessage(
-          "Caméra",
-          "Autorisez l'accès à la caméra pour scanner une carte de visite."
+          source === "camera" ? "Caméra" : "Photos",
+          source === "camera"
+            ? "Autorisez l'accès à la caméra pour scanner une carte de visite."
+            : "Autorisez l'accès aux photos pour choisir une carte de visite."
         );
         return;
       }
     }
 
-    const resultat = await ImagePicker.launchCameraAsync({
+    const options = {
       mediaTypes: ["images"],
       quality: 0.7,
       base64: true,
-    });
+    };
+
+    const resultat =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
 
     if (resultat.canceled || !resultat.assets?.length) {
       return;
@@ -1864,6 +1902,10 @@ const scannerCarteVisite = async () => {
     }
 
     const c = data.champs || {};
+
+    // Garder la photo pour l'enregistrer avec le visiteur
+    setCarteVisiteImage(imageBase64);
+    setCarteVisiteQr(data.qr || null);
 
     // Ne remplir que les champs détectés
     // Le champ « Nom et Prénom » reçoit le nom complet
@@ -2045,6 +2087,10 @@ tel_reception_echantillon:
       // Qualification facultative
       qualification:
         qualification || null,
+
+      // Photo de la carte de visite (facultative)
+      carte_visite_image: carteVisiteImage || null,
+      carte_visite_qr: carteVisiteQr || null,
     };
 
     // =====================================================
@@ -2176,6 +2222,8 @@ tel_reception_echantillon:
     setTypeCommande("");
     setCommandes([]);
     setQualification(0);
+    setCarteVisiteImage(null);
+    setCarteVisiteQr(null);
 
     resetCommandeFields();
 
@@ -2266,7 +2314,7 @@ return (
         styles.scanButton,
         scanEnCours && { opacity: 0.6 },
       ]}
-      onPress={scannerCarteVisite}
+      onPress={choisirSourceCarte}
       disabled={scanEnCours}
     >
       {scanEnCours ? (
@@ -2285,6 +2333,8 @@ return (
           : "Scanner une carte de visite"}
       </Text>
     </TouchableOpacity>
+
+   
 
       {/* =================================================
           NOM
@@ -6267,6 +6317,23 @@ contactText: {
     paddingVertical: 14,
     borderRadius: 10,
     marginBottom: 20,
+  },
+
+  carteJointe: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#eef2dc",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: -10,
+    marginBottom: 20,
+  },
+
+  carteJointeText: {
+    flex: 1,
+    color: "#5C681F",
+    fontSize: 14,
   },
 
   scanButtonText: {

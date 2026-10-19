@@ -299,7 +299,11 @@ const {
   requireUser,
 } = require("./middleware/auth");
 
-const { lireCarteVisite } = require("./carteVisite");
+const {
+  lireCarteVisite,
+  ensureCartesVisiteTable,
+  enregistrerCarteVisite,
+} = require("./carteVisite");
 
 
 // ============================================================
@@ -2875,6 +2879,47 @@ app.post(
 
 
 // ============================================================
+// IMAGE DE LA CARTE DE VISITE D'UN VISITEUR
+// ============================================================
+
+app.get(
+  "/api/visiteurs/:id/carte-visite",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const [rows] = await pool.query(
+        `
+          SELECT image, mime
+          FROM cartes_visite
+          WHERE visiteur_id = ?
+          ORDER BY id DESC
+          LIMIT 1
+        `,
+        [Number(req.params.id)]
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Aucune carte de visite pour ce visiteur.",
+        });
+      }
+
+      res.set("Content-Type", rows[0].mime || "image/jpeg");
+      return res.send(rows[0].image);
+    } catch (error) {
+      console.error("[CARTE VISITE] ERREUR LECTURE :", error.message);
+
+      return res.status(500).json({
+        success: false,
+        message: "Impossible de récupérer la carte de visite.",
+      });
+    }
+  }
+);
+
+
+// ============================================================
 // POST VISITEUR + COMMANDES
 // ============================================================
 
@@ -3213,6 +3258,38 @@ app.post(
       await connection.commit();
 
 
+      // ========================================================
+      // CARTE DE VISITE (facultative, après le commit :
+      // un échec ici ne doit pas annuler le visiteur)
+      // ========================================================
+
+      let carteVisiteEnregistree = false;
+
+      if (req.body?.carte_visite_image) {
+        try {
+          const carte = await enregistrerCarteVisite(pool, {
+            visiteurId,
+            imageBase64: req.body.carte_visite_image,
+            qrCode: req.body.carte_visite_qr,
+            createdBy: commercialId,
+          });
+
+          carteVisiteEnregistree = true;
+
+          console.log(
+            "🪪 CARTE DE VISITE ENREGISTRÉE :",
+            carte.id,
+            `(${Math.round(carte.taille / 1024)} Ko)`
+          );
+        } catch (carteError) {
+          console.error(
+            "❌ ERREUR CARTE DE VISITE :",
+            carteError.message
+          );
+        }
+      }
+
+
       console.log(
         "======================================="
       );
@@ -3250,6 +3327,8 @@ app.post(
           visiteurId,
         commercial_id:
           commercialId,
+        carte_visite_enregistree:
+          carteVisiteEnregistree,
         nombre_commandes:
           Array.isArray(
             normalizedCommandes
@@ -5396,6 +5475,8 @@ async function startServer() {
     await ensureTypeEtiquetteColumn();
 
     await ensureArchivesTable(pool);
+
+    await ensureCartesVisiteTable(pool);
 
 
     // ========================================================

@@ -529,8 +529,84 @@ async function lireCarteVisite(imageBuffer) {
   };
 }
 
+// ============================================================
+// STOCKAGE DES CARTES DE VISITE (table cartes_visite)
+// ============================================================
+
+let tableCartesPrete = false;
+
+async function ensureCartesVisiteTable(db) {
+  if (tableCartesPrete) return;
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS cartes_visite (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      visiteur_id INT NOT NULL,
+      image MEDIUMBLOB NOT NULL,
+      mime VARCHAR(30) NOT NULL DEFAULT 'image/jpeg',
+      taille INT NOT NULL DEFAULT 0,
+      qr_code TEXT NULL,
+      created_by INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_cartes_visite_visiteur (visiteur_id)
+    )
+  `);
+
+  tableCartesPrete = true;
+}
+
+// Réduit la photo (1400 px max, JPEG) pour limiter la taille en base
+async function compresserImage(imageBuffer) {
+  const image = await Jimp.read(imageBuffer);
+
+  if (image.bitmap.width > 1400) {
+    image.resize({ w: 1400 });
+  }
+
+  return image.getBuffer("image/jpeg", { quality: 80 });
+}
+
+async function enregistrerCarteVisite(db, {
+  visiteurId,
+  imageBase64,
+  qrCode,
+  createdBy,
+}) {
+  await ensureCartesVisiteTable(db);
+
+  const brut = Buffer.from(
+    String(imageBase64).replace(/^data:image\/[a-z+]+;base64,/i, ""),
+    "base64"
+  );
+
+  if (brut.length < 1000) {
+    throw new Error("Image de carte de visite invalide.");
+  }
+
+  const image = await compresserImage(brut);
+
+  const [resultat] = await db.query(
+    `
+      INSERT INTO cartes_visite
+        (visiteur_id, image, mime, taille, qr_code, created_by)
+      VALUES (?, ?, 'image/jpeg', ?, ?, ?)
+    `,
+    [
+      visiteurId,
+      image,
+      image.length,
+      qrCode ? String(qrCode).slice(0, 2000) : null,
+      createdBy || null,
+    ]
+  );
+
+  return { id: resultat.insertId, taille: image.length };
+}
+
 module.exports = {
   lireCarteVisite,
+  ensureCartesVisiteTable,
+  enregistrerCarteVisite,
   analyserTexteCarte,
   analyserQrCode,
 };

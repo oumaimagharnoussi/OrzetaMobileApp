@@ -41,7 +41,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "L'application utilise la caméra pour scanner les cartes de visite."
+          "cameraPermission": "L'application utilise la caméra pour scanner les cartes de visite.",
+          "photosPermission": "L'application accède à vos photos pour choisir une carte de visite."
         }
       ]
     ],
