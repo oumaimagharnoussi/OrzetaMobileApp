@@ -65,9 +65,7 @@ export default function AdminVisiteurs() {
   // Alert.alert ne s'affiche pas sur le web
   function confirmer(titre, message, onConfirm) {
     if (Platform.OS === "web") {
-      if (window.confirm(`${titre}
-
-${message}`)) onConfirm();
+      if (window.confirm(`${titre}\n\n${message}`)) onConfirm();
       return;
     }
 
@@ -79,9 +77,7 @@ ${message}`)) onConfirm();
 
   function informer(titre, message) {
     if (Platform.OS === "web") {
-      window.alert(`${titre}
-
-${message}`);
+      window.alert(`${titre}\n\n${message}`);
     } else {
       Alert.alert(titre, message);
     }
@@ -90,9 +86,7 @@ ${message}`);
   function demanderSuppression(item) {
     confirmer(
       "Supprimer le visiteur",
-      `Voulez-vous vraiment supprimer « ${item.nom || "ce visiteur"} » ?
-
-` +
+      `Voulez-vous vraiment supprimer « ${item.nom || "ce visiteur"} » ?\n\n` +
         "Ses commandes et sa carte de visite seront aussi supprimées. " +
         "Cette action est définitive.",
       () => supprimerVisiteur(item)

@@ -78,6 +78,243 @@ const PRODUITS_CONDITIONNE = [
 // COMPOSANT
 // =====================================================
 
+// =====================================================
+// PAYS <-> INDICATIF TÉLÉPHONIQUE
+// =====================================================
+
+const PAYS_INDICATIFS = {
+  "Afghanistan": "+93",
+  "Afrique du Sud": "+27",
+  "Albanie": "+355",
+  "Algérie": "+213",
+  "Allemagne": "+49",
+  "Andorre": "+376",
+  "Angola": "+244",
+  "Antigua-et-Barbuda": "+1",
+  "Arabie Saoudite": "+966",
+  "Argentine": "+54",
+  "Arménie": "+374",
+  "Australie": "+61",
+  "Autriche": "+43",
+  "Azerbaïdjan": "+994",
+  "Bahamas": "+1",
+  "Bahreïn": "+973",
+  "Bangladesh": "+880",
+  "Barbade": "+1",
+  "Belgique": "+32",
+  "Belize": "+501",
+  "Bénin": "+229",
+  "Bhoutan": "+975",
+  "Biélorussie": "+375",
+  "Bolivie": "+591",
+  "Bosnie-Herzégovine": "+387",
+  "Botswana": "+267",
+  "Brésil": "+55",
+  "Brunei": "+673",
+  "Bulgarie": "+359",
+  "Burkina Faso": "+226",
+  "Burundi": "+257",
+  "Cambodge": "+855",
+  "Cameroun": "+237",
+  "Canada": "+1",
+  "Cap-Vert": "+238",
+  "Chili": "+56",
+  "Chine": "+86",
+  "Chypre": "+357",
+  "Colombie": "+57",
+  "Comores": "+269",
+  "Congo": "+242",
+  "Costa Rica": "+506",
+  "Côte d'Ivoire": "+225",
+  "Croatie": "+385",
+  "Cuba": "+53",
+  "Danemark": "+45",
+  "Djibouti": "+253",
+  "Dominique": "+1",
+  "Égypte": "+20",
+  "Émirats Arabes Unis": "+971",
+  "Équateur": "+593",
+  "Érythrée": "+291",
+  "Espagne": "+34",
+  "Estonie": "+372",
+  "Eswatini": "+268",
+  "Éthiopie": "+251",
+  "Fidji": "+679",
+  "Finlande": "+358",
+  "France": "+33",
+  "Gabon": "+241",
+  "Gambie": "+220",
+  "Géorgie": "+995",
+  "Ghana": "+233",
+  "Grèce": "+30",
+  "Grenade": "+1",
+  "Guatemala": "+502",
+  "Guinée": "+224",
+  "Guinée-Bissau": "+245",
+  "Guinée équatoriale": "+240",
+  "Guyana": "+592",
+  "Haïti": "+509",
+  "Honduras": "+504",
+  "Hongrie": "+36",
+  "Inde": "+91",
+  "Indonésie": "+62",
+  "Irak": "+964",
+  "Iran": "+98",
+  "Irlande": "+353",
+  "Islande": "+354",
+  "Israël": "+972",
+  "Italie": "+39",
+  "Jamaïque": "+1",
+  "Japon": "+81",
+  "Jordanie": "+962",
+  "Kazakhstan": "+7",
+  "Kenya": "+254",
+  "Kirghizistan": "+996",
+  "Koweït": "+965",
+  "Laos": "+856",
+  "Lettonie": "+371",
+  "Liban": "+961",
+  "Lesotho": "+266",
+  "Liberia": "+231",
+  "Libye": "+218",
+  "Liechtenstein": "+423",
+  "Lituanie": "+370",
+  "Luxembourg": "+352",
+  "Macédoine du Nord": "+389",
+  "Madagascar": "+261",
+  "Malaisie": "+60",
+  "Malawi": "+265",
+  "Maldives": "+960",
+  "Mali": "+223",
+  "Malte": "+356",
+  "Maroc": "+212",
+  "Maurice": "+230",
+  "Mauritanie": "+222",
+  "Mexique": "+52",
+  "Moldavie": "+373",
+  "Monaco": "+377",
+  "Mongolie": "+976",
+  "Monténégro": "+382",
+  "Mozambique": "+258",
+  "Myanmar": "+95",
+  "Namibie": "+264",
+  "Népal": "+977",
+  "Nicaragua": "+505",
+  "Niger": "+227",
+  "Nigeria": "+234",
+  "Norvège": "+47",
+  "Nouvelle-Zélande": "+64",
+  "Oman": "+968",
+  "Ouganda": "+256",
+  "Ouzbékistan": "+998",
+  "Pakistan": "+92",
+  "Panama": "+507",
+  "Papouasie-Nouvelle-Guinée": "+675",
+  "Paraguay": "+595",
+  "Pays-Bas": "+31",
+  "Pérou": "+51",
+  "Philippines": "+63",
+  "Pologne": "+48",
+  "Portugal": "+351",
+  "Qatar": "+974",
+  "République démocratique du Congo": "+243",
+  "République dominicaine": "+1",
+  "République tchèque": "+420",
+  "Roumanie": "+40",
+  "Royaume-Uni": "+44",
+  "Russie": "+7",
+  "Rwanda": "+250",
+  "Saint-Kitts-et-Nevis": "+1",
+  "Sainte-Lucie": "+1",
+  "Saint-Marin": "+378",
+  "Saint-Vincent-et-les-Grenadines": "+1",
+  "Salvador": "+503",
+  "Samoa": "+685",
+  "Sénégal": "+221",
+  "Serbie": "+381",
+  "Seychelles": "+248",
+  "Sierra Leone": "+232",
+  "Singapour": "+65",
+  "Slovaquie": "+421",
+  "Slovénie": "+386",
+  "Somalie": "+252",
+  "Soudan": "+249",
+  "Soudan du Sud": "+211",
+  "Sri Lanka": "+94",
+  "Suède": "+46",
+  "Suisse": "+41",
+  "Suriname": "+597",
+  "Tadjikistan": "+992",
+  "Tanzanie": "+255",
+  "Thaïlande": "+66",
+  "Timor oriental": "+670",
+  "Togo": "+228",
+  "Tonga": "+676",
+  "Trinité-et-Tobago": "+1",
+  "Tunisie": "+216",
+  "Turkménistan": "+993",
+  "Turquie": "+90",
+  "Ukraine": "+380",
+  "Uruguay": "+598",
+  "Vanuatu": "+678",
+  "Vatican": "+39",
+  "Venezuela": "+58",
+  "Viêt Nam": "+84",
+  "Yémen": "+967",
+  "Zambie": "+260",
+  "Zimbabwe": "+263",
+  "États-Unis": "+1",
+};
+
+// Indicatifs partagés par plusieurs pays : pays proposé par défaut
+const PAYS_PAR_DEFAUT = {
+  "+1": "États-Unis",
+  "+7": "Russie",
+  "+39": "Italie",
+};
+
+const INDICATIFS_CONNUS = [
+  ...new Set(Object.values(PAYS_INDICATIFS)),
+].sort((a, b) => b.length - a.length);
+
+function paysDepuisIndicatif(indicatif) {
+  if (!indicatif) return null;
+  if (PAYS_PAR_DEFAUT[indicatif]) return PAYS_PAR_DEFAUT[indicatif];
+
+  return (
+    Object.keys(PAYS_INDICATIFS).find(
+      (pays) => PAYS_INDICATIFS[pays] === indicatif
+    ) || null
+  );
+}
+
+// « +33 6 12 34 56 78 » -> { indicatif: "+33", reste: "6 12 34 56 78" }
+function decouperNumeroInternational(texte) {
+  const m = String(texte || "").match(/^\s*(?:\+|00)\s*([\d\s().-]+)$/);
+  if (!m) return null;
+
+  const chiffres = m[1].replace(/\D/g, "");
+
+  const indicatif = INDICATIFS_CONNUS.find((code) =>
+    chiffres.startsWith(code.substring(1))
+  );
+
+  if (!indicatif) return null;
+
+  // Retirer l'indicatif du numéro saisi
+  let aRetirer = indicatif.length - 1;
+  let reste = m[1];
+  while (aRetirer > 0 && reste.length) {
+    if (/\d/.test(reste[0])) aRetirer--;
+    reste = reste.substring(1);
+  }
+
+  return {
+    indicatif,
+    reste: reste.replace(/^[\s().-]+/, ""),
+  };
+}
+
 export default function HomeScreen() {
   const router = useRouter();
 
@@ -772,371 +1009,30 @@ setK270Valeur("");
 
   const handlePaysChange = (value) => {
     setOrigine(value);
+    setIndicatif(PAYS_INDICATIFS[value] || "");
+  };
 
-    if (value === "Afghanistan") {
-      setIndicatif("+93");
-    } else if (value === "Afrique du Sud") {
-      setIndicatif("+27");
-    } else if (value === "Albanie") {
-      setIndicatif("+355");
-    } else if (value === "Algérie") {
-      setIndicatif("+213");
-    } else if (value === "Allemagne") {
-      setIndicatif("+49");
-    } else if (value === "Andorre") {
-      setIndicatif("+376");
-    } else if (value === "Angola") {
-      setIndicatif("+244");
-    } else if (value === "Antigua-et-Barbuda") {
-      setIndicatif("+1");
-    } else if (value === "Arabie Saoudite") {
-      setIndicatif("+966");
-    } else if (value === "Argentine") {
-      setIndicatif("+54");
-    } else if (value === "Arménie") {
-      setIndicatif("+374");
-    } else if (value === "Australie") {
-      setIndicatif("+61");
-    } else if (value === "Autriche") {
-      setIndicatif("+43");
-    } else if (value === "Azerbaïdjan") {
-      setIndicatif("+994");
-    } else if (value === "Bahamas") {
-      setIndicatif("+1");
-    } else if (value === "Bahreïn") {
-      setIndicatif("+973");
-    } else if (value === "Bangladesh") {
-      setIndicatif("+880");
-    } else if (value === "Barbade") {
-      setIndicatif("+1");
-    } else if (value === "Belgique") {
-      setIndicatif("+32");
-    } else if (value === "Belize") {
-      setIndicatif("+501");
-    } else if (value === "Bénin") {
-      setIndicatif("+229");
-    } else if (value === "Bhoutan") {
-      setIndicatif("+975");
-    } else if (value === "Biélorussie") {
-      setIndicatif("+375");
-    } else if (value === "Bolivie") {
-      setIndicatif("+591");
-    } else if (value === "Bosnie-Herzégovine") {
-      setIndicatif("+387");
-    } else if (value === "Botswana") {
-      setIndicatif("+267");
-    } else if (value === "Brésil") {
-      setIndicatif("+55");
-    } else if (value === "Brunei") {
-      setIndicatif("+673");
-    } else if (value === "Bulgarie") {
-      setIndicatif("+359");
-    } else if (value === "Burkina Faso") {
-      setIndicatif("+226");
-    } else if (value === "Burundi") {
-      setIndicatif("+257");
-    } else if (value === "Cambodge") {
-      setIndicatif("+855");
-    } else if (value === "Cameroun") {
-      setIndicatif("+237");
-    } else if (value === "Canada") {
-      setIndicatif("+1");
-    } else if (value === "Cap-Vert") {
-      setIndicatif("+238");
-    } else if (value === "Chili") {
-      setIndicatif("+56");
-    } else if (value === "Chine") {
-      setIndicatif("+86");
-    } else if (value === "Chypre") {
-      setIndicatif("+357");
-    } else if (value === "Colombie") {
-      setIndicatif("+57");
-    } else if (value === "Comores") {
-      setIndicatif("+269");
-    } else if (value === "Congo") {
-      setIndicatif("+242");
-    } else if (value === "Costa Rica") {
-      setIndicatif("+506");
-    } else if (value === "Côte d'Ivoire") {
-      setIndicatif("+225");
-    } else if (value === "Croatie") {
-      setIndicatif("+385");
-    } else if (value === "Cuba") {
-      setIndicatif("+53");
-    } else if (value === "Danemark") {
-      setIndicatif("+45");
-    } else if (value === "Djibouti") {
-      setIndicatif("+253");
-    } else if (value === "Dominique") {
-      setIndicatif("+1");
-    } else if (value === "Égypte") {
-      setIndicatif("+20");
-    } else if (value === "Émirats Arabes Unis") {
-      setIndicatif("+971");
-    } else if (value === "Équateur") {
-      setIndicatif("+593");
-    } else if (value === "Érythrée") {
-      setIndicatif("+291");
-    } else if (value === "Espagne") {
-      setIndicatif("+34");
-    } else if (value === "Estonie") {
-      setIndicatif("+372");
-    } else if (value === "Eswatini") {
-      setIndicatif("+268");
-    } else if (value === "Éthiopie") {
-      setIndicatif("+251");
-    } else if (value === "Fidji") {
-      setIndicatif("+679");
-    } else if (value === "Finlande") {
-      setIndicatif("+358");
-    } else if (value === "France") {
-      setIndicatif("+33");
-    } else if (value === "Gabon") {
-      setIndicatif("+241");
-    } else if (value === "Gambie") {
-      setIndicatif("+220");
-    } else if (value === "Géorgie") {
-      setIndicatif("+995");
-    } else if (value === "Ghana") {
-      setIndicatif("+233");
-    } else if (value === "Grèce") {
-      setIndicatif("+30");
-    } else if (value === "Grenade") {
-      setIndicatif("+1");
-    } else if (value === "Guatemala") {
-      setIndicatif("+502");
-    } else if (value === "Guinée") {
-      setIndicatif("+224");
-    } else if (value === "Guinée-Bissau") {
-      setIndicatif("+245");
-    } else if (value === "Guinée équatoriale") {
-      setIndicatif("+240");
-    } else if (value === "Guyana") {
-      setIndicatif("+592");
-    } else if (value === "Haïti") {
-      setIndicatif("+509");
-    } else if (value === "Honduras") {
-      setIndicatif("+504");
-    } else if (value === "Hongrie") {
-      setIndicatif("+36");
-    } else if (value === "Inde") {
-      setIndicatif("+91");
-    } else if (value === "Indonésie") {
-      setIndicatif("+62");
-    } else if (value === "Irak") {
-      setIndicatif("+964");
-    } else if (value === "Iran") {
-      setIndicatif("+98");
-    } else if (value === "Irlande") {
-      setIndicatif("+353");
-    } else if (value === "Islande") {
-      setIndicatif("+354");
-    } else if (value === "Israël") {
-      setIndicatif("+972");
-    } else if (value === "Italie") {
-      setIndicatif("+39");
-    } else if (value === "Jamaïque") {
-      setIndicatif("+1");
-    } else if (value === "Japon") {
-      setIndicatif("+81");
-    } else if (value === "Jordanie") {
-      setIndicatif("+962");
-    } else if (value === "Kazakhstan") {
-      setIndicatif("+7");
-    } else if (value === "Kenya") {
-      setIndicatif("+254");
-    } else if (value === "Kirghizistan") {
-      setIndicatif("+996");
-    } else if (value === "Koweït") {
-      setIndicatif("+965");
-    } else if (value === "Laos") {
-      setIndicatif("+856");
-    } else if (value === "Lettonie") {
-      setIndicatif("+371");
-    } else if (value === "Liban") {
-      setIndicatif("+961");
-    } else if (value === "Lesotho") {
-      setIndicatif("+266");
-    } else if (value === "Liberia") {
-      setIndicatif("+231");
-    } else if (value === "Libye") {
-      setIndicatif("+218");
-    } else if (value === "Liechtenstein") {
-      setIndicatif("+423");
-    } else if (value === "Lituanie") {
-      setIndicatif("+370");
-    } else if (value === "Luxembourg") {
-      setIndicatif("+352");
-    } else if (value === "Macédoine du Nord") {
-      setIndicatif("+389");
-    } else if (value === "Madagascar") {
-      setIndicatif("+261");
-    } else if (value === "Malaisie") {
-      setIndicatif("+60");
-    } else if (value === "Malawi") {
-      setIndicatif("+265");
-    } else if (value === "Maldives") {
-      setIndicatif("+960");
-    } else if (value === "Mali") {
-      setIndicatif("+223");
-    } else if (value === "Malte") {
-      setIndicatif("+356");
-    } else if (value === "Maroc") {
-      setIndicatif("+212");
-    } else if (value === "Maurice") {
-      setIndicatif("+230");
-    } else if (value === "Mauritanie") {
-      setIndicatif("+222");
-    } else if (value === "Mexique") {
-      setIndicatif("+52");
-    } else if (value === "Moldavie") {
-      setIndicatif("+373");
-    } else if (value === "Monaco") {
-      setIndicatif("+377");
-    } else if (value === "Mongolie") {
-      setIndicatif("+976");
-    } else if (value === "Monténégro") {
-      setIndicatif("+382");
-    } else if (value === "Mozambique") {
-      setIndicatif("+258");
-    } else if (value === "Myanmar") {
-      setIndicatif("+95");
-    } else if (value === "Namibie") {
-      setIndicatif("+264");
-    } else if (value === "Népal") {
-      setIndicatif("+977");
-    } else if (value === "Nicaragua") {
-      setIndicatif("+505");
-    } else if (value === "Niger") {
-      setIndicatif("+227");
-    } else if (value === "Nigeria") {
-      setIndicatif("+234");
-    } else if (value === "Norvège") {
-      setIndicatif("+47");
-    } else if (value === "Nouvelle-Zélande") {
-      setIndicatif("+64");
-    } else if (value === "Oman") {
-      setIndicatif("+968");
-    } else if (value === "Ouganda") {
-      setIndicatif("+256");
-    } else if (value === "Ouzbékistan") {
-      setIndicatif("+998");
-    } else if (value === "Pakistan") {
-      setIndicatif("+92");
-    } else if (value === "Panama") {
-      setIndicatif("+507");
-    } else if (value === "Papouasie-Nouvelle-Guinée") {
-      setIndicatif("+675");
-    } else if (value === "Paraguay") {
-      setIndicatif("+595");
-    } else if (value === "Pays-Bas") {
-      setIndicatif("+31");
-    } else if (value === "Pérou") {
-      setIndicatif("+51");
-    } else if (value === "Philippines") {
-      setIndicatif("+63");
-    } else if (value === "Pologne") {
-      setIndicatif("+48");
-    } else if (value === "Portugal") {
-      setIndicatif("+351");
-    } else if (value === "Qatar") {
-      setIndicatif("+974");
-    } else if (value === "République démocratique du Congo") {
-      setIndicatif("+243");
-    } else if (value === "République dominicaine") {
-      setIndicatif("+1");
-    } else if (value === "République tchèque") {
-      setIndicatif("+420");
-    } else if (value === "Roumanie") {
-      setIndicatif("+40");
-    } else if (value === "Royaume-Uni") {
-      setIndicatif("+44");
-    } else if (value === "Russie") {
-      setIndicatif("+7");
-    } else if (value === "Rwanda") {
-      setIndicatif("+250");
-    } else if (value === "Saint-Kitts-et-Nevis") {
-      setIndicatif("+1");
-    } else if (value === "Sainte-Lucie") {
-      setIndicatif("+1");
-    } else if (value === "Saint-Marin") {
-      setIndicatif("+378");
-    } else if (value === "Saint-Vincent-et-les-Grenadines") {
-      setIndicatif("+1");
-    } else if (value === "Salvador") {
-      setIndicatif("+503");
-    } else if (value === "Samoa") {
-      setIndicatif("+685");
-    } else if (value === "Sénégal") {
-      setIndicatif("+221");
-    } else if (value === "Serbie") {
-      setIndicatif("+381");
-    } else if (value === "Seychelles") {
-      setIndicatif("+248");
-    } else if (value === "Sierra Leone") {
-      setIndicatif("+232");
-    } else if (value === "Singapour") {
-      setIndicatif("+65");
-    } else if (value === "Slovaquie") {
-      setIndicatif("+421");
-    } else if (value === "Slovénie") {
-      setIndicatif("+386");
-    } else if (value === "Somalie") {
-      setIndicatif("+252");
-    } else if (value === "Soudan") {
-      setIndicatif("+249");
-    } else if (value === "Soudan du Sud") {
-      setIndicatif("+211");
-    } else if (value === "Sri Lanka") {
-      setIndicatif("+94");
-    } else if (value === "Suède") {
-      setIndicatif("+46");
-    } else if (value === "Suisse") {
-      setIndicatif("+41");
-    } else if (value === "Suriname") {
-      setIndicatif("+597");
-    } else if (value === "Tadjikistan") {
-      setIndicatif("+992");
-    } else if (value === "Tanzanie") {
-      setIndicatif("+255");
-    } else if (value === "Thaïlande") {
-      setIndicatif("+66");
-    } else if (value === "Timor oriental") {
-      setIndicatif("+670");
-    } else if (value === "Togo") {
-      setIndicatif("+228");
-    } else if (value === "Tonga") {
-      setIndicatif("+676");
-    } else if (value === "Trinité-et-Tobago") {
-      setIndicatif("+1");
-    } else if (value === "Tunisie") {
-      setIndicatif("+216");
-    } else if (value === "Turkménistan") {
-      setIndicatif("+993");
-    } else if (value === "Turquie") {
-      setIndicatif("+90");
-    } else if (value === "Ukraine") {
-      setIndicatif("+380");
-    } else if (value === "Uruguay") {
-      setIndicatif("+598");
-    } else if (value === "Vanuatu") {
-      setIndicatif("+678");
-    } else if (value === "Vatican") {
-      setIndicatif("+39");
-    } else if (value === "Venezuela") {
-      setIndicatif("+58");
-    } else if (value === "Viêt Nam") {
-      setIndicatif("+84");
-    } else if (value === "Yémen") {
-      setIndicatif("+967");
-    } else if (value === "Zambie") {
-      setIndicatif("+260");
-    } else if (value === "Zimbabwe") {
-      setIndicatif("+263");
-    } else if (value === "États-Unis") {
-      setIndicatif("+1");
-    } else {
-      setIndicatif("");
+  // =====================================================
+  // TÉLÉPHONE -> ORIGINE / PAYS
+  // =====================================================
+
+  const handleTelephoneChange = (texte) => {
+    // Numéro international (+33…, 0033…) : indicatif et pays détectés
+    const international = decouperNumeroInternational(texte);
+
+    if (international) {
+      setIndicatif(international.indicatif);
+      setOrigine(paysDepuisIndicatif(international.indicatif) || origine);
+      setTelephone(international.reste);
+      return;
+    }
+
+    setTelephone(texte);
+
+    // Numéro local : le pays est celui de l'indicatif affiché
+    if (!origine && texte.replace(/\D/g, "").length >= 6) {
+      const pays = paysDepuisIndicatif(indicatif);
+      if (pays) setOrigine(pays);
     }
   };
 
@@ -1988,8 +1884,21 @@ const scannerCarteVisite = async (source = "camera") => {
 
     if (nomComplet) setNom(nomComplet);
     if (c.email) setEmail(c.email);
-    if (c.indicatif) setIndicatif(c.indicatif);
-    if (c.telephone) setTelephone(c.telephone);
+    if (c.indicatif) {
+      setIndicatif(c.indicatif);
+
+      const pays = paysDepuisIndicatif(c.indicatif);
+      if (pays) setOrigine(pays);
+    }
+
+    if (c.telephone) {
+      if (c.indicatif) {
+        setTelephone(c.telephone);
+      } else {
+        // Détecte aussi le pays depuis le numéro
+        handleTelephoneChange(c.telephone);
+      }
+    }
     if (c.site) setSite(c.site);
     if (c.societe) setSociete(c.societe);
     if (c.fonction) setFonction(c.fonction);
@@ -2580,7 +2489,7 @@ return (
           style={styles.phoneInput}
           placeholder="Téléphone"
           value={telephone}
-          onChangeText={setTelephone}
+          onChangeText={handleTelephoneChange}
           keyboardType="phone-pad"
         />
 
