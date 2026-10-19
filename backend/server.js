@@ -301,6 +301,7 @@ const {
 
 const {
   lireCarteVisite,
+  analyserCarte,
   prechargerOcr,
   ensureCartesVisiteTable,
   enregistrerCarteVisite,
@@ -2873,6 +2874,53 @@ app.post(
         success: false,
         message: "Impossible de lire la carte de visite.",
         error: error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// ANALYSER UNE CARTE DÉJÀ LUE PAR LE NAVIGATEUR
+// (le téléphone fait l'OCR, le serveur trie seulement le texte :
+// réponse immédiate, sans charge sur le serveur)
+// ============================================================
+
+app.post(
+  "/api/carte-visite/analyser",
+  authenticateToken,
+  (req, res) => {
+    try {
+      const { lignes, qr } = req.body || {};
+
+      if (!Array.isArray(lignes)) {
+        return res.status(400).json({
+          success: false,
+          message: "Texte de la carte manquant.",
+        });
+      }
+
+      const champs = analyserCarte(
+        lignes.map(String).slice(0, 200),
+        qr ? String(qr).slice(0, 2000) : null
+      );
+
+      console.log("[CARTE VISITE] Analyse (navigateur) :", champs);
+
+      return res.json({
+        success: true,
+        champs,
+        qr: qr || null,
+      });
+    } catch (error) {
+      console.error(
+        "[CARTE VISITE] ERREUR ANALYSE :",
+        error.stack || error.message
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Impossible d'analyser la carte de visite.",
       });
     }
   }

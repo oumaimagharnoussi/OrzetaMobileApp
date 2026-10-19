@@ -88,6 +88,7 @@ function nettoyerLigne(ligne) {
   return String(ligne || "")
     .replace(/[|_©®™•·«»"{}[\]]/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/ ,/g, ",")
     .replace(/^[^A-Za-zÀ-ÿ0-9(+]+/, "")
     .replace(/[^A-Za-zÀ-ÿ0-9).]+$/, "")
     // Fragments parasites de 1-2 lettres minuscules en début ou fin
@@ -533,7 +534,21 @@ async function lireCarteVisite(imageBuffer) {
 
   const ocr = await lireOcr(imageOcr);
 
-  const champsOcr = analyserTexteCarte(ocr.lignes);
+  return {
+    texte: ocr.texte,
+    qr,
+    champs: analyserCarte(ocr.lignes, qr),
+  };
+}
+
+// ============================================================
+// TRIER LE TEXTE LU (OCR) + LE QR CODE EN CHAMPS DU FORMULAIRE
+// Utilisé par le serveur et quand la lecture est faite
+// par le navigateur du téléphone.
+// ============================================================
+
+function analyserCarte(lignesOcr, qr) {
+  const champsOcr = analyserTexteCarte(lignesOcr);
   const champsQr = analyserQrCode(qr);
 
   // Les informations du QR code sont plus fiables que l'OCR
@@ -563,11 +578,7 @@ async function lireCarteVisite(imageBuffer) {
 
   delete champs._domaineEmailPro;
 
-  return {
-    texte: ocr.texte,
-    qr,
-    champs,
-  };
+  return champs;
 }
 
 // ============================================================
@@ -646,6 +657,7 @@ async function enregistrerCarteVisite(db, {
 
 module.exports = {
   lireCarteVisite,
+  analyserCarte,
   prechargerOcr,
   ensureCartesVisiteTable,
   enregistrerCarteVisite,

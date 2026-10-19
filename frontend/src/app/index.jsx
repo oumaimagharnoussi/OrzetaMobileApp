@@ -58,6 +58,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Adresse du serveur : voir services/api.js (EXPO_PUBLIC_API_URL)
 import { API_URL } from "../services/api";
+import {
+  lecteurCarteDisponible,
+  prechargerLecteurCarte,
+  lireCarteNavigateur,
+} from "../services/lecteurCarte";
 // Produits proposés en conditionné : codes de la fiche MOTEUR
 // (CPOO, huile de grignons brute, est réservée au vrac)
 const PRODUITS_CONDITIONNE = [
@@ -1846,6 +1851,9 @@ const afficherMessage = (titre, message) => {
 
 // Choix : prendre une photo ou choisir une photo existante
 const choisirSourceCarte = () => {
+  // Charger le lecteur pendant que l'utilisateur prend la photo
+  prechargerLecteurCarte();
+
   // Sur le web, le navigateur du téléphone propose lui-même
   // « Prendre une photo » ou « Photothèque »
   if (Platform.OS === "web") {
@@ -1916,19 +1924,48 @@ const scannerCarteVisite = async (source = "camera") => {
 
     const token = await AsyncStorage.getItem("token");
 
-    const response = await fetch(
-      `${API_URL}/api/carte-visite/scan`,
-      {
+    const appelServeur = async (chemin, corps) => {
+      const reponse = await fetch(`${API_URL}${chemin}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ imageBase64 }),
-      }
-    );
+        body: JSON.stringify(corps),
+      });
 
-    const data = await response.json();
+      return { response: reponse, data: await reponse.json() };
+    };
+
+    let lecture = null;
+
+    // Web : le téléphone lit la carte lui-même (rapide), le serveur
+    // trie seulement le texte. En cas d'échec, lecture par le serveur.
+    if (lecteurCarteDisponible) {
+      try {
+        const { lignes, qr } = await lireCarteNavigateur(imageBase64);
+
+        lecture = await appelServeur(
+          "/api/carte-visite/analyser",
+          { lignes, qr }
+        );
+      } catch (erreurNavigateur) {
+        console.warn(
+          "Lecture dans le navigateur impossible, lecture par le serveur :",
+          erreurNavigateur
+        );
+        lecture = null;
+      }
+    }
+
+    if (!lecture?.response?.ok) {
+      lecture = await appelServeur(
+        "/api/carte-visite/scan",
+        { imageBase64 }
+      );
+    }
+
+    const { response, data } = lecture;
 
     if (!response.ok || !data.success) {
       throw new Error(
