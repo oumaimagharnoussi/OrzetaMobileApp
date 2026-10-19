@@ -184,7 +184,7 @@ function lireQrCode(image) {
   // Essayer plusieurs tailles, de la plus rapide à la plus précise :
   // un QR flou se lit parfois mieux en réduit, un petit QR en grand.
   // Pour chaque taille : image normale, puis version noir et blanc.
-  for (const largeur of [700, 1000, null]) {
+  for (const largeur of [400, 550, 700, 1000, null]) {
     if (largeur && image.bitmap.width <= largeur) continue;
 
     const copie = largeur

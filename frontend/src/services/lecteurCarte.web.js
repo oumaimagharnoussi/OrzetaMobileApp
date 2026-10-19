@@ -130,7 +130,7 @@ function binariser(pixels) {
 function lireQrCode(image) {
   // De la plus rapide à la plus précise ; pour chaque taille :
   // image normale, puis version noir et blanc
-  for (const taille of [700, 1000, TAILLE_MAX_OCR]) {
+  for (const taille of [400, 550, 700, 1000, TAILLE_MAX_OCR]) {
     const { canvas, ctx } = dessiner(image, taille);
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
