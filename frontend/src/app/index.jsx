@@ -8,7 +8,9 @@ import {
   Alert,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -49,6 +51,7 @@ export default function HomeScreen() {
   const [prenom, setPrenom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [indicatif, setIndicatif] = useState("+216");
+  const [scanEnCours, setScanEnCours] = useState(false);
   const [email, setEmail] = useState("");
   const [site, setSite] = useState("");
   const [origine, setOrigine] = useState("");
@@ -1798,6 +1801,106 @@ const afficherMessage = (titre, message) => {
   }
 };
 
+// =====================================================
+// SCANNER UNE CARTE DE VISITE
+// =====================================================
+
+const scannerCarteVisite = async () => {
+  try {
+    if (Platform.OS !== "web") {
+      const permission =
+        await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permission.granted) {
+        afficherMessage(
+          "Caméra",
+          "Autorisez l'accès à la caméra pour scanner une carte de visite."
+        );
+        return;
+      }
+    }
+
+    const resultat = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (resultat.canceled || !resultat.assets?.length) {
+      return;
+    }
+
+    const photo = resultat.assets[0];
+    const imageBase64 =
+      photo.base64 ||
+      (photo.uri?.startsWith("data:") ? photo.uri : null);
+
+    if (!imageBase64) {
+      throw new Error("Photo illisible.");
+    }
+
+    setScanEnCours(true);
+
+    const token = await AsyncStorage.getItem("token");
+
+    const response = await fetch(
+      `${API_URL}/api/carte-visite/scan`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ imageBase64 }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "Impossible de lire la carte."
+      );
+    }
+
+    const c = data.champs || {};
+
+    // Ne remplir que les champs détectés
+    // Le champ « Nom et Prénom » reçoit le nom complet
+    const nomComplet = [c.prenom, c.nom]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    if (nomComplet) setNom(nomComplet);
+    if (c.email) setEmail(c.email);
+    if (c.indicatif) setIndicatif(c.indicatif);
+    if (c.telephone) setTelephone(c.telephone);
+    if (c.site) setSite(c.site);
+    if (c.societe) setSociete(c.societe);
+    if (c.fonction) setFonction(c.fonction);
+    if (c.adresse_societe) setAdresseSociete(c.adresse_societe);
+
+    const nbChamps = Object.values(c).filter(Boolean).length;
+
+    afficherMessage(
+      nbChamps ? "Carte lue" : "Carte non reconnue",
+      nbChamps
+        ? `${nbChamps} champ(s) rempli(s)${data.qr ? " (QR code lu)" : ""}. Vérifiez les informations avant d'ajouter le visiteur.`
+        : "Aucune information détectée. Reprenez la photo bien à plat, nette et bien éclairée."
+    );
+  } catch (error) {
+    console.error("ERREUR SCAN CARTE :", error);
+
+    afficherMessage(
+      "Erreur",
+      error?.message || "Impossible de scanner la carte de visite."
+    );
+  } finally {
+    setScanEnCours(false);
+  }
+};
+
 const handleAjouter = async () => {
   const sansPdf =
     !PROFILS_AVEC_PDF.includes(profile);
@@ -2154,6 +2257,35 @@ return (
       Formulaire Visiteur
     </Text>
 
+    {/* =================================================
+        SCANNER CARTE DE VISITE
+    ================================================= */}
+
+    <TouchableOpacity
+      style={[
+        styles.scanButton,
+        scanEnCours && { opacity: 0.6 },
+      ]}
+      onPress={scannerCarteVisite}
+      disabled={scanEnCours}
+    >
+      {scanEnCours ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Ionicons
+          name="camera-outline"
+          size={22}
+          color="#fff"
+        />
+      )}
+
+      <Text style={styles.scanButtonText}>
+        {scanEnCours
+          ? "Lecture de la carte…"
+          : "Scanner une carte de visite"}
+      </Text>
+    </TouchableOpacity>
+
       {/* =================================================
           NOM
       ================================================= */}
@@ -2164,7 +2296,7 @@ return (
 
       <TextInput
         style={styles.input}
-        placeholder="Entrez le nom"
+        placeholder="Entrez le nom et le prénom"
         value={nom}
         onChangeText={setNom}
       />
@@ -6124,6 +6256,23 @@ contactText: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
+  },
+
+  scanButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#5C681F",
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+
+  scanButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 
   archivesButton: {

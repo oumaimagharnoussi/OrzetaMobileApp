@@ -5,3 +5,6 @@ node_modules/
 
 # Copies fichier des fiches PDF archivées (la base garde l original)
 archives_pdf/
+
+# Données de langue Tesseract (téléchargées automatiquement)
+*.traineddata

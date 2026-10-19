@@ -37,7 +37,13 @@
           "imageWidth": 76
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "L'application utilise la caméra pour scanner les cartes de visite."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

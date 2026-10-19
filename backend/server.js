@@ -299,6 +299,8 @@ const {
   requireUser,
 } = require("./middleware/auth");
 
+const { lireCarteVisite } = require("./carteVisite");
+
 
 // ============================================================
 // ARCHIVES DES FICHES PDF (base + fichiers)
@@ -2800,6 +2802,72 @@ app.post(
           "Erreur lors du refus de la fiche.",
         error:
           error.message,
+      });
+    }
+  }
+);
+
+
+// ============================================================
+// SCANNER UNE CARTE DE VISITE (OCR GRATUIT)
+// ============================================================
+
+app.post(
+  "/api/carte-visite/scan",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      let { imageBase64 } = req.body || {};
+
+      if (!imageBase64 || typeof imageBase64 !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Photo de la carte manquante.",
+        });
+      }
+
+      // Accepter aussi une data URL (version web)
+      imageBase64 = imageBase64.replace(
+        /^data:image\/[a-z+]+;base64,/i,
+        ""
+      );
+
+      const imageBuffer = Buffer.from(imageBase64, "base64");
+
+      if (imageBuffer.length < 1000) {
+        return res.status(400).json({
+          success: false,
+          message: "Image invalide.",
+        });
+      }
+
+      console.log(
+        "[CARTE VISITE] Lecture en cours :",
+        Math.round(imageBuffer.length / 1024),
+        "Ko"
+      );
+
+      const { texte, qr, champs } = await lireCarteVisite(imageBuffer);
+
+      console.log("[CARTE VISITE] QR code :", qr || "aucun");
+      console.log("[CARTE VISITE] Champs détectés :", champs);
+
+      return res.json({
+        success: true,
+        champs,
+        qr,
+        texte,
+      });
+    } catch (error) {
+      console.error(
+        "[CARTE VISITE] ERREUR :",
+        error.stack || error.message
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Impossible de lire la carte de visite.",
+        error: error.message,
       });
     }
   }
