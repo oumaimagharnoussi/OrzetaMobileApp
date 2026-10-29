@@ -2,4 +2,4 @@
 # Cache local de Puppeteer
 backend/.cache/puppeteer/
 
-backend/ .env
+backend/.env

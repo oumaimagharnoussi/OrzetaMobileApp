@@ -1,119 +1,65 @@
+import "../services/consoleProduction";
+import "../services/alerteWeb";
+
 import React, { useEffect } from "react";
 import { Stack, router, useSegments } from "expo-router";
-import {
-  ActivityIndicator,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import {
-  AuthProvider,
-  useAuth,
-} from "../context/AuthContext";
-import { Analytics } from "@vercel/analytics/next"
+import { AuthProvider, useAuth } from "../context/AuthContext";
+import { Couleurs } from "../constants/couleurs";
+
 function RootNavigation() {
   const { user, loading } = useAuth();
   const segments = useSegments();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     const firstSegment = segments[0];
+    const isAuthPage = firstSegment === "auth";
+    const isAdminPage = firstSegment === "admin";
+    const isCommercialPage = firstSegment === "commercial";
 
-    const isAuthPage =
-      firstSegment === "auth";
-
-    const isAdminPage =
-      firstSegment === "admin";
-
-    const isCommercialPage =
-      firstSegment === "commercial";
-
-    // =====================================================
     // PAS CONNECTÉ
-    // =====================================================
-
     if (!user) {
-
-      if (!isAuthPage) {
-        router.replace("/auth/login");
-      }
-
+      if (!isAuthPage) router.replace("/auth/login");
       return;
     }
 
-    // =====================================================
-    // UTILISATEUR CONNECTÉ
-    // =====================================================
-
-    // -----------------------------------------------------
-    // ADMIN
-    // -----------------------------------------------------
-
+    // ADMIN : pas de pages commerciales, ni login, ni accueil commercial
     if (user.role === "admin") {
-
-      // L'admin ne doit pas accéder aux pages commerciales
-      if (isCommercialPage) {
+      if (isCommercialPage || isAuthPage || !firstSegment) {
         router.replace("/admin");
-        return;
       }
-
-      // L'admin ne doit pas retourner sur login/register
-      if (isAuthPage) {
-        router.replace("/admin");
-        return;
-      }
-
-      // Si l'admin arrive sur /
-      if (!firstSegment) {
-        router.replace("/admin");
-        return;
-      }
-
       return;
     }
 
-    // -----------------------------------------------------
-    // COMMERCIAL
-    // -----------------------------------------------------
-
+    // COMMERCIAL : pas d'administration ni de pages auth
     if (user.role === "commercial") {
-
-      // Le commercial ne doit pas accéder à l'admin
-      if (isAdminPage) {
-        router.replace("/");
-        return;
-      }
-
-      // Le commercial ne doit pas accéder aux pages auth
-      if (isAuthPage) {
-        router.replace("/");
-        return;
-      }
-
-      return;
+      if (isAdminPage || isAuthPage) router.replace("/");
     }
-
   }, [user, loading, segments]);
 
-  // =====================================================
-  // CHARGEMENT
-  // =====================================================
+  // Vercel Analytics : chargé après l'affichage, sur le web seulement
+  useEffect(() => {
+    if (Platform.OS !== "web" || __DEV__) return;
+
+    import("@vercel/analytics")
+      .then(({ inject }) => inject())
+      .catch(() => {});
+  }, []);
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator
-          size="large"
-          color="#333"
+      <View style={styles.chargement}>
+        <Image
+          source={require("../../assets/images/logo-olived-black.png")}
+          style={styles.logo}
+          resizeMode="contain"
         />
+        <ActivityIndicator size="large" color={Couleurs.olive} />
       </View>
     );
   }
@@ -122,77 +68,33 @@ function RootNavigation() {
     <Stack
       screenOptions={{
         headerShown: false,
+        animation: "slide_from_right",
+        // Les pages n'ont pas d'en-tête : sans ces marges, le haut des
+        // pages passait sous l'encoche / la barre d'état du téléphone
+        contentStyle: {
+          backgroundColor: Couleurs.fond,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        },
       }}
     >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="traitement" />
+      <Stack.Screen name="pdf" />
+      <Stack.Screen name="archives" />
 
-      {/* ============================== */}
-      {/* HOME */}
-      {/* ============================== */}
+      <Stack.Screen name="auth/login" options={{ animation: "fade" }} />
+      <Stack.Screen name="auth/register" />
+      <Stack.Screen name="auth/forgot-password" />
+      <Stack.Screen name="auth/reset-password" />
 
-      <Stack.Screen
-        name="index"
-      />
+      <Stack.Screen name="commercial/index" />
 
-      <Stack.Screen
-        name="traitement"
-      />
-
-      <Stack.Screen
-        name="pdf"
-      />
-
-      {/* ============================== */}
-      {/* AUTH */}
-      {/* ============================== */}
-
-      <Stack.Screen
-        name="auth/login"
-      />
-
-      <Stack.Screen
-        name="auth/register"
-      />
-
-      <Stack.Screen
-        name="auth/forgot-password"
-      />
-
-      <Stack.Screen
-        name="auth/reset-password"
-      />
-
-      {/* ============================== */}
-      {/* COMMERCIAL */}
-      {/* ============================== */}
-
-      <Stack.Screen
-        name="commercial/index"
-      />
-
-      <Stack.Screen
-        name="commercial/visiteurs"
-      />
-
-      {/* ============================== */}
-      {/* ADMIN */}
-      {/* ============================== */}
-
-      <Stack.Screen
-        name="admin/index"
-      />
-
-      <Stack.Screen
-        name="admin/commerciaux"
-      />
-
-      <Stack.Screen
-        name="admin/ajouter-commercial"
-      />
-
-      <Stack.Screen
-        name="admin/visiteurs"
-      />
-
+      <Stack.Screen name="admin/index" options={{ animation: "fade" }} />
+      <Stack.Screen name="admin/commerciaux" />
+      <Stack.Screen name="admin/ajouter-commercial" />
+      <Stack.Screen name="admin/visiteurs" />
+      <Stack.Screen name="admin/moteur" />
     </Stack>
   );
 }
@@ -204,3 +106,17 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  chargement: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 24,
+    backgroundColor: Couleurs.fond,
+  },
+  logo: {
+    width: 180,
+    height: 60,
+  },
+});

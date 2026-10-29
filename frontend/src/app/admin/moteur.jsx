@@ -15,9 +15,10 @@ import {
 
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 import { apiFetch } from "../../services/api";
+import { Couleurs } from "../../constants/couleurs";
+import EnteteAdmin, { BoutonIcone } from "../../components/entete-admin";
 
 // Alert.alert n'affiche rien sur le web : on utilise window.alert
 const Alert = {
@@ -924,24 +925,22 @@ export default function AdminMoteur() {
 
       {/* EN-TÊTE */}
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#222" />
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.title}>Fiche MOTEUR</Text>
-          <Text style={styles.sousTitre}>
-            {resultat.updated_at
-              ? `Modifiée le ${new Date(resultat.updated_at).toLocaleString("fr-FR")}`
-              : "Valeurs du fichier Excel d'origine"}
-          </Text>
-        </View>
-
-        <TouchableOpacity onPress={reinitialiser} disabled={saving}>
-          <Ionicons name="refresh" size={22} color="#b00" />
-        </TouchableOpacity>
-      </View>
+      <EnteteAdmin
+        titre="Fiche MOTEUR"
+        sousTitre={
+          resultat.updated_at
+            ? `Modifiée le ${new Date(resultat.updated_at).toLocaleString("fr-FR")}`
+            : "Valeurs du fichier Excel d'origine"
+        }
+      >
+        <BoutonIcone
+          icone="refresh"
+          label="Réinitialiser les valeurs d'origine"
+          couleur={Couleurs.danger}
+          disabled={saving}
+          onPress={reinitialiser}
+        />
+      </EnteteAdmin>
 
       {/* ONGLETS */}
 
@@ -991,7 +990,7 @@ export default function AdminMoteur() {
 // =====================================================
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5" },
+  container: { flex: 1, backgroundColor: Couleurs.fond },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   header: {
@@ -1006,16 +1005,16 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "bold" },
   sousTitre: { color: "#666", fontSize: 12, marginTop: 2 },
 
-  onglets: { backgroundColor: "#fff", paddingHorizontal: 8, paddingVertical: 8 },
-  onglet: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, marginRight: 6, backgroundColor: "#eee" },
-  ongletActif: { backgroundColor: "#222" },
-  ongletText: { color: "#222", fontWeight: "600" },
+  onglets: { backgroundColor: Couleurs.carte, paddingHorizontal: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Couleurs.bordure },
+  onglet: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, marginRight: 6, backgroundColor: Couleurs.fond, borderWidth: 1, borderColor: Couleurs.bordure },
+  ongletActif: { backgroundColor: Couleurs.olive, borderColor: Couleurs.olive },
+  ongletText: { color: Couleurs.texte, fontWeight: "600" },
   ongletTextActif: { color: "#fff" },
 
   info: { padding: 12, paddingBottom: 4, color: "#333", fontWeight: "600" },
   chips: { paddingHorizontal: 12, paddingVertical: 4, flexGrow: 0 },
   chip: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: "#999", marginRight: 6 },
-  chipActif: { backgroundColor: "#556b2f", borderColor: "#556b2f" },
+  chipActif: { backgroundColor: Couleurs.olive, borderColor: Couleurs.olive },
   chipText: { color: "#333" },
   chipTextActif: { color: "#fff" },
   compteur: { paddingHorizontal: 12, paddingVertical: 6, color: "#666", fontSize: 12 },
@@ -1023,7 +1022,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#eee" },
   rowAlt: { backgroundColor: "#fafafa" },
   rowInterdite: { opacity: 0.45 },
-  headerRow: { backgroundColor: "#222" },
+  headerRow: { backgroundColor: Couleurs.oliveFonce },
   cell: { paddingVertical: 8, paddingHorizontal: 6, fontSize: 12, color: "#222" },
   headerCell: { color: "#fff", fontWeight: "bold", fontSize: 11 },
   cellNum: { textAlign: "right" },
@@ -1031,18 +1030,18 @@ const styles = StyleSheet.create({
 
   form: { padding: 16, paddingBottom: 120 },
   aide: { color: "#555", marginBottom: 12 },
-  section: { fontSize: 15, fontWeight: "bold", marginTop: 18, marginBottom: 8, color: "#556b2f" },
+  section: { fontSize: 15, fontWeight: "bold", marginTop: 18, marginBottom: 8, color: Couleurs.olive },
 
-  carte: { backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 14 },
+  carte: { backgroundColor: Couleurs.carte, borderRadius: 14, borderWidth: 1, borderColor: Couleurs.bordure, padding: 14, marginBottom: 14 },
   carteTitre: { fontSize: 16, fontWeight: "bold" },
   calcule: { backgroundColor: "#eef3e6", padding: 8, borderRadius: 6, marginVertical: 8, color: "#333", fontSize: 12 },
 
   champ: { marginBottom: 10 },
   champLabel: { fontSize: 13, color: "#333", marginBottom: 4 },
   champLigne: { flexDirection: "row", alignItems: "center" },
-  champInput: { flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10 },
+  champInput: { flex: 1, backgroundColor: Couleurs.carte, borderWidth: 1, borderColor: Couleurs.bordure, borderRadius: 10, padding: 10, color: Couleurs.texte },
   champUnite: { marginLeft: 8, fontWeight: "bold" },
-  pickerContainer: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#ccc", borderRadius: 8 },
+  pickerContainer: { backgroundColor: Couleurs.carte, borderWidth: 1, borderColor: Couleurs.bordure, borderRadius: 10, overflow: "hidden" },
 
   note: { fontSize: 11, color: "#777", marginTop: -4, marginBottom: 8 },
   alerte: { color: "#b00", marginTop: 8 },
@@ -1068,6 +1067,6 @@ const styles = StyleSheet.create({
   barreText: { flex: 1, color: "#b06000", fontWeight: "600" },
   btnSecondaire: { paddingVertical: 10, paddingHorizontal: 14, marginRight: 8 },
   btnSecondaireText: { color: "#222" },
-  btnPrincipal: { backgroundColor: "#222", paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, minWidth: 110, alignItems: "center" },
+  btnPrincipal: { backgroundColor: Couleurs.olive, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 20, minWidth: 110, alignItems: "center" },
   btnPrincipalText: { color: "#fff", fontWeight: "bold" },
 });

@@ -1,149 +1,142 @@
 import React, { useState } from "react";
 
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
-
 import { router } from "expo-router";
 
 import { forgotPassword } from "../../services/api";
+import {
+  PageAuth,
+  ChampAuth,
+  BoutonAuth,
+  LienAuth,
+  MessageAuth,
+  SuccesAuth,
+} from "../../components/formulaire-auth";
+
+const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPassword() {
-
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [erreur, setErreur] = useState("");
+  const [erreurServeur, setErreurServeur] = useState("");
+  const [envoye, setEnvoye] = useState(false);
+
+  // ============================================================
+  // ENVOI DU LIEN
+  // ============================================================
 
   async function handleForgotPassword() {
+    if (loading) return;
 
-    if (!email.trim()) {
-      Alert.alert(
-        "Erreur",
-        "Veuillez saisir votre email."
-      );
+    const adresse = email.trim().toLowerCase();
+
+    if (!adresse) {
+      setErreur("Veuillez saisir votre email.");
+      return;
+    }
+
+    if (!EMAIL_VALIDE.test(adresse)) {
+      setErreur("Adresse email invalide.");
       return;
     }
 
     try {
-
       setLoading(true);
+      setErreurServeur("");
 
-      const data = await forgotPassword(
-        email.trim()
-      );
+      await forgotPassword(adresse);
 
-      Alert.alert(
-        "Réinitialisation",
-        data.message ||
-          "Si cet email existe, un lien a été envoyé."
-      );
-
+      // Le serveur répond pareil que l'email existe ou non
+      // (pour ne pas révéler les comptes) : on affiche la suite
+      setEnvoye(true);
     } catch (error) {
-
-      Alert.alert(
-        "Erreur",
-        error.message
+      setErreurServeur(
+        error.message || "Impossible d'envoyer le lien. Réessayez."
       );
-
     } finally {
       setLoading(false);
     }
   }
 
+  // ============================================================
+  // LIEN ENVOYÉ
+  // ============================================================
+
+  if (envoye) {
+    return (
+      <PageAuth>
+        <SuccesAuth icone="mail-unread-outline" titre="Vérifiez vos emails">
+          Si un compte existe pour {email.trim().toLowerCase()}, vous allez
+          recevoir un lien pour choisir un nouveau mot de passe. Ce lien est
+          valable 30 minutes.
+        </SuccesAuth>
+
+        <MessageAuth>
+          Rien reçu ? Regardez dans les courriers indésirables (spam), ou
+          renvoyez le lien.
+        </MessageAuth>
+
+        <BoutonAuth
+          texte="Retour à la connexion"
+          onPress={() => router.replace("/auth/login")}
+        />
+
+        <LienAuth
+          icone="refresh"
+          texte="Renvoyer le lien"
+          onPress={() => setEnvoye(false)}
+        />
+      </PageAuth>
+    );
+  }
+
+  // ============================================================
+  // INTERFACE
+  // ============================================================
+
   return (
-    <View style={styles.container}>
+    <PageAuth
+      titre="Mot de passe oublié"
+      sousTitre="Entrez l'email de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe."
+    >
+      {!!erreurServeur && (
+        <MessageAuth type="erreur">{erreurServeur}</MessageAuth>
+      )}
 
-      <Text style={styles.title}>
-        Mot de passe oublié
-      </Text>
-
-      <Text style={styles.description}>
-        Entrez votre adresse email pour recevoir
-        un lien de réinitialisation.
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
+      <ChampAuth
+        label="Email"
+        icone="mail-outline"
+        placeholder="nom@exemple.com"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(valeur) => {
+          setEmail(valeur);
+          if (erreur) setErreur("");
+          if (erreurServeur) setErreurServeur("");
+        }}
+        erreur={erreur}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        returnKeyType="send"
+        onSubmitEditing={handleForgotPassword}
+        autoFocus
+        editable={!loading}
       />
 
-      <TouchableOpacity
-        style={styles.button}
+      <BoutonAuth
+        texte="Envoyer le lien"
+        texteChargement="Envoi…"
+        chargement={loading}
         onPress={handleForgotPassword}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>
-            Envoyer
-          </Text>
-        )}
-      </TouchableOpacity>
+      />
 
-      <TouchableOpacity
+      <LienAuth
+        icone="arrow-back"
+        texte="Retour à la connexion"
         onPress={() => router.replace("/auth/login")}
-      >
-        <Text style={styles.link}>
-          Retour à la connexion
-        </Text>
-      </TouchableOpacity>
-
-    </View>
+        disabled={loading}
+      />
+    </PageAuth>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 25,
-  },
-
-  title: {
-    fontSize: 27,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 15,
-  },
-
-  description: {
-    textAlign: "center",
-    color: "#666",
-    marginBottom: 25,
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 15,
-  },
-
-  button: {
-    backgroundColor: "#222",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-
-  link: {
-    textAlign: "center",
-    marginTop: 20,
-  },
-});

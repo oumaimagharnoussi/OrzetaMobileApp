@@ -51,6 +51,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../services/api";
+import { Couleurs, ombre, LARGEUR_MAX } from "../constants/couleurs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 // =====================================================
 // URL BACKEND
@@ -314,6 +315,202 @@ function decouperNumeroInternational(texte) {
     reste: reste.replace(/^[\s().-]+/, ""),
   };
 }
+
+// =====================================================
+
+// PAYS
+// =====================================================
+
+const pays = [
+  "Afghanistan",
+  "Afrique du Sud",
+  "Albanie",
+  "Algérie",
+  "Allemagne",
+  "Andorre",
+  "Angola",
+  "Antigua-et-Barbuda",
+  "Arabie Saoudite",
+  "Argentine",
+  "Arménie",
+  "Australie",
+  "Autriche",
+  "Azerbaïdjan",
+  "Bahamas",
+  "Bahreïn",
+  "Bangladesh",
+  "Barbade",
+  "Belgique",
+  "Belize",
+  "Bénin",
+  "Bhoutan",
+  "Biélorussie",
+  "Bolivie",
+  "Bosnie-Herzégovine",
+  "Botswana",
+  "Brésil",
+  "Brunei",
+  "Bulgarie",
+  "Burkina Faso",
+  "Burundi",
+  "Cambodge",
+  "Cameroun",
+  "Canada",
+  "Cap-Vert",
+  "Chili",
+  "Chine",
+  "Chypre",
+  "Colombie",
+  "Comores",
+  "Congo",
+  "Costa Rica",
+  "Côte d'Ivoire",
+  "Croatie",
+  "Cuba",
+  "Danemark",
+  "Djibouti",
+  "Dominique",
+  "Égypte",
+  "Émirats Arabes Unis",
+  "Équateur",
+  "Érythrée",
+  "Espagne",
+  "Estonie",
+  "Eswatini",
+  "Éthiopie",
+  "Fidji",
+  "Finlande",
+  "France",
+  "Gabon",
+  "Gambie",
+  "Géorgie",
+  "Ghana",
+  "Grèce",
+  "Grenade",
+  "Guatemala",
+  "Guinée",
+  "Guinée-Bissau",
+  "Guinée équatoriale",
+  "Guyana",
+  "Haïti",
+  "Honduras",
+  "Hongrie",
+  "Inde",
+  "Indonésie",
+  "Irak",
+  "Iran",
+  "Irlande",
+  "Islande",
+  "Israël",
+  "Italie",
+  "Jamaïque",
+  "Japon",
+  "Jordanie",
+  "Kazakhstan",
+  "Kenya",
+  "Kirghizistan",
+  "Koweït",
+  "Laos",
+  "Lettonie",
+  "Liban",
+  "Lesotho",
+  "Liberia",
+  "Libye",
+  "Liechtenstein",
+  "Lituanie",
+  "Luxembourg",
+  "Macédoine du Nord",
+  "Madagascar",
+  "Malaisie",
+  "Malawi",
+  "Maldives",
+  "Mali",
+  "Malte",
+  "Maroc",
+  "Maurice",
+  "Mauritanie",
+  "Mexique",
+  "Moldavie",
+  "Monaco",
+  "Mongolie",
+  "Monténégro",
+  "Mozambique",
+  "Myanmar",
+  "Namibie",
+  "Népal",
+  "Nicaragua",
+  "Niger",
+  "Nigeria",
+  "Norvège",
+  "Nouvelle-Zélande",
+  "Oman",
+  "Ouganda",
+  "Ouzbékistan",
+  "Pakistan",
+  "Panama",
+  "Papouasie-Nouvelle-Guinée",
+  "Paraguay",
+  "Pays-Bas",
+  "Pérou",
+  "Philippines",
+  "Pologne",
+  "Portugal",
+  "Qatar",
+  "République démocratique du Congo",
+  "République dominicaine",
+  "République tchèque",
+  "Roumanie",
+  "Royaume-Uni",
+  "Russie",
+  "Rwanda",
+  "Saint-Kitts-et-Nevis",
+  "Sainte-Lucie",
+  "Saint-Marin",
+  "Saint-Vincent-et-les-Grenadines",
+  "Salvador",
+  "Samoa",
+  "Sénégal",
+  "Serbie",
+  "Seychelles",
+  "Sierra Leone",
+  "Singapour",
+  "Slovaquie",
+  "Slovénie",
+  "Somalie",
+  "Soudan",
+  "Soudan du Sud",
+  "Sri Lanka",
+  "Suède",
+  "Suisse",
+  "Suriname",
+  "Tadjikistan",
+  "Tanzanie",
+  "Thaïlande",
+  "Timor oriental",
+  "Togo",
+  "Tonga",
+  "Trinité-et-Tobago",
+  "Tunisie",
+  "Turkménistan",
+  "Turquie",
+  "Ukraine",
+  "Uruguay",
+  "Vanuatu",
+  "Vatican",
+  "Venezuela",
+  "Viêt Nam",
+  "Yémen",
+  "Zambie",
+  "Zimbabwe",
+  "États-Unis",
+  "Autre",
+];
+
+// Liste des pays créée une seule fois (et non à chaque frappe dans le
+// formulaire) : les deux listes déroulantes réutilisent ces éléments
+const ITEMS_PAYS = pays.map((item) => (
+  <Picker.Item key={item} label={item} value={item} />
+));
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -814,194 +1011,6 @@ setK270Valeur("");
 
   const [qualification, setQualification] = useState(0);
 
-  // =====================================================
-  // PAYS
-  // =====================================================
-
-  const pays = [
-    "Afghanistan",
-    "Afrique du Sud",
-    "Albanie",
-    "Algérie",
-    "Allemagne",
-    "Andorre",
-    "Angola",
-    "Antigua-et-Barbuda",
-    "Arabie Saoudite",
-    "Argentine",
-    "Arménie",
-    "Australie",
-    "Autriche",
-    "Azerbaïdjan",
-    "Bahamas",
-    "Bahreïn",
-    "Bangladesh",
-    "Barbade",
-    "Belgique",
-    "Belize",
-    "Bénin",
-    "Bhoutan",
-    "Biélorussie",
-    "Bolivie",
-    "Bosnie-Herzégovine",
-    "Botswana",
-    "Brésil",
-    "Brunei",
-    "Bulgarie",
-    "Burkina Faso",
-    "Burundi",
-    "Cambodge",
-    "Cameroun",
-    "Canada",
-    "Cap-Vert",
-    "Chili",
-    "Chine",
-    "Chypre",
-    "Colombie",
-    "Comores",
-    "Congo",
-    "Costa Rica",
-    "Côte d'Ivoire",
-    "Croatie",
-    "Cuba",
-    "Danemark",
-    "Djibouti",
-    "Dominique",
-    "Égypte",
-    "Émirats Arabes Unis",
-    "Équateur",
-    "Érythrée",
-    "Espagne",
-    "Estonie",
-    "Eswatini",
-    "Éthiopie",
-    "Fidji",
-    "Finlande",
-    "France",
-    "Gabon",
-    "Gambie",
-    "Géorgie",
-    "Ghana",
-    "Grèce",
-    "Grenade",
-    "Guatemala",
-    "Guinée",
-    "Guinée-Bissau",
-    "Guinée équatoriale",
-    "Guyana",
-    "Haïti",
-    "Honduras",
-    "Hongrie",
-    "Inde",
-    "Indonésie",
-    "Irak",
-    "Iran",
-    "Irlande",
-    "Islande",
-    "Israël",
-    "Italie",
-    "Jamaïque",
-    "Japon",
-    "Jordanie",
-    "Kazakhstan",
-    "Kenya",
-    "Kirghizistan",
-    "Koweït",
-    "Laos",
-    "Lettonie",
-    "Liban",
-    "Lesotho",
-    "Liberia",
-    "Libye",
-    "Liechtenstein",
-    "Lituanie",
-    "Luxembourg",
-    "Macédoine du Nord",
-    "Madagascar",
-    "Malaisie",
-    "Malawi",
-    "Maldives",
-    "Mali",
-    "Malte",
-    "Maroc",
-    "Maurice",
-    "Mauritanie",
-    "Mexique",
-    "Moldavie",
-    "Monaco",
-    "Mongolie",
-    "Monténégro",
-    "Mozambique",
-    "Myanmar",
-    "Namibie",
-    "Népal",
-    "Nicaragua",
-    "Niger",
-    "Nigeria",
-    "Norvège",
-    "Nouvelle-Zélande",
-    "Oman",
-    "Ouganda",
-    "Ouzbékistan",
-    "Pakistan",
-    "Panama",
-    "Papouasie-Nouvelle-Guinée",
-    "Paraguay",
-    "Pays-Bas",
-    "Pérou",
-    "Philippines",
-    "Pologne",
-    "Portugal",
-    "Qatar",
-    "République démocratique du Congo",
-    "République dominicaine",
-    "République tchèque",
-    "Roumanie",
-    "Royaume-Uni",
-    "Russie",
-    "Rwanda",
-    "Saint-Kitts-et-Nevis",
-    "Sainte-Lucie",
-    "Saint-Marin",
-    "Saint-Vincent-et-les-Grenadines",
-    "Salvador",
-    "Samoa",
-    "Sénégal",
-    "Serbie",
-    "Seychelles",
-    "Sierra Leone",
-    "Singapour",
-    "Slovaquie",
-    "Slovénie",
-    "Somalie",
-    "Soudan",
-    "Soudan du Sud",
-    "Sri Lanka",
-    "Suède",
-    "Suisse",
-    "Suriname",
-    "Tadjikistan",
-    "Tanzanie",
-    "Thaïlande",
-    "Timor oriental",
-    "Togo",
-    "Tonga",
-    "Trinité-et-Tobago",
-    "Tunisie",
-    "Turkménistan",
-    "Turquie",
-    "Ukraine",
-    "Uruguay",
-    "Vanuatu",
-    "Vatican",
-    "Venezuela",
-    "Viêt Nam",
-    "Yémen",
-    "Zambie",
-    "Zimbabwe",
-    "États-Unis",
-    "Autre",
-  ];
 
   // =====================================================
   // CHANGEMENT PAYS
@@ -2449,6 +2458,7 @@ return (
 
       <View style={styles.pickerContainer}>
         <Picker
+          style={styles.picker}
           selectedValue={origine}
           onValueChange={
             handlePaysChange
@@ -2459,13 +2469,7 @@ return (
             value=""
           />
 
-          {pays.map((item) => (
-            <Picker.Item
-              key={item}
-              label={item}
-              value={item}
-            />
-          ))}
+          {ITEMS_PAYS}
         </Picker>
       </View>
 
@@ -2538,6 +2542,7 @@ return (
 
       <View style={styles.pickerContainer}>
         <Picker
+          style={styles.picker}
           selectedValue={
             langueCommunication
           }
@@ -2791,6 +2796,7 @@ return (
       <View style={styles.pickerContainer}>
 
         <Picker
+          style={styles.picker}
           selectedValue={profile}
           onValueChange={
             handleProfileChange
@@ -2957,6 +2963,7 @@ return (
           <View style={styles.pickerContainer}>
 
             <Picker
+              style={styles.picker}
               selectedValue={
                 typeCommande
               }
@@ -3043,6 +3050,7 @@ return (
                       <View style={styles.pickerContainer}>
           
                         <Picker
+                          style={styles.picker}
                           selectedValue={
                             frequenceCommande
                           }
@@ -3086,6 +3094,7 @@ return (
 
     <View style={styles.pickerContainer}>
       <Picker
+        style={styles.picker}
         selectedValue={periodeRecurrence}
         onValueChange={setPeriodeRecurrence}
       >
@@ -3118,6 +3127,7 @@ Catégorie
 
 <View style={styles.pickerContainer}>
 <Picker
+  style={styles.picker}
   selectedValue={categorie}
   onValueChange={setCategorie}
 >
@@ -3151,6 +3161,7 @@ Catégorie
 
 <View style={styles.pickerContainer}>
   <Picker
+    style={styles.picker}
     selectedValue={qualiteGrade}
     onValueChange={setQualiteGrade}
   >
@@ -3348,6 +3359,7 @@ Catégorie
 
 <View style={styles.pickerContainer}>
   <Picker
+    style={styles.picker}
     selectedValue={genre}
     onValueChange={setGenre}
   >
@@ -3565,6 +3577,7 @@ Catégorie
            
 <View style={styles.pickerContainer}>
   <Picker
+    style={styles.picker}
     selectedValue={incoterm}
     onValueChange={setIncoterm}
   >
@@ -3586,6 +3599,7 @@ Catégorie
             <View style={styles.pickerContainer}>
 
               <Picker
+                style={styles.picker}
                 selectedValue={
                   formatLivraison
                 }
@@ -3802,6 +3816,7 @@ Catégorie
 
             <View style={styles.pickerContainer}>
               <Picker
+                style={styles.picker}
                 selectedValue={categorie}
                 onValueChange={setCategorie}
               >
@@ -3829,6 +3844,7 @@ Catégorie
             <View style={styles.pickerContainer}>
 
               <Picker
+                style={styles.picker}
                 selectedValue={
                   paysConditionne
                 }
@@ -3842,13 +3858,7 @@ Catégorie
                   value=""
                 />
 
-                {pays.map((item) => (
-                  <Picker.Item
-                    key={item}
-                    label={item}
-                    value={item}
-                  />
-                ))}
+                {ITEMS_PAYS}
 
               </Picker>
 
@@ -3863,6 +3873,7 @@ Catégorie
 <View style={styles.pickerContainer}>
 
   <Picker
+    style={styles.picker}
     selectedValue={canalDistribution}
     onValueChange={setCanalDistribution}
   >
@@ -3926,6 +3937,7 @@ Catégorie
 
 <View style={styles.pickerContainer}>
 <Picker
+  style={styles.picker}
   selectedValue={typeVolumeEstime}
   onValueChange={(value) => {
     setTypeVolumeEstime(value);
@@ -3990,6 +4002,7 @@ Catégorie
 
     <View style={styles.pickerContainer}>
       <Picker
+        style={styles.picker}
         selectedValue={typeEtiquetteConditionne}
         onValueChange={setTypeEtiquetteConditionne}
       >
@@ -5059,6 +5072,7 @@ Catégorie
 <View style={styles.pickerContainer}>
 
   <Picker
+    style={styles.picker}
     selectedValue={quantiteCommande}
     onValueChange={setQuantiteCommande}
   >
@@ -5264,6 +5278,7 @@ Catégorie
 <View style={styles.pickerContainer}>
 
   <Picker
+    style={styles.picker}
     selectedValue={contactProfessionnel}
     onValueChange={setContactProfessionnel}
   >
@@ -5321,6 +5336,7 @@ Catégorie
 <View style={styles.pickerContainer}>
 
   <Picker
+    style={styles.picker}
     selectedValue={typeMarque}
     onValueChange={setTypeMarque}
   >
@@ -5357,6 +5373,7 @@ Catégorie
 
     <View style={styles.pickerContainer}>
       <Picker
+        style={styles.picker}
         selectedValue={typeEtiquette}
         onValueChange={setTypeEtiquette}
       >
@@ -5873,12 +5890,16 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: Couleurs.fond,
   },
 
+  // Colonne centrée et limitée en largeur (lisible sur ordinateur)
   content: {
     padding: 20,
     paddingBottom: 50,
+    width: "100%",
+    maxWidth: LARGEUR_MAX,
+    alignSelf: "center",
   },
 
   title: {
@@ -5896,17 +5917,19 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
+    color: Couleurs.texte,
     marginBottom: 7,
     marginTop: 12,
   },
 
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: Couleurs.carte,
+    color: Couleurs.texte,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: Couleurs.bordure,
+    borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -5917,11 +5940,24 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
 
+  // Liste déroulante : sur le web, le <select> faisait 19 px de haut
+  picker: Platform.select({
+    web: {
+      height: 48,
+      paddingHorizontal: 10,
+      borderWidth: 0,
+      backgroundColor: "transparent",
+      fontSize: 16,
+      color: Couleurs.texte,
+    },
+    default: {},
+  }),
+
   pickerContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: Couleurs.carte,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: Couleurs.bordure,
+    borderRadius: 10,
     overflow: "hidden",
   },
 
@@ -5932,20 +5968,21 @@ const styles = StyleSheet.create({
 
   indicatif: {
     width: 80,
-    backgroundColor: "#eee",
+    backgroundColor: Couleurs.oliveClair,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: Couleurs.bordure,
+    borderRadius: 10,
     paddingHorizontal: 10,
     textAlign: "center",
   },
 
   phoneInput: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Couleurs.carte,
+    color: Couleurs.texte,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: Couleurs.bordure,
+    borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -5953,16 +5990,18 @@ const styles = StyleSheet.create({
 
   section: {
     marginTop: 25,
-    padding: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
+    padding: 16,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: Couleurs.bordure,
+    ...ombre,
   },
 
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "bold",
+    color: Couleurs.oliveFonce,
     marginBottom: 10,
   },
 
@@ -5982,9 +6021,9 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: "#5C681F",
+    backgroundColor: Couleurs.olive,
     paddingVertical: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     marginTop: 25,
     alignItems: "center",
   },

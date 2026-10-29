@@ -15,6 +15,8 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { apiFetch } from "../../services/api";
+import { Couleurs, ombre } from "../../constants/couleurs";
+import EnteteAdmin from "../../components/entete-admin";
 
 export default function AjouterCommercial() {
   const [nom, setNom] = useState("");
@@ -240,6 +242,13 @@ export default function AjouterCommercial() {
   return (
     <View style={styles.container}>
 
+      <EnteteAdmin
+        titre="Ajouter un commercial"
+        sousTitre="Créer un nouveau compte commercial"
+        onRetour={handleBack}
+        retourDesactive={loading}
+      />
+
       {/* ================================================= */}
       {/* ALERTE SUCCÈS */}
       {/* ================================================= */}
@@ -289,42 +298,6 @@ export default function AjouterCommercial() {
         }
         keyboardShouldPersistTaps="handled"
       >
-
-        {/* ================================================= */}
-        {/* HEADER */}
-        {/* ================================================= */}
-
-        <View style={styles.header}>
-
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-            disabled={loading}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color="#222"
-            />
-          </TouchableOpacity>
-
-          <View
-            style={
-              styles.headerTitleContainer
-            }
-          >
-
-            <Text style={styles.title}>
-              Ajouter un commercial
-            </Text>
-
-            <Text style={styles.subtitle}>
-              Créer un nouveau compte commercial
-            </Text>
-
-          </View>
-
-        </View>
 
         {/* ================================================= */}
         {/* FORMULAIRE */}
@@ -604,11 +577,11 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#f7f7f7",
+    backgroundColor: Couleurs.fond,
   },
 
   scrollContent: {
-    padding: 25,
+    padding: 16,
     paddingBottom: 40,
   },
 
@@ -669,7 +642,7 @@ const styles = StyleSheet.create({
   backButton: {
     width: 42,
     height: 42,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
@@ -685,7 +658,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#222",
+    color: Couleurs.texte,
   },
 
   subtitle: {
@@ -700,19 +673,20 @@ const styles = StyleSheet.create({
 
   form: {
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 25,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: Couleurs.bordure,
     maxWidth: 650,
     width: "100%",
     alignSelf: "center",
+    ...ombre,
   },
 
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: Couleurs.texte,
     marginBottom: 7,
   },
 
@@ -724,20 +698,20 @@ const styles = StyleSheet.create({
 
   optionalText: {
     fontSize: 12,
-    color: "#888",
+    color: Couleurs.texteDoux,
     marginBottom: 7,
   },
 
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+    borderColor: Couleurs.bordure,
+    borderRadius: 10,
     paddingHorizontal: 14,
     fontSize: 16,
     marginBottom: 18,
     backgroundColor: "#fff",
-    color: "#222",
+    color: Couleurs.texte,
   },
 
   // =====================================================
@@ -749,8 +723,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: 50,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+    borderColor: Couleurs.bordure,
+    borderRadius: 10,
     marginBottom: 6,
     backgroundColor: "#fff",
   },
@@ -760,7 +734,7 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 14,
     fontSize: 16,
-    color: "#222",
+    color: Couleurs.texte,
   },
 
   eyeButton: {
@@ -770,7 +744,7 @@ const styles = StyleSheet.create({
 
   helpText: {
     fontSize: 12,
-    color: "#888",
+    color: Couleurs.texteDoux,
     lineHeight: 18,
     marginBottom: 20,
   },
@@ -782,8 +756,8 @@ const styles = StyleSheet.create({
   infoContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
+    backgroundColor: Couleurs.oliveClair,
+    borderRadius: 10,
     padding: 12,
     marginBottom: 25,
     gap: 8,
@@ -792,13 +766,13 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: "#666",
+    color: Couleurs.texteDoux,
     lineHeight: 19,
   },
 
   infoBold: {
     fontWeight: "700",
-    color: "#333",
+    color: Couleurs.texte,
   },
 
   // =====================================================
@@ -815,16 +789,16 @@ const styles = StyleSheet.create({
   cancelButton: {
     height: 48,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: Couleurs.bordure,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#fff",
   },
 
   cancelButtonText: {
-    color: "#333",
+    color: Couleurs.texte,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -832,8 +806,8 @@ const styles = StyleSheet.create({
   createButton: {
     height: 48,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: "#222",
+    borderRadius: 10,
+    backgroundColor: Couleurs.olive,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

@@ -11,75 +11,131 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL || "https://orzetamobileapp.onrender.com";
 
+// Le serveur Render gratuit peut mettre ~50 s à se réveiller :
+// au-delà de ce délai, on abandonne la requête au lieu d'attendre sans fin
+const DELAI_MAX_REQUETE = 60000;
+
+// Journaux détaillés uniquement en développement : afficher chaque
+// réponse (listes de visiteurs, commandes…) ralentit l'application
+const journal = (...args) => {
+  if (__DEV__) console.log(...args);
+};
+
+
+// ============================================================
+// TOKEN (gardé en mémoire pour éviter de relire le stockage
+// à chaque requête)
+// ============================================================
+
+let tokenEnMemoire;
+
+async function lireToken() {
+  if (tokenEnMemoire === undefined) {
+    tokenEnMemoire = await AsyncStorage.getItem("token");
+  }
+  return tokenEnMemoire;
+}
+
+export async function enregistrerSession(token, user) {
+  tokenEnMemoire = token || null;
+
+  const paires = [];
+  if (token) paires.push(["token", token]);
+  if (user) paires.push(["user", JSON.stringify(user)]);
+
+  if (paires.length) await AsyncStorage.multiSet(paires);
+}
+
+// Session enregistrée sur l'appareil (lecture en un seul appel)
+export async function lireSessionLocale() {
+  const [[, token], [, user]] = await AsyncStorage.multiGet([
+    "token",
+    "user",
+  ]);
+
+  tokenEnMemoire = token || null;
+
+  let utilisateur = null;
+  try {
+    utilisateur = user ? JSON.parse(user) : null;
+  } catch {
+    utilisateur = null;
+  }
+
+  return { token, user: utilisateur };
+}
+
 
 // ============================================================
 // REQUÊTE API
 // ============================================================
 
 export async function apiFetch(endpoint, options = {}) {
+  const url = `${API_URL}${endpoint}`;
+  const controleur = new AbortController();
+  const minuteur = setTimeout(() => controleur.abort(), DELAI_MAX_REQUETE);
+
   try {
-    // Récupérer le token enregistré lors du login
-    const token = await AsyncStorage.getItem("token");
+    const token = await lireToken();
 
-    console.log("======================================");
-    console.log("API REQUEST");
-    console.log("URL :", `${API_URL}${endpoint}`);
-    console.log("TOKEN :", token ? "PRÉSENT" : "ABSENT");
-    console.log("======================================");
-
-    // Headers
     const headers = {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     };
 
-    // Ajouter automatiquement le JWT
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    // Requête
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    journal("API →", options.method || "GET", url);
 
-    // Lire la réponse
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        signal: options.signal || controleur.signal,
+      });
+    } catch (error) {
+      const erreur = new Error(
+        error?.name === "AbortError"
+          ? "Le serveur met trop de temps à répondre. Réessayez dans un instant."
+          : "Impossible de contacter le serveur. Vérifiez votre connexion."
+      );
+      erreur.reseau = true;
+      throw erreur;
+    }
+
     let data;
-
     try {
       data = await response.json();
-    } catch (error) {
+    } catch {
       data = {
         success: false,
         message: "Réponse invalide du serveur",
       };
     }
 
-    console.log("======================================");
-    console.log("API RESPONSE");
-    console.log("STATUS :", response.status);
-    console.log("DATA :", data);
-    console.log("======================================");
+    journal("API ←", response.status, endpoint);
 
-    // Erreur HTTP
     if (!response.ok) {
-      throw new Error(
+      const erreur = new Error(
         data.message ||
           data.error ||
           `Erreur serveur (${response.status})`
       );
+      erreur.status = response.status;
+      throw erreur;
     }
 
     return data;
   } catch (error) {
-    console.error("======================================");
-    console.error("❌ API ERROR");
-    console.error("ENDPOINT :", endpoint);
-    console.error("MESSAGE :", error.message);
-    console.error("======================================");
-
+    if (__DEV__) {
+      console.error("❌ API", endpoint, ":", error.message);
+    }
     throw error;
+  } finally {
+    clearTimeout(minuteur);
   }
 }
 
@@ -97,23 +153,8 @@ export async function login(email, password) {
     }),
   });
 
-  // Sauvegarder le JWT
-  if (data.token) {
-    await AsyncStorage.setItem("token", data.token);
-
-    console.log("✅ TOKEN SAUVEGARDÉ");
-  } else {
-    console.warn("⚠️ Aucun token reçu après le login");
-  }
-
-  // Sauvegarder l'utilisateur
-  if (data.user) {
-    await AsyncStorage.setItem(
-      "user",
-      JSON.stringify(data.user)
-    );
-
-    console.log("✅ USER SAUVEGARDÉ :", data.user);
+  if (data.token || data.user) {
+    await enregistrerSession(data.token, data.user);
   }
 
   return data;
@@ -125,10 +166,8 @@ export async function login(email, password) {
 // ============================================================
 
 export async function logout() {
-  await AsyncStorage.removeItem("token");
-  await AsyncStorage.removeItem("user");
-
-  console.log("✅ Déconnexion effectuée");
+  tokenEnMemoire = null;
+  await AsyncStorage.multiRemove(["token", "user"]);
 }
 
 

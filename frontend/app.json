@@ -28,13 +28,20 @@
       "favicon": "./assets/images/logo-olived-black.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "asyncRoutes": {
+            "web": "production"
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#5C681F",
+          "image": "./assets/images/logo-olived-white.png",
+          "imageWidth": 200
         }
       ],
       "expo-sharing",
@@ -47,8 +54,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-     // "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {},

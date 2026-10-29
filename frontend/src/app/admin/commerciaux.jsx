@@ -1,644 +1,469 @@
-import React, {
-  useCallback,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   FlatList,
+  TextInput,
   StyleSheet,
   Alert,
   ActivityIndicator,
-  ScrollView,
+  useWindowDimensions,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import {
-  router,
-  useFocusEffect,
-} from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 import { apiFetch } from "../../services/api";
+import { Couleurs, ombre } from "../../constants/couleurs";
+import EnteteAdmin, {
+  BoutonIcone,
+  BoutonPrincipal,
+} from "../../components/entete-admin";
+
+// Au-delà de cette largeur : tableau ; en dessous : cartes
+const LARGEUR_TABLEAU = 800;
+
+const FILTRES = [
+  { valeur: "tous", label: "Tous" },
+  { valeur: "actifs", label: "Actifs" },
+  { valeur: "inactifs", label: "Inactifs" },
+];
+
+function estActif(item) {
+  return Number(item.actif) === 1;
+}
+
+function nomComplet(item) {
+  return [item.prenom, item.nom].filter(Boolean).join(" ") || "-";
+}
+
+function initiales(item) {
+  return (
+    `${item.prenom?.[0] || ""}${item.nom?.[0] || ""}`.toUpperCase() || "?"
+  );
+}
+
+// =====================================================
+// PETITS COMPOSANTS
+// =====================================================
+
+function BadgeStatut({ actif }) {
+  return (
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: actif ? Couleurs.succesClair : Couleurs.dangerClair },
+      ]}
+    >
+      <View
+        style={[
+          styles.point,
+          { backgroundColor: actif ? Couleurs.succes : Couleurs.danger },
+        ]}
+      />
+      <Text
+        style={[
+          styles.badgeTexte,
+          { color: actif ? Couleurs.succes : Couleurs.danger },
+        ]}
+      >
+        {actif ? "Actif" : "Inactif"}
+      </Text>
+    </View>
+  );
+}
+
+function BoutonStatut({ actif, enCours, desactive, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={desactive}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.boutonStatut,
+        actif ? styles.boutonDesactiver : styles.boutonActiver,
+        pressed && { opacity: 0.75 },
+        desactive && !enCours && { opacity: 0.5 },
+      ]}
+    >
+      {enCours ? (
+        <ActivityIndicator
+          size="small"
+          color={actif ? Couleurs.danger : "#fff"}
+        />
+      ) : (
+        <>
+          <Ionicons
+            name={actif ? "close-circle-outline" : "checkmark-circle-outline"}
+            size={17}
+            color={actif ? Couleurs.danger : "#fff"}
+          />
+          <Text
+            style={[
+              styles.boutonStatutTexte,
+              { color: actif ? Couleurs.danger : "#fff" },
+            ]}
+          >
+            {actif ? "Désactiver" : "Activer"}
+          </Text>
+        </>
+      )}
+    </Pressable>
+  );
+}
+
+function Statistique({ icone, valeur, label, couleur }) {
+  return (
+    <View style={styles.stat}>
+      <View style={styles.statIcone}>
+        <Ionicons name={icone} size={21} color={couleur || Couleurs.olive} />
+      </View>
+      <View style={{ flexShrink: 1 }}>
+        <Text style={styles.statValeur}>{valeur}</Text>
+        <Text style={styles.statLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// =====================================================
+// PAGE
+// =====================================================
 
 export default function Commerciaux() {
+  const { width } = useWindowDimensions();
+  const enTableau = width >= LARGEUR_TABLEAU;
+  const compact = width < 480;
+
   const [commerciaux, setCommerciaux] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actualisation, setActualisation] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filtre, setFiltre] = useState("tous");
 
   // =====================================================
   // CHARGER LES COMMERCIAUX
   // =====================================================
 
-  const loadCommerciaux = useCallback(
-    async (showLoader = true) => {
-      try {
-        if (showLoader) {
-          setLoading(true);
-        }
+  const loadCommerciaux = useCallback(async (mode = "page") => {
+    try {
+      if (mode === "page") setLoading(true);
+      if (mode === "tirer") setActualisation(true);
 
-        const data = await apiFetch(
-          "/api/admin/commerciaux"
-        );
+      const data = await apiFetch("/api/admin/commerciaux");
 
-        setCommerciaux(
-          Array.isArray(data.commerciaux)
-            ? data.commerciaux
-            : []
-        );
+      setCommerciaux(
+        Array.isArray(data.commerciaux) ? data.commerciaux : []
+      );
+    } catch (error) {
+      console.error("❌ ERREUR CHARGEMENT COMMERCIAUX :", error);
 
-      } catch (error) {
-        console.error(
-          "❌ ERREUR CHARGEMENT COMMERCIAUX :",
-          error
-        );
+      Alert.alert(
+        "Erreur",
+        error.message || "Impossible de charger les commerciaux."
+      );
+    } finally {
+      setLoading(false);
+      setActualisation(false);
+    }
+  }, []);
 
-        Alert.alert(
-          "Erreur",
-          error.message ||
-            "Impossible de charger les commerciaux."
-        );
-
-      } finally {
-        if (showLoader) {
-          setLoading(false);
-        }
-      }
-    },
-    []
-  );
-
-  // =====================================================
-  // CHARGER À CHAQUE RETOUR SUR LA PAGE
-  // =====================================================
-
+  // Rechargé à chaque retour sur la page (ex. après un ajout)
   useFocusEffect(
     useCallback(() => {
       loadCommerciaux();
-
-      return () => {};
     }, [loadCommerciaux])
   );
 
   // =====================================================
-  // ACTIVER / DESACTIVER
+  // ACTIVER / DÉSACTIVER (avec confirmation : avant, un
+  // simple appui changeait le compte sans rien demander)
   // =====================================================
 
-  function toggleCommercial(item) {
-    const isActive = Number(item.actif) === 1;
-
-    const action = isActive
-      ? "désactiver"
-      : "activer";
-
-    const endpoint = isActive
+  async function changerStatut(item) {
+    const actif = estActif(item);
+    const endpoint = actif
       ? `/api/admin/commerciaux/${item.id}/desactiver`
       : `/api/admin/commerciaux/${item.id}/activer`;
-
-    Alert.alert(
-      isActive
-        ? "Désactiver le commercial"
-        : "Activer le commercial",
-
-      isActive
-        ? `Voulez-vous désactiver le compte de ${item.prenom || ""} ${item.nom || ""} ?`
-        : `Voulez-vous activer le compte de ${item.prenom || ""} ${item.nom || ""} ?`,
-
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-
-        {
-          text:
-            isActive
-              ? "Désactiver"
-              : "Activer",
-
-          style:
-            isActive
-              ? "destructive"
-              : "default",
-
-          onPress: async () => {
-            try {
-              setActionLoading(item.id);
-
-              await apiFetch(
-                endpoint,
-                {
-                  method: "PUT",
-                }
-              );
-
-              await loadCommerciaux(false);
-
-            } catch (error) {
-              console.error(
-                `❌ ERREUR POUR ${action} LE COMMERCIAL :`,
-                error
-              );
-
-              Alert.alert(
-                "Erreur",
-                error.message ||
-                  `Impossible de ${action} le commercial.`
-              );
-
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ]
-    );
-  }
-
-  // =====================================================
-  // AJOUTER COMMERCIAL
-  // =====================================================
-
-  function handleAddCommercial() {
-    router.push(
-      "/admin/ajouter-commercial"
-    );
-  }
-
-  // =====================================================
-  // RETOUR ADMIN
-  // =====================================================
-
-  function handleBack() {
-    router.replace("/admin");
-  }
-
-  // =====================================================
-  // AFFICHAGE D'UNE LIGNE
-  // =====================================================
-
-  function renderCommercial({
-    item,
-    index,
-  }) {
-    const isActive =
-      Number(item.actif) === 1;
-
-    const isActionLoading =
-      actionLoading === item.id;
-
-    return (
-      <View
-        style={[
-          styles.tableRow,
-
-          index % 2 === 0 &&
-            styles.tableRowAlternate,
-        ]}
-      >
-
-        {/* ================================================= */}
-        {/* NOM */}
-        {/* ================================================= */}
-
-        <View
-          style={[
-            styles.cell,
-            styles.nameCell,
-          ]}
-        >
-          <Text
-            style={styles.cellText}
-            numberOfLines={1}
-          >
-            {item.nom || "-"}
-          </Text>
-        </View>
-
-        {/* ================================================= */}
-        {/* PRÉNOM */}
-        {/* ================================================= */}
-
-        <View
-          style={[
-            styles.cell,
-            styles.firstNameCell,
-          ]}
-        >
-          <Text
-            style={styles.cellText}
-            numberOfLines={1}
-          >
-            {item.prenom || "-"}
-          </Text>
-        </View>
-
-        {/* ================================================= */}
-        {/* EMAIL */}
-        {/* ================================================= */}
-
-        <View
-          style={[
-            styles.cell,
-            styles.emailCell,
-          ]}
-        >
-          <Text
-            style={styles.cellText}
-            numberOfLines={1}
-          >
-            {item.email || "-"}
-          </Text>
-        </View>
-
-        {/* ================================================= */}
-        {/* STATUT */}
-        {/* ================================================= */}
-
-        <View
-          style={[
-            styles.cell,
-            styles.statusCell,
-          ]}
-        >
-          <View
-            style={[
-              styles.statusBadge,
-
-              isActive
-                ? styles.activeBadge
-                : styles.inactiveBadge,
-            ]}
-          >
-
-            <View
-              style={[
-                styles.statusDot,
-
-                isActive
-                  ? styles.activeDot
-                  : styles.inactiveDot,
-              ]}
-            />
-
-            <Text
-              style={[
-                styles.statusText,
-
-                isActive
-                  ? styles.activeText
-                  : styles.inactiveText,
-              ]}
-            >
-              {isActive
-                ? "Actif"
-                : "Inactif"}
-            </Text>
-
-          </View>
-        </View>
-
-        {/* ================================================= */}
-        {/* ACTION */}
-        {/* ================================================= */}
-
-        <View
-          style={[
-            styles.cell,
-            styles.actionCell,
-          ]}
-        >
-
-<TouchableOpacity
-  style={[
-    styles.actionButton,
-    isActive
-      ? styles.disableButton
-      : styles.enableButton,
-    isActionLoading && styles.disabledButton,
-  ]}
-  onPress={async () => {
-    console.log("🟢 BOUTON CLIQUÉ");
-    console.log("ID COMMERCIAL :", item.id);
-    console.log("ACTIF :", item.actif);
 
     try {
       setActionLoading(item.id);
 
-      const endpoint = isActive
-        ? `/api/admin/commerciaux/${item.id}/desactiver`
-        : `/api/admin/commerciaux/${item.id}/activer`;
+      await apiFetch(endpoint, { method: "PUT" });
 
-      console.log("📡 ENVOI :", endpoint);
-
-      const result = await apiFetch(endpoint, {
-        method: "PUT",
-      });
-
-      console.log("✅ RÉPONSE API :", result);
-
-      await loadCommerciaux(false);
-
+      // Mise à jour immédiate, puis rechargement discret
+      setCommerciaux((liste) =>
+        liste.map((c) =>
+          c.id === item.id ? { ...c, actif: actif ? 0 : 1 } : c
+        )
+      );
+      loadCommerciaux("discret");
     } catch (error) {
-      console.error("❌ ERREUR API :", error);
+      console.error("❌ ERREUR STATUT COMMERCIAL :", error);
 
       Alert.alert(
         "Erreur",
         error.message || "Erreur lors de la modification."
       );
-
     } finally {
       setActionLoading(null);
     }
-  }}
-  disabled={isActionLoading}
->
-  {isActionLoading ? (
-    <ActivityIndicator
-      size="small"
-      color="#fff"
-    />
-  ) : (
-    <>
-      <Ionicons
-        name={
-          isActive
-            ? "close-circle-outline"
-            : "checkmark-circle-outline"
-        }
-        size={18}
-        color="#fff"
-      />
+  }
 
-      <Text style={styles.actionButtonText}>
-        {isActive
-          ? "Désactiver"
-          : "Activer"}
-      </Text>
-    </>
-  )}
-</TouchableOpacity>
+  function demanderChangement(item) {
+    const actif = estActif(item);
+
+    Alert.alert(
+      actif ? "Désactiver le commercial" : "Activer le commercial",
+      actif
+        ? `Voulez-vous désactiver le compte de ${nomComplet(item)} ?\n\nIl ne pourra plus se connecter.`
+        : `Voulez-vous activer le compte de ${nomComplet(item)} ?\n\nIl pourra se connecter à l'application.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: actif ? "Désactiver" : "Activer",
+          style: actif ? "destructive" : "default",
+          onPress: () => changerStatut(item),
+        },
+      ]
+    );
+  }
+
+  function handleAddCommercial() {
+    router.push("/admin/ajouter-commercial");
+  }
+
+  // =====================================================
+  // STATISTIQUES, RECHERCHE ET FILTRE
+  // =====================================================
+
+  const stats = useMemo(() => {
+    const actifs = commerciaux.filter(estActif).length;
+    return {
+      total: commerciaux.length,
+      actifs,
+      inactifs: commerciaux.length - actifs,
+    };
+  }, [commerciaux]);
+
+  const liste = useMemo(() => {
+    let resultat = commerciaux;
+    const texte = search.trim().toLowerCase();
+
+    if (texte) {
+      resultat = resultat.filter((c) =>
+        [`${c.prenom || ""} ${c.nom || ""}`, `${c.nom || ""} ${c.prenom || ""}`, c.email]
+          .some((champ) => (champ || "").toLowerCase().includes(texte))
+      );
+    }
+
+    if (filtre === "actifs") resultat = resultat.filter(estActif);
+    if (filtre === "inactifs") resultat = resultat.filter((c) => !estActif(c));
+
+    return resultat;
+  }, [commerciaux, search, filtre]);
+
+  // =====================================================
+  // AFFICHAGE D'UN COMMERCIAL
+  // =====================================================
+
+  function renderCarte({ item }) {
+    const actif = estActif(item);
+
+    return (
+      <View style={styles.carte}>
+        <View style={styles.carteHaut}>
+          <View style={[styles.avatar, !actif && styles.avatarInactif]}>
+            <Text style={styles.avatarTexte}>{initiales(item)}</Text>
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.carteNom} numberOfLines={1}>
+              {nomComplet(item)}
+            </Text>
+            <Text style={styles.texteDoux} numberOfLines={1}>
+              {item.email || "-"}
+            </Text>
+          </View>
         </View>
 
+        <View style={styles.carteBas}>
+          <BadgeStatut actif={actif} />
+          <BoutonStatut
+            actif={actif}
+            enCours={actionLoading === item.id}
+            desactive={actionLoading !== null}
+            onPress={() => demanderChangement(item)}
+          />
+        </View>
       </View>
     );
   }
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+  function renderLigne({ item, index }) {
+    const actif = estActif(item);
 
-  if (loading) {
     return (
-      <View style={styles.loading}>
-
-        <ActivityIndicator
-          size="large"
-          color="#222"
-        />
-
-        <Text style={styles.loadingText}>
-          Chargement des commerciaux...
+      <View style={[styles.ligne, index % 2 === 1 && styles.ligneAlternee]}>
+        <View style={[styles.colNom, styles.celluleNom]}>
+          <View style={[styles.avatarPetit, !actif && styles.avatarInactif]}>
+            <Text style={styles.avatarPetitTexte}>{initiales(item)}</Text>
+          </View>
+          <Text style={styles.cellule} numberOfLines={1}>
+            {nomComplet(item)}
+          </Text>
+        </View>
+        <Text style={[styles.cellule, styles.colEmail]} numberOfLines={1}>
+          {item.email || "-"}
         </Text>
-
+        <View style={styles.colStatut}>
+          <BadgeStatut actif={actif} />
+        </View>
+        <View style={styles.colAction}>
+          <BoutonStatut
+            actif={actif}
+            enCours={actionLoading === item.id}
+            desactive={actionLoading !== null}
+            onPress={() => demanderChangement(item)}
+          />
+        </View>
       </View>
     );
   }
+
+  // Élément JSX (et non composant) : la recherche garde le focus
+  const hautDeListe = (
+    <View>
+      <View style={styles.stats}>
+        <Statistique icone="people-outline" valeur={stats.total} label="Commerciaux" />
+        <Statistique
+          icone="checkmark-circle-outline"
+          valeur={stats.actifs}
+          label="Actifs"
+          couleur={Couleurs.succes}
+        />
+        <Statistique
+          icone="pause-circle-outline"
+          valeur={stats.inactifs}
+          label="Inactifs (à activer)"
+          couleur={Couleurs.danger}
+        />
+      </View>
+
+      <View style={styles.filtres}>
+        <View style={styles.recherche}>
+          <Ionicons name="search-outline" size={20} color={Couleurs.texteDoux} />
+          <TextInput
+            style={styles.rechercheInput}
+            placeholder="Nom ou email…"
+            placeholderTextColor={Couleurs.texteDoux}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {search.length > 0 && (
+            <Pressable
+              onPress={() => setSearch("")}
+              hitSlop={8}
+              accessibilityLabel="Effacer la recherche"
+            >
+              <Ionicons name="close-circle" size={20} color={Couleurs.texteDoux} />
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.puces}>
+          {FILTRES.map((f) => {
+            const choisi = filtre === f.valeur;
+            return (
+              <Pressable
+                key={f.valeur}
+                onPress={() => setFiltre(f.valeur)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: choisi }}
+                style={[styles.puce, choisi && styles.puceActive]}
+              >
+                <Text style={[styles.puceTexte, choisi && styles.puceTexteActif]}>
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      {enTableau && liste.length > 0 && (
+        <View style={[styles.ligne, styles.enteteTableau]}>
+          <Text style={[styles.enteteCellule, styles.colNom]}>Nom et prénom</Text>
+          <Text style={[styles.enteteCellule, styles.colEmail]}>Email</Text>
+          <Text style={[styles.enteteCellule, styles.colStatut]}>Statut</Text>
+          <Text style={[styles.enteteCellule, styles.colAction]}>Action</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const listeVide = (
+    <View style={styles.vide}>
+      <Ionicons name="people-outline" size={46} color={Couleurs.bordure} />
+      <Text style={styles.videTitre}>Aucun commercial trouvé</Text>
+      {commerciaux.length === 0 && (
+        <BoutonPrincipal
+          icone="add"
+          texte="Ajouter un commercial"
+          onPress={handleAddCommercial}
+        />
+      )}
+    </View>
+  );
 
   // =====================================================
   // PAGE
   // =====================================================
 
   return (
-    <View style={styles.container}>
-
-      {/* ================================================= */}
-      {/* HEADER */}
-      {/* ================================================= */}
-
-      <View style={styles.header}>
-
-        {/* RETOUR */}
-
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color="#333"
-          />
-        </TouchableOpacity>
-
-        {/* TITRE */}
-
-        <View
-          style={
-            styles.headerTitleContainer
-          }
-        >
-          <Text style={styles.title}>
-            Commerciaux
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Gestion des commerciaux
-          </Text>
-        </View>
-
-        {/* AJOUTER */}
-
-        <TouchableOpacity
-          style={styles.addButton}
+    <View style={styles.page}>
+      <EnteteAdmin titre="Commerciaux" sousTitre="Comptes et activation">
+        <BoutonIcone
+          icone="refresh-outline"
+          label="Actualiser"
+          disabled={loading || actualisation}
+          onPress={() => loadCommerciaux("tirer")}
+        />
+        <BoutonPrincipal
+          icone="add"
+          texte="Ajouter"
+          compact={compact}
           onPress={handleAddCommercial}
-        >
+        />
+      </EnteteAdmin>
 
-          <Ionicons
-            name="add"
-            size={22}
-            color="#fff"
-          />
-
-          <Text
-            style={styles.addButtonText}
-          >
-            Ajouter un commercial
-          </Text>
-
-        </TouchableOpacity>
-
-      </View>
-
-      {/* ================================================= */}
-      {/* TABLEAU */}
-      {/* ================================================= */}
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator
-      >
-
-        <View style={styles.table}>
-
-          {/* ================================================= */}
-          {/* EN-TÊTE */}
-          {/* ================================================= */}
-
-          <View style={styles.tableHeader}>
-
-            {/* NOM */}
-
-            <View
-              style={[
-                styles.headerCell,
-                styles.nameCell,
-              ]}
-            >
-              <Text
-                style={styles.headerText}
-              >
-                Nom
-              </Text>
-            </View>
-
-            {/* PRÉNOM */}
-
-            <View
-              style={[
-                styles.headerCell,
-                styles.firstNameCell,
-              ]}
-            >
-              <Text
-                style={styles.headerText}
-              >
-                Prénom
-              </Text>
-            </View>
-
-            {/* EMAIL */}
-
-            <View
-              style={[
-                styles.headerCell,
-                styles.emailCell,
-              ]}
-            >
-              <Text
-                style={styles.headerText}
-              >
-                Email
-              </Text>
-            </View>
-
-            {/* STATUT */}
-
-            <View
-              style={[
-                styles.headerCell,
-                styles.statusCell,
-              ]}
-            >
-              <Text
-                style={styles.headerText}
-              >
-                Statut
-              </Text>
-            </View>
-
-            {/* ACTION */}
-
-            <View
-              style={[
-                styles.headerCell,
-                styles.actionCell,
-              ]}
-            >
-              <Text
-                style={styles.headerText}
-              >
-                Action
-              </Text>
-            </View>
-
-          </View>
-
-          {/* ================================================= */}
-          {/* LISTE */}
-          {/* ================================================= */}
-
-          {commerciaux.length === 0 ? (
-
-            <View
-              style={
-                styles.emptyContainer
-              }
-            >
-
-              <Ionicons
-                name="people-outline"
-                size={45}
-                color="#aaa"
-              />
-
-              <Text
-                style={styles.emptyText}
-              >
-                Aucun commercial trouvé.
-              </Text>
-
-              <TouchableOpacity
-                style={
-                  styles.emptyAddButton
-                }
-                onPress={
-                  handleAddCommercial
-                }
-              >
-
-                <Ionicons
-                  name="add"
-                  size={18}
-                  color="#fff"
-                />
-
-                <Text
-                  style={
-                    styles.emptyAddButtonText
-                  }
-                >
-                  Ajouter un commercial
-                </Text>
-
-              </TouchableOpacity>
-
-            </View>
-
-          ) : (
-
-            <FlatList
-              data={commerciaux}
-              keyExtractor={(item) =>
-                String(item.id)
-              }
-              renderItem={
-                renderCommercial
-              }
-              showsVerticalScrollIndicator
-              refreshing={loading}
-              onRefresh={() =>
-                loadCommerciaux()
-              }
-            />
-
-          )}
-
+      {loading ? (
+        <View style={styles.chargement}>
+          <ActivityIndicator size="large" color={Couleurs.olive} />
+          <Text style={styles.texteDoux}>Chargement des commerciaux…</Text>
         </View>
-
-      </ScrollView>
-
+      ) : (
+        <FlatList
+          key={enTableau ? "tableau" : "cartes"}
+          data={liste}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={enTableau ? renderLigne : renderCarte}
+          extraData={actionLoading}
+          ListHeaderComponent={hautDeListe}
+          ListEmptyComponent={listeVide}
+          contentContainerStyle={styles.contenu}
+          keyboardShouldPersistTaps="handled"
+          refreshing={actualisation}
+          onRefresh={() => loadCommerciaux("tirer")}
+        />
+      )}
     </View>
   );
 }
@@ -648,285 +473,277 @@ export default function Commerciaux() {
 // =====================================================
 
 const styles = StyleSheet.create({
-
-  // =====================================================
-  // CONTAINER
-  // =====================================================
-
-  container: {
+  page: {
     flex: 1,
-    backgroundColor: "#f7f7f7",
-    padding: 25,
+    backgroundColor: Couleurs.fond,
+  },
+  contenu: {
+    padding: 16,
+    paddingBottom: 40,
+    width: "100%",
+    maxWidth: 1000,
+    alignSelf: "center",
+  },
+  chargement: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  texteDoux: {
+    fontSize: 13,
+    color: Couleurs.texteDoux,
   },
 
-  // =====================================================
-  // HEADER
-  // =====================================================
-
-  header: {
+  // STATISTIQUES
+  stats: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 14,
+  },
+  stat: {
+    flexGrow: 1,
+    flexBasis: 150,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 25,
-  },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f1f1",
-    marginRight: 15,
-  },
-
-  headerTitleContainer: {
-    flex: 1,
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: "#222",
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: "#777",
-    marginTop: 4,
-  },
-
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#222",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 7,
-  },
-
-  addButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-
-  // =====================================================
-  // TABLEAU
-  // =====================================================
-
-  table: {
-    minWidth: 950,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    overflow: "hidden",
+    gap: 12,
+    padding: 14,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: Couleurs.bordure,
+    ...ombre,
   },
-
-  // =====================================================
-  // HEADER TABLEAU
-  // =====================================================
-
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#222",
-    minHeight: 55,
-    alignItems: "center",
-  },
-
-  headerCell: {
-    paddingHorizontal: 15,
-    justifyContent: "center",
-  },
-
-  headerText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-
-  // =====================================================
-  // LIGNES
-  // =====================================================
-
-  tableRow: {
-    flexDirection: "row",
-    minHeight: 65,
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-
-  tableRowAlternate: {
-    backgroundColor: "#fafafa",
-  },
-
-  cell: {
-    paddingHorizontal: 15,
-    justifyContent: "center",
-  },
-
-  cellText: {
-    fontSize: 14,
-    color: "#333",
-  },
-
-  // =====================================================
-  // LARGEURS
-  // =====================================================
-
-  nameCell: {
-    width: 150,
-  },
-
-  firstNameCell: {
-    width: 150,
-  },
-
-  emailCell: {
-    width: 280,
-  },
-
-  statusCell: {
-    width: 160,
-  },
-
-  actionCell: {
-    width: 210,
-  },
-
-  // =====================================================
-  // STATUT
-  // =====================================================
-
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  activeBadge: {
-    backgroundColor: "#E8F5E9",
-  },
-
-  inactiveBadge: {
-    backgroundColor: "#FFEBEE",
-  },
-
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 7,
-  },
-
-  activeDot: {
-    backgroundColor: "#2e7d32",
-  },
-
-  inactiveDot: {
-    backgroundColor: "#c62828",
-  },
-
-  statusText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  activeText: {
-    color: "#2e7d32",
-  },
-
-  inactiveText: {
-    color: "#c62828",
-  },
-
-  // =====================================================
-  // BOUTON ACTION
-  // =====================================================
-
-  actionButton: {
-    flexDirection: "row",
+  statIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Couleurs.oliveClair,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 9,
+  },
+  statValeur: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: Couleurs.texte,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Couleurs.texteDoux,
+  },
+
+  // RECHERCHE + FILTRES
+  filtres: {
+    padding: 14,
+    marginBottom: 12,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
+    gap: 12,
+  },
+  recherche: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    height: 46,
     paddingHorizontal: 12,
-    borderRadius: 7,
-    width: 150,
-    gap: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
+    backgroundColor: Couleurs.fond,
   },
-
-  disableButton: {
-    backgroundColor: "#c62828",
+  rechercheInput: {
+    flex: 1,
+    height: "100%",
+    fontSize: 15,
+    color: Couleurs.texte,
   },
-
-  enableButton: {
-    backgroundColor: "#2e7d32",
+  puces: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
-
-  disabledButton: {
-    opacity: 0.7,
+  puce: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
+    backgroundColor: Couleurs.carte,
   },
-
-  actionButtonText: {
+  puceActive: {
+    backgroundColor: Couleurs.olive,
+    borderColor: Couleurs.olive,
+  },
+  puceTexte: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Couleurs.texte,
+  },
+  puceTexteActif: {
     color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
   },
 
-  // =====================================================
-  // EMPTY
-  // =====================================================
-
-  emptyContainer: {
-    height: 300,
-    justifyContent: "center",
+  // CARTES (téléphone)
+  carte: {
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
+    padding: 14,
+    marginBottom: 10,
+    ...ombre,
+  },
+  carteHaut: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
-
-  emptyText: {
-    marginTop: 10,
-    marginBottom: 18,
-    color: "#888",
+  carteBas: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Couleurs.bordure,
+  },
+  carteNom: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Couleurs.texte,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Couleurs.oliveClair,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInactif: {
+    backgroundColor: "#EEEEEA",
+  },
+  avatarTexte: {
+    color: Couleurs.oliveFonce,
+    fontWeight: "700",
     fontSize: 15,
   },
 
-  emptyAddButton: {
+  // TABLEAU (ordinateur / tablette)
+  ligne: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 58,
+    paddingHorizontal: 14,
+    backgroundColor: Couleurs.carte,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Couleurs.bordure,
+  },
+  ligneAlternee: {
+    backgroundColor: "#FAFBF7",
+  },
+  enteteTableau: {
+    minHeight: 46,
+    backgroundColor: Couleurs.oliveClair,
+    borderTopWidth: 1,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  enteteCellule: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Couleurs.oliveFonce,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  cellule: {
+    fontSize: 14,
+    color: Couleurs.texte,
+    flexShrink: 1,
+  },
+  celluleNom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  avatarPetit: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Couleurs.oliveClair,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarPetitTexte: {
+    color: Couleurs.oliveFonce,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  colNom: { flex: 1.3 },
+  colEmail: { flex: 1.7 },
+  colStatut: { width: 110 },
+  colAction: { width: 140 },
+
+  // STATUT
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+  },
+  point: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  badgeTexte: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  boutonStatut: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#222",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
     gap: 6,
+    height: 36,
+    minWidth: 124,
+    paddingHorizontal: 12,
+    borderRadius: 18,
   },
-
-  emptyAddButtonText: {
-    color: "#fff",
-    fontSize: 14,
+  boutonActiver: {
+    backgroundColor: Couleurs.olive,
+  },
+  boutonDesactiver: {
+    backgroundColor: Couleurs.dangerClair,
+  },
+  boutonStatutTexte: {
+    fontSize: 13,
     fontWeight: "600",
   },
 
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  loading: {
-    flex: 1,
-    justifyContent: "center",
+  // VIDE
+  vide: {
     alignItems: "center",
-    backgroundColor: "#f7f7f7",
+    gap: 12,
+    paddingVertical: 50,
+    paddingHorizontal: 20,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
   },
-
-  loadingText: {
-    marginTop: 10,
-    color: "#666",
+  videTitre: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Couleurs.texte,
   },
-
 });

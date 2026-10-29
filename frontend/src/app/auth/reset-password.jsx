@@ -19,23 +19,8 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  console.log("====================================");
-  console.log("RESET PASSWORD SCREEN");
-  console.log("TOKEN :", token);
-  console.log("====================================");
-
   const handleResetPassword = async () => {
-    console.log("====================================");
-    console.log("🔵 BOUTON RESET CLIQUÉ");
-    console.log("====================================");
-
     setSuccessMessage("");
-
-    console.log("Password :", password ? "******" : "VIDE");
-    console.log(
-      "Confirm Password :",
-      confirmPassword ? "******" : "VIDE"
-    );
 
     // ============================
     // VALIDATION
@@ -55,35 +40,6 @@ export default function ResetPassword() {
     const passwordClean = password.trim();
 const confirmPasswordClean = confirmPassword.trim();
 
-console.log("====================================");
-console.log("🔍 COMPARAISON MOTS DE PASSE");
-console.log("Password brut :", JSON.stringify(password));
-console.log("Confirm brut :", JSON.stringify(confirmPassword));
-console.log("Password clean :", JSON.stringify(passwordClean));
-console.log(
-  "Confirm clean :",
-  JSON.stringify(confirmPasswordClean)
-);
-console.log(
-  "Longueur password :",
-  passwordClean.length
-);
-console.log(
-  "Longueur confirmation :",
-  confirmPasswordClean.length
-);
-console.log(
-  "Identiques :",
-  passwordClean === confirmPasswordClean
-);
-console.log("====================================");
-console.log(
-    "PASSWORD = [" + password + "]"
-  );
-  
-  console.log(
-    "CONFIRM = [" + confirmPassword + "]"
-  );
 if (passwordClean !== confirmPasswordClean) {
   console.log("❌ Les mots de passe ne correspondent pas");
 
@@ -118,7 +74,7 @@ if (passwordClean !== confirmPasswordClean) {
     }
 
     console.log("✅ Validation frontend OK");
-    console.log("🔑 Token :", token);
+
 
     try {
       setLoading(true);

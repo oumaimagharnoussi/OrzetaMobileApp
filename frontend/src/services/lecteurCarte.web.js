@@ -5,8 +5,21 @@
 // Le serveur ne fait ensuite que trier le texte en champs.
 // ============================================================
 
-import { createWorker } from "tesseract.js";
-import jsQR from "jsqr";
+// Tesseract.js et jsQR sont chargés à la demande (import dynamique) :
+// ils ne font plus partie du chargement initial de l'application
+let jsQRPromise = null;
+
+function chargerJsQR() {
+  if (!jsQRPromise) {
+    jsQRPromise = import("jsqr")
+      .then((m) => m.default || m)
+      .catch((error) => {
+        jsQRPromise = null;
+        throw error;
+      });
+  }
+  return jsQRPromise;
+}
 
 // Mêmes réglages que la lecture côté serveur (backend/carteVisite.js)
 const CONFIANCE_MIN = 60;
@@ -18,10 +31,12 @@ let workerPromise = null;
 
 function getWorker() {
   if (!workerPromise) {
-    workerPromise = createWorker(["eng", "fra"]).catch((error) => {
-      workerPromise = null;
-      throw error;
-    });
+    workerPromise = import("tesseract.js")
+      .then((m) => (m.createWorker || m.default.createWorker)(["eng", "fra"]))
+      .catch((error) => {
+        workerPromise = null;
+        throw error;
+      });
   }
 
   return workerPromise;
@@ -31,6 +46,7 @@ function getWorker() {
 // charge pendant qu'il prend la photo
 export function prechargerLecteurCarte() {
   getWorker().catch(() => {});
+  chargerJsQR().catch(() => {});
 }
 
 export const lecteurCarteDisponible = true;
@@ -155,7 +171,7 @@ function saturation(pixels) {
   return sortie;
 }
 
-function lireQrCode(image) {
+function lireQrCode(image, jsQR) {
   // En petit, la trame d'une photo d'écran (moiré) disparaît ; en grand,
   // un petit QR sur une carte se lit. Pour chaque taille : image
   // normale, noir et blanc, saturation.
@@ -182,14 +198,15 @@ export async function lireCarteNavigateur(imageBase64) {
     ? imageBase64
     : `data:image/jpeg;base64,${imageBase64}`;
 
-  const [image, worker] = await Promise.all([
+  const [image, worker, jsQR] = await Promise.all([
     chargerImage(source),
     getWorker(),
+    chargerJsQR(),
   ]);
 
   let qr = null;
   try {
-    qr = lireQrCode(image);
+    qr = lireQrCode(image, jsQR);
   } catch {
     qr = null;
   }

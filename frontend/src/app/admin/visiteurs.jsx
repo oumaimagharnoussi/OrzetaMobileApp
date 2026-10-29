@@ -1,27 +1,151 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
+  Pressable,
+  FlatList,
   TextInput,
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
+  useWindowDimensions,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 import { apiFetch } from "../../services/api";
+import { Couleurs, ombre } from "../../constants/couleurs";
+import EnteteAdmin, { BoutonIcone } from "../../components/entete-admin";
+
+// Au-delà de cette largeur, les visiteurs sont affichés en tableau ;
+// en dessous (téléphone), en cartes
+const LARGEUR_TABLEAU = 900;
+
+const FILTRES = [
+  { valeur: "Tous", label: "Tous" },
+  { valeur: "vrac", label: "Vrac" },
+  { valeur: "conditionné", label: "Conditionné" },
+];
+
+// =====================================================
+// FORMATAGE
+// =====================================================
+
+function formatDate(date) {
+  if (!date) return "-";
+
+  const d = new Date(date);
+  return isNaN(d) ? String(date) : d.toLocaleDateString("fr-FR");
+}
+
+function getTypeLabel(type) {
+  if (!type) return "-";
+  if (type.toLowerCase() === "vrac") return "Vrac";
+  if (type.toLowerCase() === "conditionné") return "Conditionné";
+  return type;
+}
+
+function nomComplet(item) {
+  return [item.prenom, item.nom].filter(Boolean).join(" ") || "-";
+}
+
+function initiales(item) {
+  return (
+    `${item.prenom?.[0] || ""}${item.nom?.[0] || ""}`.toUpperCase() || "?"
+  );
+}
+
+function memeType(item, type) {
+  return (item.type_commande || "").toLowerCase() === type;
+}
+
+// =====================================================
+// PETITS COMPOSANTS
+// =====================================================
+
+function BadgeType({ type }) {
+  const vrac = (type || "").toLowerCase() === "vrac";
+
+  if (!type) {
+    return <Text style={styles.texteDoux}>-</Text>;
+  }
+
+  return (
+    <View style={[styles.badge, vrac ? styles.badgeVrac : styles.badgeCond]}>
+      <Text
+        style={[
+          styles.badgeTexte,
+          { color: vrac ? Couleurs.succes : Couleurs.orange },
+        ]}
+      >
+        {getTypeLabel(type)}
+      </Text>
+    </View>
+  );
+}
+
+function Statistique({ icone, valeur, label }) {
+  return (
+    <View style={styles.stat}>
+      <View style={styles.statIcone}>
+        <Ionicons name={icone} size={21} color={Couleurs.olive} />
+      </View>
+      <View style={{ flexShrink: 1 }}>
+        <Text style={styles.statValeur}>{valeur}</Text>
+        <Text style={styles.statLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function Info({ icone, texte }) {
+  return (
+    <View style={styles.info}>
+      <Ionicons name={icone} size={15} color={Couleurs.texteDoux} />
+      <Text style={styles.infoTexte} numberOfLines={1}>
+        {texte}
+      </Text>
+    </View>
+  );
+}
+
+function BoutonSupprimer({ enCours, desactive, onPress }) {
+  if (enCours) {
+    return <ActivityIndicator color={Couleurs.danger} />;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={desactive}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Supprimer ce visiteur"
+      style={({ pressed }) => [
+        styles.boutonSupprimer,
+        pressed && { opacity: 0.6 },
+        desactive && { opacity: 0.4 },
+      ]}
+    >
+      <Ionicons name="trash-outline" size={19} color={Couleurs.danger} />
+    </Pressable>
+  );
+}
+
+// =====================================================
+// PAGE
+// =====================================================
 
 export default function AdminVisiteurs() {
-  const [visiteurs, setVisiteurs] = useState([]);
-  const [filteredVisiteurs, setFilteredVisiteurs] = useState([]);
+  const { width } = useWindowDimensions();
+  const enTableau = width >= LARGEUR_TABLEAU;
 
+  const [visiteurs, setVisiteurs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actualisation, setActualisation] = useState(false);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("Tous");
   const [suppressionId, setSuppressionId] = useState(null);
@@ -30,18 +154,13 @@ export default function AdminVisiteurs() {
   // CHARGER LES VISITEURS
   // =====================================================
 
-  async function loadVisiteurs() {
+  const loadVisiteurs = useCallback(async (tirer = false) => {
     try {
-      setLoading(true);
+      if (tirer) setActualisation(true);
+      else setLoading(true);
 
       const data = await apiFetch("/api/visiteurs");
-
-      console.log("VISITEURS ADMIN :", data);
-
-      const liste = data.visiteurs || [];
-
-      setVisiteurs(liste);
-      setFilteredVisiteurs(liste);
+      setVisiteurs(data.visiteurs || []);
     } catch (error) {
       console.error("Erreur visiteurs :", error);
 
@@ -51,47 +170,18 @@ export default function AdminVisiteurs() {
       );
     } finally {
       setLoading(false);
+      setActualisation(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadVisiteurs();
-  }, []);
+  }, [loadVisiteurs]);
 
   // =====================================================
   // SUPPRIMER UN VISITEUR
+  // (Alert.alert fonctionne aussi sur le web : services/alerteWeb)
   // =====================================================
-
-  // Alert.alert ne s'affiche pas sur le web
-  function confirmer(titre, message, onConfirm) {
-    if (Platform.OS === "web") {
-      if (window.confirm(`${titre}\n\n${message}`)) onConfirm();
-      return;
-    }
-
-    Alert.alert(titre, message, [
-      { text: "Annuler", style: "cancel" },
-      { text: "Supprimer", style: "destructive", onPress: onConfirm },
-    ]);
-  }
-
-  function informer(titre, message) {
-    if (Platform.OS === "web") {
-      window.alert(`${titre}\n\n${message}`);
-    } else {
-      Alert.alert(titre, message);
-    }
-  }
-
-  function demanderSuppression(item) {
-    confirmer(
-      "Supprimer le visiteur",
-      `Voulez-vous vraiment supprimer « ${item.nom || "ce visiteur"} » ?\n\n` +
-        "Ses commandes et sa carte de visite seront aussi supprimées. " +
-        "Cette action est définitive.",
-      () => supprimerVisiteur(item)
-    );
-  }
 
   async function supprimerVisiteur(item) {
     try {
@@ -101,15 +191,13 @@ export default function AdminVisiteurs() {
         method: "DELETE",
       });
 
-      setVisiteurs((liste) =>
-        liste.filter((v) => v.id !== item.id)
-      );
+      setVisiteurs((liste) => liste.filter((v) => v.id !== item.id));
 
-      informer("Supprimé", "Le visiteur a été supprimé.");
+      Alert.alert("Supprimé", "Le visiteur a été supprimé.");
     } catch (error) {
       console.error("Erreur suppression visiteur :", error);
 
-      informer(
+      Alert.alert(
         "Erreur",
         error.message || "Impossible de supprimer le visiteur."
       );
@@ -118,579 +206,296 @@ export default function AdminVisiteurs() {
     }
   }
 
+  function demanderSuppression(item) {
+    Alert.alert(
+      "Supprimer le visiteur",
+      `Voulez-vous vraiment supprimer « ${nomComplet(item)} » ?\n\n` +
+        "Ses commandes et sa carte de visite seront aussi supprimées. " +
+        "Cette action est définitive.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: () => supprimerVisiteur(item),
+        },
+      ]
+    );
+  }
+
   // =====================================================
-  // RECHERCHE + FILTRE
+  // STATISTIQUES
   // =====================================================
 
-  useEffect(() => {
-    let result = [...visiteurs];
+  const stats = useMemo(() => {
+    const maintenant = new Date();
+    let vrac = 0;
+    let conditionne = 0;
+    let ceMois = 0;
 
-    // Recherche
-    if (search.trim() !== "") {
-      const text = search.toLowerCase();
+    for (const v of visiteurs) {
+      if (memeType(v, "vrac")) vrac++;
+      if (memeType(v, "conditionné")) conditionne++;
 
-      result = result.filter((item) => {
-        const nom = `${item.nom || ""} ${item.prenom || ""}`.toLowerCase();
-        const email = (item.email || "").toLowerCase();
-        const nom_entreprise = (item.nom_entreprise || "").toLowerCase();
-        const telephone = (item.telephone || "").toLowerCase();
-
-        return (
-          nom.includes(text) ||
-          email.includes(text) ||
-          nom_entreprise.includes(text) ||
-          telephone.includes(text)
-        );
-      });
+      const d = new Date(v.created_at || v.date_creation);
+      if (
+        !isNaN(d) &&
+        d.getMonth() === maintenant.getMonth() &&
+        d.getFullYear() === maintenant.getFullYear()
+      ) {
+        ceMois++;
+      }
     }
 
-    // Filtre type commande
-    if (filterType !== "Tous") {
-      result = result.filter(
-        (item) =>
-          (item.type_commande || "").toLowerCase() ===
-          filterType.toLowerCase()
+    return { total: visiteurs.length, vrac, conditionne, ceMois };
+  }, [visiteurs]);
+
+  // =====================================================
+  // RECHERCHE + FILTRE
+  // Calculé pendant l'affichage (useMemo) : avant, un useEffect
+  // recopiait la liste dans un second état, ce qui affichait la
+  // page deux fois à chaque lettre tapée dans la recherche.
+  // =====================================================
+
+  const filteredVisiteurs = useMemo(() => {
+    let result = visiteurs;
+
+    const text = search.trim().toLowerCase();
+
+    if (text !== "") {
+      result = result.filter((item) =>
+        [
+          `${item.nom || ""} ${item.prenom || ""}`,
+          `${item.prenom || ""} ${item.nom || ""}`,
+          item.email,
+          item.nom_entreprise,
+          item.telephone,
+        ].some((champ) => (champ || "").toLowerCase().includes(text))
       );
     }
 
-    setFilteredVisiteurs(result);
+    if (filterType !== "Tous") {
+      result = result.filter((item) => memeType(item, filterType));
+    }
+
+    return result;
   }, [search, filterType, visiteurs]);
 
   // =====================================================
-  // FORMAT DATE
+  // AFFICHAGE D'UN VISITEUR
   // =====================================================
 
-  function formatDate(date) {
-    if (!date) return "-";
-
-    try {
-      return new Date(date).toLocaleDateString("fr-FR");
-    } catch {
-      return date;
-    }
-  }
-
-  // =====================================================
-  // AFFICHER TYPE
-  // =====================================================
-
-  function getTypeLabel(type) {
-    if (!type) return "-";
-
-    if (type.toLowerCase() === "vrac") {
-      return "Vrac";
-    }
-
-    if (type.toLowerCase() === "conditionné") {
-      return "Conditionné";
-    }
-
-    return type;
-  }
-
-  // =====================================================
-  // CARTE VISITEUR MOBILE
-  // =====================================================
-
-  function renderMobileCard(item, index) {
+  function renderCarte({ item }) {
     return (
-      <View style={styles.mobileCard} key={item.id || index}>
-
-        <View style={styles.cardHeader}>
+      <View style={styles.carte}>
+        <View style={styles.carteHaut}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(item.prenom?.[0] || "").toUpperCase()}
-              {(item.nom?.[0] || "").toUpperCase()}
+            <Text style={styles.avatarTexte}>{initiales(item)}</Text>
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.carteNom} numberOfLines={1}>
+              {nomComplet(item)}
+            </Text>
+            <Text style={styles.texteDoux} numberOfLines={1}>
+              {item.nom_entreprise || item.email || "-"}
             </Text>
           </View>
 
-          <View style={styles.cardHeaderInfo}>
-            <Text style={styles.cardName}>
-              {item.prenom || ""} {item.nom || ""}
-            </Text>
+          <BoutonSupprimer
+            enCours={suppressionId === item.id}
+            desactive={suppressionId !== null}
+            onPress={() => demanderSuppression(item)}
+          />
+        </View>
 
-            <Text style={styles.cardEmail}>
-              {item.email || "-"}
-            </Text>
+        <View style={styles.carteInfos}>
+          {!!item.email && <Info icone="mail-outline" texte={item.email} />}
+          {!!item.telephone && (
+            <Info icone="call-outline" texte={item.telephone} />
+          )}
+          <Info
+            icone="calendar-outline"
+            texte={formatDate(item.created_at || item.date_creation)}
+          />
+        </View>
+
+        <View style={styles.carteBas}>
+          <BadgeType type={item.type_commande} />
+        </View>
+      </View>
+    );
+  }
+
+  function renderLigne({ item, index }) {
+    return (
+      <View style={[styles.ligne, index % 2 === 1 && styles.ligneAlternee]}>
+        <View style={[styles.colNom, styles.celluleNom]}>
+          <View style={styles.avatarPetit}>
+            <Text style={styles.avatarPetitTexte}>{initiales(item)}</Text>
           </View>
-        </View>
-
-        <View style={styles.cardSeparator} />
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Entreprise</Text>
-          <Text style={styles.infoValue}>
-            {item.nom_entreprise || "-"}
+          <Text style={styles.cellule} numberOfLines={1}>
+            {nomComplet(item)}
           </Text>
         </View>
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Téléphone</Text>
-          <Text style={styles.infoValue}>
-            {item.telephone || "-"}
-          </Text>
+        <Text style={[styles.cellule, styles.colEmail]} numberOfLines={1}>
+          {item.email || "-"}
+        </Text>
+        <Text style={[styles.cellule, styles.colEntreprise]} numberOfLines={1}>
+          {item.nom_entreprise || "-"}
+        </Text>
+        <Text style={[styles.cellule, styles.colTel]} numberOfLines={1}>
+          {item.telephone || "-"}
+        </Text>
+        <View style={styles.colType}>
+          <BadgeType type={item.type_commande} />
         </View>
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Type commande</Text>
-
-          <View
-            style={[
-              styles.typeBadge,
-              item.type_commande === "vrac"
-                ? styles.vracBadge
-                : styles.conditionneBadge,
-            ]}
-          >
-            <Text style={styles.typeBadgeText}>
-              {getTypeLabel(item.type_commande)}
-            </Text>
-          </View>
+        <Text style={[styles.cellule, styles.colDate]}>
+          {formatDate(item.created_at || item.date_creation)}
+        </Text>
+        <View style={styles.colAction}>
+          <BoutonSupprimer
+            enCours={suppressionId === item.id}
+            desactive={suppressionId !== null}
+            onPress={() => demanderSuppression(item)}
+          />
         </View>
+      </View>
+    );
+  }
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Date</Text>
+  // =====================================================
+  // HAUT DE LISTE : statistiques, recherche, filtres
+  // (élément JSX et non composant : la recherche garde le
+  // focus pendant la saisie)
+  // =====================================================
 
-          <Text style={styles.infoValue}>
-            {formatDate(item.created_at || item.date_creation)}
-          </Text>
-        </View>
+  const hautDeListe = (
+    <View>
+      <View style={styles.stats}>
+        <Statistique icone="people-outline" valeur={stats.total} label="Visiteurs" />
+        <Statistique icone="calendar-outline" valeur={stats.ceMois} label="Ce mois-ci" />
+        <Statistique icone="water-outline" valeur={stats.vrac} label="Vrac" />
+        <Statistique icone="cube-outline" valeur={stats.conditionne} label="Conditionné" />
+      </View>
 
-        <TouchableOpacity
-          style={styles.detailsButton}
-          onPress={() => {
-            router.push({
-              pathname: "/admin/visiteurs",
-              params: {
-                id: item.id,
-              },
-            });
-          }}
-        >
-          <Ionicons
-            name="eye-outline"
-            size={18}
-            color="#fff"
+      <View style={styles.filtres}>
+        <View style={styles.recherche}>
+          <Ionicons name="search-outline" size={20} color={Couleurs.texteDoux} />
+
+          <TextInput
+            style={styles.rechercheInput}
+            placeholder="Nom, email, société, téléphone…"
+            placeholderTextColor={Couleurs.texteDoux}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            autoCapitalize="none"
           />
 
-          <Text style={styles.detailsButtonText}>
-            Voir détails
-          </Text>
-        </TouchableOpacity>
+          {search.length > 0 && (
+            <Pressable
+              onPress={() => setSearch("")}
+              hitSlop={8}
+              accessibilityLabel="Effacer la recherche"
+            >
+              <Ionicons name="close-circle" size={20} color={Couleurs.texteDoux} />
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.puces}>
+          {FILTRES.map((f) => {
+            const actif = filterType === f.valeur;
+
+            return (
+              <Pressable
+                key={f.valeur}
+                onPress={() => setFilterType(f.valeur)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: actif }}
+                style={[styles.puce, actif && styles.puceActive]}
+              >
+                <Text style={[styles.puceTexte, actif && styles.puceTexteActif]}>
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
-    );
-  }
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+      <Text style={styles.compteur}>
+        {filteredVisiteurs.length} visiteur
+        {filteredVisiteurs.length > 1 ? "s" : ""}
+        {filteredVisiteurs.length !== visiteurs.length
+          ? ` sur ${visiteurs.length}`
+          : ""}
+      </Text>
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator
-          size="large"
-          color="#333"
-        />
+      {enTableau && filteredVisiteurs.length > 0 && (
+        <View style={[styles.ligne, styles.enteteTableau]}>
+          <Text style={[styles.enteteCellule, styles.colNom]}>Nom et prénom</Text>
+          <Text style={[styles.enteteCellule, styles.colEmail]}>Email</Text>
+          <Text style={[styles.enteteCellule, styles.colEntreprise]}>Entreprise</Text>
+          <Text style={[styles.enteteCellule, styles.colTel]}>Téléphone</Text>
+          <Text style={[styles.enteteCellule, styles.colType]}>Type</Text>
+          <Text style={[styles.enteteCellule, styles.colDate]}>Date</Text>
+          <View style={styles.colAction} />
+        </View>
+      )}
+    </View>
+  );
 
-        <Text style={styles.loadingText}>
-          Chargement des visiteurs...
-        </Text>
-      </View>
-    );
-  }
+  const listeVide = (
+    <View style={styles.vide}>
+      <Ionicons name="people-outline" size={46} color={Couleurs.bordure} />
+      <Text style={styles.videTitre}>Aucun visiteur trouvé</Text>
+      <Text style={[styles.texteDoux, { textAlign: "center" }]}>
+        {visiteurs.length
+          ? "Aucun visiteur ne correspond à votre recherche."
+          : "Les visiteurs enregistrés par les commerciaux apparaîtront ici."}
+      </Text>
+    </View>
+  );
 
   // =====================================================
   // INTERFACE
   // =====================================================
 
   return (
-    <View style={styles.container}>
+    <View style={styles.page}>
+      <EnteteAdmin titre="Visiteurs" sousTitre="Gestion et suivi des visiteurs">
+        <BoutonIcone
+          icone="refresh-outline"
+          label="Actualiser"
+          disabled={loading || actualisation}
+          onPress={() => loadVisiteurs(true)}
+        />
+      </EnteteAdmin>
 
-      {/* ================================================= */}
-      {/* HEADER */}
-      {/* ================================================= */}
-
-      <View style={styles.header}>
-
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.replace("/admin")}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color="#333"
-          />
-        </TouchableOpacity>
-
-        <View style={styles.headerTitle}>
-          <Text style={styles.title}>
-            Visiteurs
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Gestion et suivi des visiteurs
-          </Text>
+      {loading ? (
+        <View style={styles.chargement}>
+          <ActivityIndicator size="large" color={Couleurs.olive} />
+          <Text style={styles.texteDoux}>Chargement des visiteurs…</Text>
         </View>
-
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={loadVisiteurs}
-        >
-          <Ionicons
-            name="refresh-outline"
-            size={21}
-            color="#333"
-          />
-        </TouchableOpacity>
-
-      </View>
-
-      {/* ================================================= */}
-      {/* STATISTIQUES */}
-      {/* ================================================= */}
-
-      <View style={styles.statsContainer}>
-
-        <View style={styles.statCard}>
-          <View style={styles.statIcon}>
-            <Ionicons
-              name="people-outline"
-              size={23}
-              color="#333"
-            />
-          </View>
-
-          <View>
-            <Text style={styles.statValue}>
-              {visiteurs.length}
-            </Text>
-
-            <Text style={styles.statLabel}>
-              Total visiteurs
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statCard}>
-          <View style={styles.statIcon}>
-            <Ionicons
-              name="water-outline"
-              size={23}
-              color="#333"
-            />
-          </View>
-
-          <View>
-            <Text style={styles.statValue}>
-              {
-                visiteurs.filter(
-                  (v) =>
-                    (v.type_commande || "").toLowerCase() ===
-                    "vrac"
-                ).length
-              }
-            </Text>
-
-            <Text style={styles.statLabel}>
-              Commandes vrac
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statCard}>
-          <View style={styles.statIcon}>
-            <Ionicons
-              name="cube-outline"
-              size={23}
-              color="#333"
-            />
-          </View>
-
-          <View>
-            <Text style={styles.statValue}>
-              {
-                visiteurs.filter(
-                  (v) =>
-                    (v.type_commande || "").toLowerCase() ===
-                    "conditionné"
-                ).length
-              }
-            </Text>
-
-            <Text style={styles.statLabel}>
-              Commandes conditionnées
-            </Text>
-          </View>
-        </View>
-
-      </View>
-
-      {/* ================================================= */}
-      {/* RECHERCHE + FILTRES */}
-      {/* ================================================= */}
-
-      <View style={styles.filtersContainer}>
-
-        <View style={styles.searchContainer}>
-
-          <Ionicons
-            name="search-outline"
-            size={21}
-            color="#777"
-          />
-
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher un visiteur..."
-            placeholderTextColor="#999"
-            value={search}
-            onChangeText={setSearch}
-          />
-
-          {search.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearch("")}
-            >
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color="#999"
-              />
-            </TouchableOpacity>
-          )}
-
-        </View>
-
-        <View style={styles.filterButtons}>
-
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filterType === "Tous" &&
-                styles.filterButtonActive,
-            ]}
-            onPress={() => setFilterType("Tous")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filterType === "Tous" &&
-                  styles.filterTextActive,
-              ]}
-            >
-              Tous
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filterType === "vrac" &&
-                styles.filterButtonActive,
-            ]}
-            onPress={() => setFilterType("vrac")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filterType === "vrac" &&
-                  styles.filterTextActive,
-              ]}
-            >
-              Vrac
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filterType === "conditionné" &&
-                styles.filterButtonActive,
-            ]}
-            onPress={() =>
-              setFilterType("conditionné")
-            }
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filterType === "conditionné" &&
-                  styles.filterTextActive,
-              ]}
-            >
-              Conditionné
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-      </View>
-
-      {/* ================================================= */}
-      {/* TABLE */}
-      {/* ================================================= */}
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator
-      >
-        <View style={styles.tableContainer}>
-
-          {/* HEADER TABLE */}
-
-          <View style={styles.tableHeader}>
-
-            <Text style={[styles.headerCell, styles.colId]}>
-              #
-            </Text>
-
-            <Text style={[styles.headerCell, styles.colNom]}>
-              Nom et Prénom
-            </Text>
-
-            
-
-            <Text style={[styles.headerCell, styles.colEmail]}>
-              Email
-            </Text>
-
-            <Text style={[styles.headerCell, styles.colEntreprise]}>
-              Entreprise
-            </Text>
-
-            <Text style={[styles.headerCell, styles.colTelephone]}>
-              Téléphone
-            </Text>
-
-            <Text style={[styles.headerCell, styles.colType]}>
-              Type
-            </Text>
-
-            <Text style={[styles.headerCell, styles.colDate]}>
-              Date
-            </Text>
-
-            <Text style={[styles.headerCell, styles.colAction]}>
-              Action
-            </Text>
-
-          </View>
-
-          {/* LIGNES */}
-
-          <ScrollView
-            style={styles.tableBody}
-            showsVerticalScrollIndicator
-          >
-            {filteredVisiteurs.length === 0 ? (
-
-              <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="people-outline"
-                  size={50}
-                  color="#bbb"
-                />
-
-                <Text style={styles.emptyTitle}>
-                  Aucun visiteur trouvé
-                </Text>
-
-                <Text style={styles.emptyText}>
-                  Aucun visiteur ne correspond à votre recherche.
-                </Text>
-              </View>
-
-            ) : (
-
-              filteredVisiteurs.map((item, index) => (
-
-                <View
-                  key={item.id || index}
-                  style={[
-                    styles.tableRow,
-                    index % 2 === 0 &&
-                      styles.tableRowAlternate,
-                  ]}
-                >
-
-                  <Text style={[styles.cell, styles.colId]}>
-                    {index + 1}
-                  </Text>
-
-                  <Text style={[styles.cell, styles.colNom]}>
-                    {item.nom || "-"}
-                  </Text>
-
-                  
-                  <Text style={[styles.cell, styles.colEmail]}>
-                    {item.email || "-"}
-                  </Text>
-
-                  <Text style={[styles.cell, styles.colEntreprise]}>
-                    {item.nom_entreprise || "-"}
-                  </Text>
-
-                  <Text style={[styles.cell, styles.colTelephone]}>
-                    {item.telephone || "-"}
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.typeCell,
-                      styles.colType,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.typeBadge,
-                        item.type_commande === "vrac"
-                          ? styles.vracBadge
-                          : styles.conditionneBadge,
-                      ]}
-                    >
-                      <Text style={styles.typeBadgeText}>
-                        {getTypeLabel(item.type_commande)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={[styles.cell, styles.colDate]}>
-                    {formatDate(
-                      item.created_at ||
-                        item.date_creation
-                    )}
-                  </Text>
-
-                  <View style={[styles.actionCell, styles.colAction]}>
-                    {suppressionId === item.id ? (
-                      <ActivityIndicator color="#c62828" />
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => demanderSuppression(item)}
-                        disabled={suppressionId !== null}
-                        accessibilityLabel="Supprimer ce visiteur"
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={22}
-                          color="#c62828"
-                        />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                </View>
-
-              ))
-
-            )}
-          </ScrollView>
-
-        </View>
-      </ScrollView>
-
+      ) : (
+        <FlatList
+          key={enTableau ? "tableau" : "cartes"}
+          data={filteredVisiteurs}
+          keyExtractor={(item, index) => String(item.id ?? index)}
+          renderItem={enTableau ? renderLigne : renderCarte}
+          extraData={suppressionId}
+          ListHeaderComponent={hautDeListe}
+          ListEmptyComponent={listeVide}
+          contentContainerStyle={styles.contenu}
+          keyboardShouldPersistTaps="handled"
+          refreshing={actualisation}
+          onRefresh={() => loadVisiteurs(true)}
+          initialNumToRender={15}
+          windowSize={7}
+        />
+      )}
     </View>
   );
 }
@@ -700,413 +505,281 @@ export default function AdminVisiteurs() {
 // =====================================================
 
 const styles = StyleSheet.create({
-
-  container: {
+  page: {
     flex: 1,
-    backgroundColor: "#f7f7f7",
+    backgroundColor: Couleurs.fond,
   },
-
-  loadingContainer: {
+  contenu: {
+    padding: 16,
+    paddingBottom: 40,
+    width: "100%",
+    maxWidth: 1200,
+    alignSelf: "center",
+  },
+  chargement: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f7f7f7",
+    gap: 12,
+  },
+  texteDoux: {
+    fontSize: 13,
+    color: Couleurs.texteDoux,
   },
 
-  loadingText: {
-    marginTop: 12,
-    fontSize: 15,
-    color: "#666",
-  },
-
-  // =====================================================
-  // HEADER
-  // =====================================================
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 25,
-    paddingVertical: 20,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e5e5",
-  },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#f1f1f1",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 15,
-  },
-
-  headerTitle: {
-    flex: 1,
-  },
-
-  title: {
-    fontSize: 27,
-    fontWeight: "700",
-    color: "#222",
-  },
-
-  subtitle: {
-    marginTop: 3,
-    fontSize: 14,
-    color: "#777",
-  },
-
-  refreshButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#f1f1f1",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // =====================================================
   // STATISTIQUES
-  // =====================================================
-
-  statsContainer: {
+  stats: {
     flexDirection: "row",
-    gap: 15,
-    padding: 20,
-    paddingBottom: 10,
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 14,
   },
-
-  statCard: {
-    flex: 1,
-    minWidth: 180,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 18,
+  stat: {
+    flexGrow: 1,
+    flexBasis: 150,
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+    padding: 14,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#e8e8e8",
+    borderColor: Couleurs.bordure,
+    ...ombre,
   },
-
-  statIcon: {
-    width: 45,
-    height: 45,
+  statIcone: {
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: "#f1f1f1",
+    backgroundColor: Couleurs.oliveClair,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
-
-  statValue: {
-    fontSize: 23,
+  statValeur: {
+    fontSize: 22,
     fontWeight: "700",
-    color: "#222",
+    color: Couleurs.texte,
   },
-
   statLabel: {
-    fontSize: 13,
-    color: "#777",
-    marginTop: 2,
+    fontSize: 12,
+    color: Couleurs.texteDoux,
   },
 
-  // =====================================================
-  // FILTRES
-  // =====================================================
-
-  filtersContainer: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginBottom: 15,
-    padding: 15,
-    borderRadius: 12,
+  // RECHERCHE + FILTRES
+  filtres: {
+    padding: 14,
+    marginBottom: 12,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#e5e5e5",
+    borderColor: Couleurs.bordure,
+    gap: 12,
   },
-
-  searchContainer: {
-    height: 45,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 9,
+  recherche: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 13,
-  },
-
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 15,
-    color: "#222",
-  },
-
-  filterButtons: {
-    flexDirection: "row",
     gap: 10,
-    marginTop: 12,
-  },
-
-  filterButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 8,
-    backgroundColor: "#f1f1f1",
-  },
-
-  filterButtonActive: {
-    backgroundColor: "#333",
-  },
-
-  filterText: {
-    fontSize: 14,
-    color: "#555",
-    fontWeight: "500",
-  },
-
-  filterTextActive: {
-    color: "#fff",
-  },
-
-  // =====================================================
-  // TABLE
-  // =====================================================
-
-  tableContainer: {
-    marginHorizontal: 20,
-    marginBottom: 30,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    overflow: "hidden",
+    height: 46,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#e1e1e1",
-    minWidth: 1300,
+    borderColor: Couleurs.bordure,
+    backgroundColor: Couleurs.fond,
   },
-
-  tableHeader: {
-    height: 50,
+  rechercheInput: {
+    flex: 1,
+    height: "100%",
+    fontSize: 15,
+    color: Couleurs.texte,
+  },
+  puces: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#333",
+    flexWrap: "wrap",
+    gap: 8,
   },
-
-  tableBody: {
-    maxHeight: 500,
+  puce: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
+    backgroundColor: Couleurs.carte,
   },
-
-  tableRow: {
-    minHeight: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+  puceActive: {
+    backgroundColor: Couleurs.olive,
+    borderColor: Couleurs.olive,
   },
-
-  tableRowAlternate: {
-    backgroundColor: "#fafafa",
-  },
-
-  headerCell: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#fff",
-    paddingHorizontal: 12,
-  },
-
-  cell: {
+  puceTexte: {
     fontSize: 14,
-    color: "#333",
-    paddingHorizontal: 12,
+    fontWeight: "500",
+    color: Couleurs.texte,
+  },
+  puceTexteActif: {
+    color: "#fff",
+  },
+  compteur: {
+    fontSize: 13,
+    color: Couleurs.texteDoux,
+    marginBottom: 8,
+    marginLeft: 2,
   },
 
-  typeCell: {
-    paddingHorizontal: 12,
+  // CARTES (téléphone)
+  carte: {
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Couleurs.bordure,
+    padding: 14,
+    marginBottom: 10,
+    ...ombre,
+  },
+  carteHaut: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Couleurs.oliveClair,
+    alignItems: "center",
     justifyContent: "center",
   },
-
-  // =====================================================
-  // LARGEURS COLONNES
-  // =====================================================
-
-  colId: {
-    width: 60,
+  avatarTexte: {
+    color: Couleurs.oliveFonce,
+    fontWeight: "700",
+    fontSize: 15,
   },
-
-  colNom: {
-    width: 150,
+  carteNom: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Couleurs.texte,
   },
-
- 
-
-  colEmail: {
-    width: 260,
+  carteInfos: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Couleurs.bordure,
+    gap: 6,
   },
-
-  colEntreprise: {
-    width: 200,
+  info: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-
-  colTelephone: {
-    width: 150,
+  infoTexte: {
+    flex: 1,
+    fontSize: 14,
+    color: Couleurs.texte,
   },
-
-  colType: {
-    width: 150,
+  carteBas: {
+    marginTop: 10,
+    flexDirection: "row",
   },
-
-  colDate: {
-    width: 130,
-  },
-
-  colAction: {
-    width: 80,
-  },
-
-  actionCell: {
+  boutonSupprimer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Couleurs.dangerClair,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // =====================================================
-  // BADGES
-  // =====================================================
+  // TABLEAU (ordinateur / tablette)
+  ligne: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 56,
+    paddingHorizontal: 14,
+    backgroundColor: Couleurs.carte,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Couleurs.bordure,
+  },
+  ligneAlternee: {
+    backgroundColor: "#FAFBF7",
+  },
+  enteteTableau: {
+    minHeight: 46,
+    backgroundColor: Couleurs.oliveClair,
+    borderTopWidth: 1,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  enteteCellule: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Couleurs.oliveFonce,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  cellule: {
+    fontSize: 14,
+    color: Couleurs.texte,
+    flexShrink: 1,
+  },
+  celluleNom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  avatarPetit: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Couleurs.oliveClair,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarPetitTexte: {
+    color: Couleurs.oliveFonce,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  colNom: { flex: 1.5 },
+  colEmail: { flex: 1.7 },
+  colEntreprise: { flex: 1.3 },
+  colTel: { flex: 1.1 },
+  colType: { flex: 0.9 },
+  colDate: { flex: 0.8 },
+  colAction: { width: 44, alignItems: "center" },
 
-  typeBadge: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+  // BADGES
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 20,
     alignSelf: "flex-start",
   },
-
-  vracBadge: {
-    backgroundColor: "#e8f5e9",
+  badgeVrac: {
+    backgroundColor: Couleurs.succesClair,
   },
-
-  conditionneBadge: {
-    backgroundColor: "#fff3e0",
+  badgeCond: {
+    backgroundColor: Couleurs.orangeClair,
   },
-
-  typeBadgeText: {
+  badgeTexte: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#444",
   },
 
-  // =====================================================
-  // EMPTY
-  // =====================================================
-
-  emptyContainer: {
-    width: 1300,
-    paddingVertical: 70,
+  // VIDE
+  vide: {
     alignItems: "center",
-    justifyContent: "center",
-  },
-
-  emptyTitle: {
-    marginTop: 15,
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#555",
-  },
-
-  emptyText: {
-    marginTop: 6,
-    fontSize: 14,
-    color: "#999",
-  },
-
-  // =====================================================
-  // MOBILE CARD
-  // =====================================================
-
-  mobileCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    gap: 8,
+    paddingVertical: 50,
+    paddingHorizontal: 20,
+    backgroundColor: Couleurs.carte,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#e5e5e5",
+    borderColor: Couleurs.bordure,
   },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  avatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: "#333",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  avatarText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  cardHeaderInfo: {
-    flex: 1,
-  },
-
-  cardName: {
+  videTitre: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#222",
-  },
-
-  cardEmail: {
-    fontSize: 13,
-    color: "#777",
-    marginTop: 3,
-  },
-
-  cardSeparator: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginVertical: 14,
-  },
-
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  infoLabel: {
-    fontSize: 13,
-    color: "#777",
-  },
-
-  infoValue: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "500",
-  },
-
-  detailsButton: {
-    marginTop: 8,
-    backgroundColor: "#333",
-    borderRadius: 8,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  detailsButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 7,
+    color: Couleurs.texte,
   },
 });
